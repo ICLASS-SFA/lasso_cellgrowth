@@ -1,0 +1,15 @@
+---
+# Input data directory
+in_dir: '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/les/20181204/gefs18/run/merged/'
+out_dir: '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/les/20181204/gefs18/run/merged/'
+start_datetime: '2018-12-04T12:00'
+end_datetime: '2018-12-04T23:59'
+# Input data file basename
+in_basename: 'corlasso_sub_cloudOnHamsl.M1.m1.'
+out_basename: 'reg_refl_'
+# Ensemble member name
+ensmember: 'gefs18'
+# Dask settings
+run_parallel: 1
+nprocesses: 18
+dask_tmp_dir: '/tmp'

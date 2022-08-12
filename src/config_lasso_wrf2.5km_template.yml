@@ -1,0 +1,34 @@
+---
+# Run in parallel
+run_parallel: 1
+# Number of workers for Dask
+n_workers: 24
+# Threads per worker
+threads_per_worker: 1
+dask_tmp_dir: '/tmp'
+# Start/end date and time
+startdate: 'STARTDATE.1200'
+enddate: 'ENDDATE.0000'
+# Ensemble member name
+ensmember: 'ENSMEMBER'
+# Maximum time difference allowed to match the datasets
+time_window: 30  # [second]
+# Input/output file locations
+# Track stats directory
+stats_path: '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/stats/'
+# Track pixel file directory
+pixelfile_path: '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/celltracking/'
+# 3D Met file directory
+metfile_path: '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/d2/run/'
+# File base names
+pixel_filebase: 'celltracks_'
+met_filebase: 'corlasso_sub_metOnHamsl.M1.m1.SHORTENS_'
+# W thresholds to define cores
+W_up_thresh: 2.0  # [m/s]
+W_down_thresh: -1.0  # [m/s]
+# Minimum pixel count for a core
+min_core_npix: 1
+# Number of cores to save per cell
+ncores_min: 10
+# Subset boundary [lon_min, lon_max, lat_min, lat_max]
+geolimits: [-65.9, -63.4, -33.1, -31.0]
