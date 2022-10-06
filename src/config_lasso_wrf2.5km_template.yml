@@ -11,24 +11,61 @@ startdate: 'STARTDATE.1200'
 enddate: 'ENDDATE.0000'
 # Ensemble member name
 ensmember: 'ENSMEMBER'
+# wrfout domain name (d01: 500m, d02: 100m)
+domain: 'd02'
+# Resolution: 'meso' or 'les'
+resolution: 'meso'
 # Maximum time difference allowed to match the datasets
 time_window: 30  # [second]
 # Input/output file locations
 # Track stats directory
-stats_path: '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/stats/'
+stats_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/stats/'
 # Track pixel file directory
-pixelfile_path: '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/celltracking/'
+pixelfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/celltracking/'
 # 3D Met file directory
-metfile_path: '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/d2/run/'
+metfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/d2/run/'
+# Raw WRF output file directory
+wrfout_path1: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/meso/'
+wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/meso/'
+# Output file directory
+output_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/d2/stats/'
 # File base names
 pixel_filebase: 'celltracks_'
-met_filebase: 'corlasso_sub_metOnHamsl.M1.m1.SHORTENS_'
+met_filebase: 'corlasso.methamsl.STARTDATE00SHORTENSd2.base.M1.m1.'
+cld_filebase: 'corlasso.cldhamsl.STARTDATE00SHORTENSd2.base.M1.m1.'
 # W thresholds to define cores
 W_up_thresh: 2.0  # [m/s]
 W_down_thresh: -1.0  # [m/s]
 # Minimum pixel count for a core
 min_core_npix: 1
 # Number of cores to save per cell
-ncores_min: 10
+ncores_min: 20
+# Number of hours prior to initiation to extract environment
+nhours: 1
+# Set domain size to extract environment
+# Number of grid point in lon/lat dimension [center-nx, center+nx], [center-ny, center+ny]
+nx: 12
+ny: 12
+nz: 149
+# Sub-sample spatial grid (2: sample every 2 grids)
+sub_x: 1
+sub_y: 1
 # Subset boundary [lon_min, lon_max, lat_min, lat_max]
 geolimits: [-65.9, -63.4, -33.1, -31.0]
+# List of 2D variables to pass through from the 3D file
+list_var_pass:
+  - 'conv_core'
+  - 'conv_mask'
+  - 'tracknumber_cmask'
+  - 'comp_ref'
+  - 'echotop10'
+  - 'LWP'
+  - 'IWP'
+  - 'PWV'
+  - 'T2'
+  - 'Q2'
+  - 'PSFC'
+  - 'U10'
+  - 'V10'
+  - 'PBLH'
+  - 'RAINNC'

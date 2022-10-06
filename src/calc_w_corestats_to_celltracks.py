@@ -51,58 +51,57 @@ def calc_basetime(filelist, filebase):
         file_dict[file_basetime[ifile]] = filelist[ifile]
     return file_basetime, file_dict
 
-#-----------------------------------------------------------------------
-def convert_lasso_times(data_path, data_basename):
-    """
-    Convert LASSO regridded file times to Epoch time.
+# #-----------------------------------------------------------------------
+# def convert_lasso_times(data_path, data_basename):
+#     """
+#     Convert LASSO regridded file times to Epoch time.
 
-    Args:
-        data_path: string
-            Input data path.
-        data_basename: string
-            Input data basename.
+#     Args:
+#         data_path: string
+#             Input data path.
+#         data_basename: string
+#             Input data basename.
     
-    Returns:
-        file_basetime: np.array
-            Epoch time corresponding to the input files.
-        file_dict: dictionary
-            Direction key by basetime and value is the file names
-    """
-    # Isolate all possible files
-    filenames = sorted(fnmatch.filter(os.listdir(data_path), data_basename + '*'))
-    nfiles = len(filenames)
-    # Make array to store basetime
-    file_basetime = np.zeros(nfiles, dtype=int)
-    file_dict = {}
+#     Returns:
+#         file_basetime: np.array
+#             Epoch time corresponding to the input files.
+#         file_dict: dictionary
+#             Direction key by basetime and value is the file names
+#     """
+#     # Isolate all possible files
+#     filenames = sorted(fnmatch.filter(os.listdir(data_path), data_basename + '*'))
+#     nfiles = len(filenames)
+#     # Make array to store basetime
+#     file_basetime = np.zeros(nfiles, dtype=int)
+#     file_dict = {}
 
-    # Get start time from the file name
-    # e.g., corlasso_sub_metOnHamsl.M1.m1.gefs18_2018120400_f143000_d3.nc
-    # start time: 2018120400
-    # forecast time: 143000
-    nleadingchar = len(data_basename)
-    start_datetime = filenames[0][nleadingchar:nleadingchar+10]
-    syear = start_datetime[0:4]
-    smonth = start_datetime[4:6]
-    sday = start_datetime[6:8]
-    shour = start_datetime[8:10]
-    start_time = datetime(
-        int(syear), int(smonth), int(sday), int(shour), tzinfo=utc,
-    )
-    # Get forecast times from each file name
-    nleadingchar_fxtime = nleadingchar + len(start_datetime) + 2
-    for ii in range(0, nfiles):
-        fx_time = filenames[ii][nleadingchar_fxtime:nleadingchar_fxtime+6]
-        fx_hour = int(fx_time[0:2])
-        fx_min = int(fx_time[2:4])
-        fx_sec = int(fx_time[4:6])
-        # Add forecast time to start time to get the real time
-        rtime = start_time + timedelta(hours=fx_hour, minutes=fx_min, seconds=fx_sec)
-        # Convert to Epoch time (base time)
-        file_basetime[ii] = rtime.timestamp()
-        file_dict[file_basetime[ii]] = data_path + filenames[ii]
+#     # Get start time from the file name
+#     # e.g., corlasso_sub_metOnHamsl.M1.m1.gefs18_2018120400_f143000_d3.nc
+#     # start time: 2018120400
+#     # forecast time: 143000
+#     nleadingchar = len(data_basename)
+#     start_datetime = filenames[0][nleadingchar:nleadingchar+10]
+#     syear = start_datetime[0:4]
+#     smonth = start_datetime[4:6]
+#     sday = start_datetime[6:8]
+#     shour = start_datetime[8:10]
+#     start_time = datetime(
+#         int(syear), int(smonth), int(sday), int(shour), tzinfo=utc,
+#     )
+#     # Get forecast times from each file name
+#     nleadingchar_fxtime = nleadingchar + len(start_datetime) + 2
+#     for ii in range(0, nfiles):
+#         fx_time = filenames[ii][nleadingchar_fxtime:nleadingchar_fxtime+6]
+#         fx_hour = int(fx_time[0:2])
+#         fx_min = int(fx_time[2:4])
+#         fx_sec = int(fx_time[4:6])
+#         # Add forecast time to start time to get the real time
+#         rtime = start_time + timedelta(hours=fx_hour, minutes=fx_min, seconds=fx_sec)
+#         # Convert to Epoch time (base time)
+#         file_basetime[ii] = rtime.timestamp()
+#         file_dict[file_basetime[ii]] = data_path + filenames[ii]
     
-    # import pdb; pdb.set_trace()
-    return file_basetime, file_dict
+#     return file_basetime, file_dict
 
 #-----------------------------------------------------------------------
 def label_cores(W, W_thresh, ncores_min, min_core_npix, method='>'):
@@ -219,6 +218,7 @@ def calc_cellstats_singlefile(
 
     # Read pixel-level track file
     ds = xr.open_dataset(pixel_filename, decode_times=False)
+    time_pixel = ds['time']
     ny_p = ds.dims['lat']
     nx_p = ds.dims['lon']
 
@@ -504,7 +504,8 @@ if __name__ == '__main__':
     # Get basetime from pixel files
     pixel_basetime, pixelfile_dict = calc_basetime(pixelfilelist, pixel_filebase)
     # Get basetime from MET files
-    met_basetime, metfile_dict = convert_lasso_times(metfile_path, met_filebase)
+    met_basetime, metfile_dict = calc_basetime(metfilelist, met_filebase)
+    # met_basetime, metfile_dict = convert_lasso_times(metfile_path, met_filebase)
 
     # Find matching MET files for each pixel file
     match_metfilelist = [''] * nfiles
@@ -523,7 +524,8 @@ if __name__ == '__main__':
     ntracks = dsstats.dims[tracks_dimname]
     ntimes = dsstats.dims[times_dimname]
     stats_basetime = dsstats['base_time'].data
-    cell_area = dsstats['cell_area']
+    stats_basetime_attrs = dsstats['base_time'].attrs
+    # cell_area = dsstats['cell_area']
     pixel_radius = dsstats.attrs['pixel_radius_km']
     dsstats.close()
 
@@ -597,14 +599,6 @@ if __name__ == '__main__':
             var_attrs = final_results[counter][2]
             break
         counter -= 1
-    # counter = 0
-    # while counter < nfiles:
-    #     if final_results[counter] is not None:
-    #         var_names = list(final_results[counter][0].keys())
-    #         # Get variable attributes
-    #         var_attrs = final_results[counter][1]
-    #         break
-    #     counter += 1
 
     # Loop over variable list to create the dictionary entry
     print(f'Creating output arrays ...')
@@ -620,7 +614,6 @@ if __name__ == '__main__':
     for ivar in var_names2d:
         out_dict[ivar] = np.full((ntracks, ntimes, nz), np.nan, dtype=np.float32)
         out_dict_attrs[ivar] = var_attrs[ivar]
-
 
     # Put the results to output track stats variables
     # Loop over each returned results
@@ -647,40 +640,6 @@ if __name__ == '__main__':
                         out_dict[ivar][trackindices,timeindices,:] = iVAR2d[ivar]
                     else:
                         print(f'Warning: {ivar} dimension is not 2.')
-
-    # # Loop over variable list to create the dictionary entry
-    # out_dict = {}
-    # out_dict_attrs = {}
-    # for ivar in var_names:
-    #     if 'nCore_' in ivar:
-    #         out_dict[ivar] = np.full((ntracks, ntimes, nz), np.nan, dtype=np.float32)
-    #     else:
-    #         out_dict[ivar] = np.full((ntracks, ntimes, nz, ncores_min), np.nan, dtype=np.float32)
-    #     out_dict_attrs[ivar] = var_attrs[ivar]
-
-    # # Now that all calculations for each pixel file is don    e, put the results back to the tracks format
-    # # Loop over each file (parallel return results)
-    # for ifile in range(nfiles):
-    #     # Get the results from the current file
-    #     vars = final_results[ifile]
-    #     if (vars is not None):
-    #         # Get the return results for this pixel file
-    #         # The result is a tuple: (out_dict, out_dict_attrs)
-    #         # The first entry is the dictionary containing the variables
-    #         iVAR = final_results[ifile][0]
-
-    #         # Get trackindices and timeindices for this file
-    #         trackindices = trackindices_all[ifile]
-    #         timeindices = timeindices_all[ifile]
-
-    #         # Loop over each variable and assign values to output dictionary
-    #         for ivar in var_names:
-    #             if iVAR[ivar].ndim == 2:
-    #                 out_dict[ivar][trackindices,timeindices,:] = iVAR[ivar]
-    #             if iVAR[ivar].ndim == 3:
-    #                 out_dict[ivar][trackindices,timeindices,:,:] = iVAR[ivar]
-
-    # import pdb; pdb.set_trace()
 
     ##########################################################
     # Write to netcdf

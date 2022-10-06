@@ -1,6 +1,8 @@
 #!/bin/bash
 # Create LASSO cell tracking config and slurm scripts
 
+submit_job="yes"
+
 config_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
 slurm_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
 # D4 (100m) 5min tracking
@@ -8,17 +10,22 @@ slurm_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
 # D4 (100m) 15min tracking
 # config_template=${config_dir}"config_lasso_wrf100m_15min_template.yml"
 # D3 (500m) 15min tracking
-config_template=${config_dir}"config_lasso_wrf500m_template.yml"
+# config_template=${config_dir}"config_lasso_wrf500m_template.yml"
+# D2 (2.5km)
+config_template=${config_dir}"config_lasso_wrf2.5km_template.yml"
 slurm_template=${slurm_dir}"slurm_lasso_template.sh"
 config_basename="config_lasso_"
 slurm_basename="slurm_lasso_"
-submit_job="no"
+
 
 # # Single run
 # start_dates=(
 #     "20181204"
 # )
 # ens_members=(
+#     "gefs_en18"
+# )
+# ens_members_short=(
 #     "gefs18"
 # )
 # Full list of runs
@@ -33,8 +40,20 @@ start_dates=(
     "20190129" "20190129"
     "20190208" "20190208"
 )
-# LES
+# Long ensemble member names (for directory names)
 ens_members=(
+    "gefs_en00" "gefs_en03" 
+    "gefs_en18" "gefs_en19" 
+    "gefs_en01" 
+    "eda_en09" 
+    "gefs_en01" 
+    "eda_en05"
+    "eda_en07" "gefs_en11"
+    "eda_en09" "gefs_en11"
+    "eda_en03" "eda_en08"
+)
+# Short ensemble member names (for file names)
+ens_members_short=(
     "gefs00" "gefs03" 
     "gefs18" "gefs19" 
     "gefs01" 
@@ -52,12 +71,13 @@ for ((i = 0; i < ${#start_dates[@]}; ++i)); do
     # edate=${end_dates[$i]}
     edate="$((sdate+1))"
     ensmember=${ens_members[$i]}
+    ensmembershort=${ens_members_short[$i]}
 
     config_name=${config_basename}${sdate}_${ensmember}
     config_file=${config_dir}${config_name}.yml
     slurm_file=${slurm_dir}${slurm_basename}${sdate}_${ensmember}.sh
 
-    sed "s/STARTDATE/"${sdate}"/g;s/ENDDATE/"${edate}/g";s/ENSMEMBER/"${ensmember}"/g" ${config_template} > ${config_file}
+    sed "s/STARTDATE/"${sdate}"/g;s/ENDDATE/"${edate}/g";s/ENSMEMBER/"${ensmember}"/g;s/SHORTENS/"${ensmembershort}"/g" ${config_template} > ${config_file}
     sed "s/STARTDATE/"${sdate}"/g;s/ENSMEMBER/"${ensmember}"/g;s/CONFIG_NAME/"${config_name}"/g" ${slurm_template} > ${slurm_file}
     echo ${config_file}
     echo ${slurm_file}

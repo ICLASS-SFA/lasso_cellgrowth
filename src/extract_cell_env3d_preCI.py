@@ -182,6 +182,7 @@ def extract_env_prof(
     # Get values from config
     nx = config['nx']
     ny = config['ny']
+    nz = config.get('nz', 149)
     sub_x = config.get('sub_x', 1)
     sub_y = config.get('sub_y', 1)
 
@@ -237,9 +238,12 @@ def extract_env_prof(
         U10, V10 = wrf.getvar(nc, 'uvmet10')
         PBLH = wrf.getvar(nc, 'PBLH')
         RAINNC = wrf.getvar(nc, 'RAINNC')
+        HGT = wrf.getvar(nc, 'HGT')
         # Attributes
         DX = nc.getncattr('DX')
         DY = nc.getncattr('DY')
+        # Close WRF file
+        nc.close()
 
         # Remove attributes ('projection' in particular conflicts with Xarray)
         attrs_to_remove = ['FieldType', 'projection', 'MemoryOrder', 'stagger', 'coordinates', 'missing_value']
@@ -260,6 +264,7 @@ def extract_env_prof(
             V10.attrs.pop(key, None)
             PBLH.attrs.pop(key, None)
             RAINNC.attrs.pop(key, None)
+            HGT.attrs.pop(key, None)
 
 
     # if met_exist:
@@ -304,8 +309,8 @@ def extract_env_prof(
         
 
     # Make array to store output
-    if nz is None:
-        nz = 149
+    # if nz is None:
+    #     nz = 149
     # Number of tracks in the file
     ntracks = len(idx_track)
     # out_ny = 2*ny+1
@@ -342,6 +347,7 @@ def extract_env_prof(
     out_U = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
     out_V = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
     out_W = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+
     # 2D variables
     # out_LCL = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
     # out_LFC = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
@@ -359,6 +365,7 @@ def extract_env_prof(
     out_V10 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
     out_PBLH = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
     out_RAINNC = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_HGT = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
     # 2D cell variables
     out_convcore = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
     out_convmask = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
@@ -449,6 +456,7 @@ def extract_env_prof(
                 _V10 = pad_array(V10.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _PBLH = pad_array(PBLH.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _RAINNC = pad_array(RAINNC.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                _HGT = pad_array(HGT.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
 
                 inz, iny, inx = _Z.shape
                 if (iny == out_ny) & (inx == out_nx):
@@ -470,6 +478,7 @@ def extract_env_prof(
                     out_V10[itrack, :, :] = _V10
                     out_PBLH[itrack, :, :] = _PBLH
                     out_RAINNC[itrack, :, :] = _RAINNC
+                    out_HGT[itrack, :, :] = _HGT
 
         # Put output variables to a dictionary for easier acceess
         out_dict3d = {
@@ -504,6 +513,7 @@ def extract_env_prof(
             'V10': out_V10,
             'PBLH': out_PBLH,
             'RAINNC': out_RAINNC,
+            'HGT': out_HGT,
         }
         out_dict_attrs = {
             'pressure': pressure.attrs,
@@ -522,6 +532,7 @@ def extract_env_prof(
             'V10': V10.attrs,
             'PBLH': PBLH.attrs,
             'RAINNC': RAINNC.attrs,
+            'HGT': HGT.attrs,
             # 'DX': DX_sub,
             # 'DY': DY_sub,
         }
@@ -562,6 +573,7 @@ if __name__ == '__main__':
     # ntimes_max = config['ntimes_max']
     ensmember = config['ensmember']
     domain = config['domain']
+    resolution = config['resolution']
     nx = config['nx']
     ny = config['ny']
 
@@ -569,8 +581,15 @@ if __name__ == '__main__':
     _startdate = startdate[0:8]
     base_date = f"{_startdate[0:4]}-{_startdate[4:6]}-{_startdate[6:8]}T00"
     ensmember_long = ensmemb_short_to_long(ensmember)
-    wrfout_path1 = f'{wrfout_path1}{_startdate}_{ensmember_long}/run/merged/'
-    wrfout_path2 = f'{wrfout_path2}{_startdate}/{ensmember_long}/run/merged/'
+    if resolution == 'les':
+        wrfout_path1 = f'{wrfout_path1}{_startdate}_{ensmember_long}/run/merged/'
+        wrfout_path2 = f'{wrfout_path2}{_startdate}/{ensmember_long}/run/merged/'
+    elif resolution == 'meso':
+        wrfout_path1 = f'{wrfout_path1}{_startdate}_{ensmember_long}/run_d12/'
+        wrfout_path2 = f'{wrfout_path2}{_startdate}/{ensmember_long}/run_d12/'
+    else:
+        print(f'Must specify "resolutioin" in config')
+        sys.exit()
     # Check which directory exists
     if os.path.isdir(wrfout_path1):
         wrfout_path = wrfout_path1
@@ -612,8 +631,6 @@ if __name__ == '__main__':
     stats_basetime = dsstats['base_time']
     stats_lon = dsstats['meanlon']
     stats_lat = dsstats['meanlat']
-    # stats_area = dsstats['cell_area']
-    # pixel_radius = dsstats.attrs['pixel_radius_km']
     time_res_hour = dsstats.attrs['time_resolution_hour']
     dsstats.close()
 
@@ -686,6 +703,10 @@ if __name__ == '__main__':
         'units': 'unitless',
         'comment': f'Multiply by {time_res_min:.0f}min to get physical time',
     }
+    full_basetimes_attrs = {
+        'long_name': stats_basetime.attrs['long_name'],
+        'units': 'Seconds since 1970-1-1',
+    }
     out_ntimes = len(coord_relativetimes)
     # Check number of times for output
     if out_ntimes != ntimes_full:
@@ -721,27 +742,32 @@ if __name__ == '__main__':
         itime = uniq_times[ifile]
         itime_pixel = pd.to_datetime(str(itime)).strftime('%Y%m%d_%H%M')
         itime_wrfout = pd.to_datetime(str(itime)).strftime('%Y-%m-%d_%H_%M_%S')
+        itime_met = pd.to_datetime(str(itime)).strftime('%Y%m%d.%H%M%S')
+        itime_cld = pd.to_datetime(str(itime)).strftime('%Y%m%d.%H%M%S')
 
         # File names
         fname_pixel = f'{pixelfile_path}{pixel_filebase}{itime_pixel}.nc'
         fname_wrfout = f'{wrfout_path}wrfout_{domain}_{itime_wrfout}'
+        # New MET file time format: yyyymmdd.hhmmss
+        fname_met = f'{metfile_path}{met_filebase}{itime_met}.nc'
+        fname_cld = f'{metfile_path}{cld_filebase}{itime_met}.nc'
 
-        if os.path.isfile(fname_wrfout):
-            # Get domain number based on wrfout resolution value (DX)
-            dsw = xr.open_dataset(fname_wrfout)
-            DX = dsw.attrs['DX']
-            dom_out = indentify_domain_number(DX)
+        # if os.path.isfile(fname_wrfout):
+        #     # Get domain number based on wrfout resolution value (DX)
+        #     dsw = xr.open_dataset(fname_wrfout)
+        #     DX = dsw.attrs['DX']
+        #     dom_out = indentify_domain_number(DX)
 
-        # Make Met file time string
-        btime = pd.to_datetime(base_date)
-        tdiff = pd.to_datetime(str(itime)) - btime
-        forecast_H = tdiff.days*24 + tdiff.seconds//3600
-        forecast_M = (tdiff.seconds//60)%60
-        forecast_S = tdiff.seconds%60        
-        # MET file time format: yyyymmdd_fhhmmss
-        itime_met = f"{btime:%Y%m%d%H}_f{forecast_H:02d}{forecast_M:02d}{forecast_S:02d}"
-        fname_met = f'{metfile_path}{met_filebase}{itime_met}_d{dom_out}.nc'
-        fname_cld = f'{metfile_path}{cld_filebase}{itime_met}_d{dom_out}.nc'
+        # # Make Met file time string
+        # btime = pd.to_datetime(base_date)
+        # tdiff = pd.to_datetime(str(itime)) - btime
+        # forecast_H = tdiff.days*24 + tdiff.seconds//3600
+        # forecast_M = (tdiff.seconds//60)%60
+        # forecast_S = tdiff.seconds%60
+        # # MET file time format: yyyymmdd_fhhmmss
+        # itime_met = f"{btime:%Y%m%d%H}_f{forecast_H:02d}{forecast_M:02d}{forecast_S:02d}"
+        # fname_met = f'{metfile_path}{met_filebase}{itime_met}_d{dom_out}.nc'
+        # fname_cld = f'{metfile_path}{cld_filebase}{itime_met}_d{dom_out}.nc'
 
         # Get all MCS tracks/times indices in the same time (file)
         idx_track, idx_time = np.where(full_basetimes == uniq_basetimes[ifile])
@@ -870,6 +896,8 @@ if __name__ == '__main__':
             var_dict[key] = (
                 [tracks_dimname, times_dimname, z_dimname, y_dimname, x_dimname], value, out_dict_attrs[key],
             )
+    # Add base_time to output dictionary
+    var_dict['base_time'] = ([tracks_dimname, times_dimname], full_basetimes, full_basetimes_attrs)
 
     # Define coordinate list
     coord_dict = {
@@ -902,5 +930,3 @@ if __name__ == '__main__':
     dsout.to_netcdf(path=output_filename, mode='w', format='NETCDF4', 
                     unlimited_dims=tracks_dimname, encoding=encoding)
     print(f'Output saved as: {output_filename}')
-
-    # import pdb; pdb.set_trace()

@@ -2,7 +2,7 @@
 # Run in parallel
 run_parallel: 1
 # Number of workers for Dask
-n_workers: 24
+n_workers: 6
 # Threads per worker
 threads_per_worker: 1
 dask_tmp_dir: '/tmp'
@@ -13,24 +13,26 @@ enddate: 'ENDDATE.0000'
 ensmember: 'ENSMEMBER'
 # wrfout domain name (d01: 500m, d02: 100m)
 domain: 'd02'
+# Resolution: 'meso' or 'les'
+resolution: 'les'
 # Maximum time difference allowed to match the datasets
 time_window: 30  # [second]
 # Input/output file locations
 # Track stats directory
-stats_path: '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4_15min/stats/'
+stats_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4_15min/stats/'
 # Track pixel file directory
-pixelfile_path: '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4_15min/celltracking/'
+pixelfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4_15min/celltracking/'
 # 3D Met file directory
-metfile_path: '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4/run/'
+metfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4/run/'
 # Raw WRF output file directory
 wrfout_path1: '/gpfs/wolf/cli120/proj-shared/sey/cacti/wrf/prod/'
 wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/les/'
 # Output file directory
-output_path: '/gpfs/wolf/atm123/proj-shared/zhefeng/cacti/les/STARTDATE/ENSMEMBER/d4_15min/stats/'
+output_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4_15min/stats/'
 # File base names
 pixel_filebase: 'regrid_celltracks_'
-met_filebase: 'corlasso_sub_metOnHamsl.M1.m1.ENSMEMBER_'
-cld_filebase: 'corlasso_sub_cloudOnHamsl.M1.m1.ENSMEMBER_'
+met_filebase: 'corlasso.methamsl.STARTDATE00ENSMEMBERd4.base.M1.m1.'
+cld_filebase: 'corlasso.cldhamsl.STARTDATE00ENSMEMBERd4.base.M1.m1.'
 # W thresholds to define cores
 W_up_thresh: 2.0  # [m/s]
 W_down_thresh: -1.0  # [m/s]
@@ -46,6 +48,7 @@ nhours: 1
 # Number of grid point in lon/lat dimension [center-nx, center+nx], [center-ny, center+ny]
 nx: 300
 ny: 300
+nz: 149
 # Sub-sample spatial grid (2: sample every 2 grids)
 sub_x: 10
 sub_y: 10

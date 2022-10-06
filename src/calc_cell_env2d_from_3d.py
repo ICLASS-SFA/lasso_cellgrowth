@@ -16,6 +16,104 @@ from itertools import repeat
 from multiprocessing import Pool
 
 #-----------------------------------------------------------------------------------------
+def calc_shear(level_shear, u, v, z_agl, u10, v10):
+    """
+    Calculates vertical wind shear and direction at specified AGL levels
+
+    Args:
+        level_shear: np.array(float)
+            Vertical height level AGL (km).
+        u: xr.DataArray
+            U components of wind.
+        v: xr.DataArray
+            V components of wind.
+        z_agl: xr.DataArray
+            Height above ground level.
+        u10: xr.DataArray
+            10m U components of wind.
+        v10: xr.DataArray
+            10m V components of wind.    
+
+    Returns:
+        shear_mag: xr.DataArray
+            Bulk wind shear magnitude.
+        shear_dir: xr.DataArray
+            Bulk wind shear direction.
+    """
+    # Interpolate U, V to specific AGL levels
+    u_agl = interplevel(u, z_agl, level_shear)
+    v_agl = interplevel(v, z_agl, level_shear)
+    # Calculate wind speed
+    wspd_agl = np.sqrt(u_agl**2 + v_agl**2)
+    wspd10 = np.sqrt(u10**2 + v10**2)
+
+    # Wind shear magnitude
+    shear_mag = wspd_agl - wspd10
+
+    # Wind shear direction
+    ushear = u_agl - u10
+    vshear = v_agl - v10
+    # .metpy.dequantify() converts data back to a unit-naive array
+    # https://unidata.github.io/MetPy/latest/tutorials/xarray_tutorial.html?highlight=dequantify#
+    shear_dir = mpcalc.wind_direction(ushear * units('m/s'), vshear * units('m/s')).metpy.dequantify()
+
+    # Assign attributes
+    shear_mag_attrs = {'long_name':'Bulk wind shear magnitude', 'units':'m/s'}
+    shear_dir_attrs = {'long_name':'Bulk wind shear direction', 'units':'degree'}
+    shear_mag = shear_mag.assign_attrs(shear_mag_attrs)
+    shear_dir = shear_dir.assign_attrs(shear_dir_attrs)
+
+    return shear_mag, shear_dir
+
+#-----------------------------------------------------------------------------------------
+def calc_shear_2level(u, v, z, level_lower, level_upper):
+    """
+    Calculates vertical wind shear and direction between two levels
+
+    Args:
+        u: xr.DataArray
+            U components of wind.
+        v: xr.DataArray
+            V components of wind.
+        z: xr.DataArray
+            Height above ground level.
+        level_lower: float
+            Lower height level.
+        level_upper: float
+            Upper height level.    
+
+    Returns:
+        shear_mag: xr.DataArray
+            Bulk wind shear magnitude.
+        shear_dir: xr.DataArray
+            Bulk wind shear direction.
+    """
+    # Interpolate U, V at lower & upper levels (on HAMSL coordinate)
+    u_lower = interplevel(u, z, level_lower)
+    v_lower = interplevel(v, z, level_lower)
+    u_upper = interplevel(u, z, level_upper)
+    v_upper = interplevel(v, z, level_upper)
+    # Calculate wind speed
+    wspd_lower = np.sqrt(u_lower**2 + v_lower**2)
+    wspd_upper = np.sqrt(u_upper**2 + v_upper**2)
+    # Wind shear magnitude
+    shear_mag = wspd_upper - wspd_lower
+    # Wind shear direction
+    ushear = u_upper - u_lower
+    vshear = v_upper - v_lower
+    # .metpy.dequantify() converts data back to a unit-naive array
+    # https://unidata.github.io/MetPy/latest/tutorials/xarray_tutorial.html?highlight=dequantify#
+    shear_dir = mpcalc.wind_direction(ushear * units('m/s'), vshear * units('m/s')).metpy.dequantify()
+
+    # Assign attributes
+    shear_mag_attrs = {'long_name':f'Bulk wind shear magnitude between {level_lower}m and {level_upper}m', 'units':'m/s'}
+    shear_dir_attrs = {'long_name':f'Bulk wind shear direction between {level_lower}m and {level_upper}m', 'units':'degree'}
+    shear_mag = shear_mag.assign_attrs(shear_mag_attrs)
+    shear_dir = shear_dir.assign_attrs(shear_dir_attrs)
+
+    return shear_mag, shear_dir
+
+#-----------------------------------------------------------------------------------------
 def calc_envs_track(in_filename, tracknumber, config):
     """
     Calculte 2D environments for a given track time series
@@ -41,6 +139,7 @@ def calc_envs_track(in_filename, tracknumber, config):
     # Define levels (HAGL) to calculate surface wind shear
     level_shear = [2000, 4000, 6000, 8000, 10000]   # [m AGL]
     level_theta_e = [3000, 5000, 7000]   # [m AGL]
+    level_pres = [925, 850, 700, 600, 500]
 
     # Read 3D environment
     ds = xr.open_dataset(in_filename).sel(tracks=tracknumber)
@@ -53,7 +152,15 @@ def calc_envs_track(in_filename, tracknumber, config):
     qv = ds['qv']
     rh = ds['rh']
     height = ds['height']
-    pressure = ds['pressure'] * 100  # Convert unit to Pa    
+    pressure = ds['pressure'] * 100  # Convert unit to Pa
+    u = ds['u']
+    v = ds['v']
+    w = ds['w']
+    # 2D variables
+    U10 = ds['U10']
+    V10 = ds['V10']
+    HGT = ds['HGT']
+    import pdb
 
     # Create arrays to store outputs
     var2d_dims = (ntimes, ny, nx)
@@ -63,6 +170,20 @@ def calc_envs_track(in_filename, tracknumber, config):
     lfc = np.full(var2d_dims, np.NaN, dtype=np.float32)
     el = np.full(var2d_dims, np.NaN, dtype=np.float32)
     lpl = np.full(var2d_dims, np.NaN, dtype=np.float32)
+
+    u_4km = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    v_4km = np.full(var2d_dims, np.NaN, dtype=np.float32)
+
+    qv_925mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    qv_850mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    qv_700mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    qv_600mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    qv_500mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    rh_925mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    rh_850mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    rh_700mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    rh_600mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    rh_500mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
 
     # Loop over times
     for itime in range(0, ntimes):
@@ -74,6 +195,29 @@ def calc_envs_track(in_filename, tracknumber, config):
             _rh = rh[itime, :, :, :]
             _z = height[itime, :, :, :]
             _pressure = pressure[itime, :, :, :]
+            _u = u[itime, :, :, :]
+            _v = v[itime, :, :, :]
+            _w = w[itime, :, :, :]
+            _U10 = U10[itime, :, :]
+            _V10 = V10[itime, :, :]
+
+            # Interpolate to specific levels
+            u_4km[itime, :, :] = interplevel(_u, _z, 4000.)
+            v_4km[itime, :, :] = interplevel(_v, _z, 4000.)
+            # Pressure level variables (pressure unit is Pa, convert it to hPa)
+            qv_pres = interplevel(_qv, _pressure/100, level_pres)
+            qv_925mb[itime, :, :] = qv_pres.sel(level=925)
+            qv_850mb[itime, :, :] = qv_pres.sel(level=850)
+            qv_700mb[itime, :, :] = qv_pres.sel(level=700)
+            qv_600mb[itime, :, :] = qv_pres.sel(level=600)
+            qv_500mb[itime, :, :] = qv_pres.sel(level=500)
+
+            rh_pres = interplevel(_rh, _pressure/100, level_pres)
+            rh_925mb[itime, :, :] = rh_pres.sel(level=925)
+            rh_850mb[itime, :, :] = rh_pres.sel(level=850)
+            rh_700mb[itime, :, :] = rh_pres.sel(level=700)
+            rh_600mb[itime, :, :] = rh_pres.sel(level=600)
+            rh_500mb[itime, :, :] = rh_pres.sel(level=500)
 
             # Call AFWA diagnostics on data filtered below surface
             ostat, _mucape, _mucin, _lcl, _lfc, _el, _lpl = afwa.diag_functions.diag_map(_tk, _rh, _pressure, _z, 1, 1)
@@ -104,6 +248,18 @@ def calc_envs_track(in_filename, tracknumber, config):
         'LFC': lfc,
         'EL': el,
         'LPL': lpl,
+        'u_4km': u_4km,
+        'v_4km': v_4km,
+        'qv_925mb': qv_925mb,
+        'qv_850mb': qv_850mb,
+        'qv_700mb': qv_700mb,
+        'qv_600mb': qv_600mb,
+        'qv_500mb': qv_500mb,
+        'rh_925mb': rh_925mb,
+        'rh_850mb': rh_850mb,
+        'rh_700mb': rh_700mb,
+        'rh_600mb': rh_600mb,
+        'rh_500mb': rh_500mb,
     }
     var_attrs = {
         'tracknumber': {
@@ -138,6 +294,54 @@ def calc_envs_track(in_filename, tracknumber, config):
             'long_name': 'Most unstable lifted parcel level',
             'units': 'm',
             # '_FillValue': fillval,
+        },
+        'u_4km': {
+            'long_name': 'U wind at 4 km HAMSL',
+            'units': 'm/s',
+        }, 
+        'v_4km': {
+            'long_name': 'V wind at 4 km HAMSL',
+            'units': 'm/s',
+        }, 
+        'qv_925mb': {
+            'long_name': 'Water vapor mixing ratio at 925mb',
+            'units': 'kg/kg',
+        },
+        'qv_850mb': {
+            'long_name': 'Water vapor mixing ratio at 850mb',
+            'units': 'kg/kg',
+        },
+        'qv_700mb': {
+            'long_name': 'Water vapor mixing ratio at 700mb',
+            'units': 'kg/kg',
+        },
+        'qv_600mb': {
+            'long_name': 'Water vapor mixing ratio at 600mb',
+            'units': 'kg/kg',
+        },
+        'qv_500mb': {
+            'long_name': 'Water vapor mixing ratio at 500mb',
+            'units': 'kg/kg',
+        },
+        'rh_925mb': {
+            'long_name': 'Relative humidity at 925mb',
+            'units': '%',
+        },
+        'rh_850mb': {
+            'long_name': 'Relative humidity at 850mb',
+            'units': '%',
+        },
+        'rh_700mb': {
+            'long_name': 'Relative humidity at 700mb',
+            'units': '%',
+        },
+        'rh_600mb': {
+            'long_name': 'Relative humidity at 600mb',
+            'units': '%',
+        },
+        'rh_500mb': {
+            'long_name': 'Relative humidity at 500mb',
+            'units': '%',
         },
     }
 
@@ -283,20 +487,22 @@ if __name__ == "__main__":
 
     startdate = config['startdate']
     enddate = config['enddate']
-    stats_path = config['stats_path']
+    # stats_path = config['stats_path']
+    input_path = config['output_path']
+    output_path = config['output_path']
 
     # 3D environment filename
-    file_env3d = f'{stats_path}stats_3d_env_{startdate}_{enddate}.nc'
+    file_env3d = f'{input_path}stats_3d_env_{startdate}_{enddate}.nc'
     print(f'Input: {file_env3d}')
 
     # Output filename
-    output_path = stats_path
     output_filename = f'{output_path}stats_2d_env_{startdate}_{enddate}.nc'
+    os.makedirs(output_path, exist_ok=True)
 
     # Check input file
     fc_3d = os.path.isfile(file_env3d)
     if fc_3d:
         # Call function to calculate
         result = work_for_tracks(file_env3d, output_filename, config)
-
-    # import pdb; pdb.set_trace()
+    else:
+        print(f'No input file: {file_env3d}')

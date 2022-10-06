@@ -2,7 +2,7 @@
 # Run in parallel
 run_parallel: 1
 # Number of workers for Dask
-n_workers: 24
+n_workers: 12
 # Threads per worker
 threads_per_worker: 1
 dask_tmp_dir: '/tmp'
@@ -13,28 +13,33 @@ enddate: 'ENDDATE.0000'
 ensmember: 'ENSMEMBER'
 # wrfout domain name (d01: 500m, d02: 100m)
 domain: 'd02'
+# Resolution: 'meso' or 'les'
+resolution: 'les'
 # Maximum time difference allowed to match the datasets
 time_window: 30  # [second]
 # Input/output file locations
 # Track stats directory
-stats_path: '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4/stats/'
+stats_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4/stats/'
 # Track pixel file directory
-pixelfile_path: '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4/celltracking/'
+pixelfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4/celltracking/'
 # 3D Met file directory
-metfile_path: '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4/run/'
+metfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4/run/'
 # Raw WRF output file directory
 wrfout_path1: '/gpfs/wolf/cli120/proj-shared/sey/cacti/wrf/prod/'
 wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/les/'
+# Output file directory
+output_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4/stats/'
 # File base names
 pixel_filebase: 'regrid_celltracks_'
-met_filebase: 'corlasso_sub_metOnHamsl.M1.m1.ENSMEMBER_'
+met_filebase: 'corlasso.methamsl.STARTDATE00ENSMEMBERd4.base.M1.m1.'
+cld_filebase: 'corlasso.cldhamsl.STARTDATE00ENSMEMBERd4.base.M1.m1.'
 # W thresholds to define cores
 W_up_thresh: 2.0  # [m/s]
 W_down_thresh: -1.0  # [m/s]
 # Minimum pixel count for a core
-min_core_npix: 100
+min_core_npix: 1
 # Number of cores to save per cell
-ncores_min: 10
+ncores_min: 20
 # Number of hours prior to initiation to extract environment
 nhours: 1
 # Set max number of times to keep for each track
