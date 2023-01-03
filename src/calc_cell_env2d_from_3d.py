@@ -160,7 +160,6 @@ def calc_envs_track(in_filename, tracknumber, config):
     U10 = ds['U10']
     V10 = ds['V10']
     HGT = ds['HGT']
-    import pdb
 
     # Create arrays to store outputs
     var2d_dims = (ntimes, ny, nx)
@@ -445,7 +444,7 @@ def work_for_tracks(in_filename, out_filename, config):
                 print(f'ERROR: tracknumber does not match: {tracknumber}!')
                 sys.exit('Double check results!')
 
-    # Define a dataset containing all PF variables
+    # Define a dataset containing all variables
     var_dict = {}
     # Define output variable dictionary
     for key, value in out_dict.items():

@@ -27,7 +27,10 @@ cd /ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src
 # Extract 3D preCI environments
 # python extract_cell_env3d_preCI.py CONFIG_NAME.yml
 
-# Calculated 2D preCI environments
-python calc_cell_env2d_from_3d.py CONFIG_NAME.yml
+# Calculate 2D preCI environments
+# python calc_cell_env2d_from_3d.py CONFIG_NAME.yml
+
+# Calculate 1D preCI environments
+python calc_cell_center_env.py CONFIG_NAME.yml
 
 date

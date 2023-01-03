@@ -22,7 +22,7 @@ def subset_stats(datafile_obs, datafile_m, out_dir, out_basename, hour_window):
     ds_obs = xr.open_dataset(datafile_obs, mask_and_scale=True)
     # Read LASSO data
     ds_m = xr.open_dataset(datafile_m, mask_and_scale=True)
-    # Get start/end datetime from attribute
+    # Get LASSO start/end datetime from attribute
     startdate = ds_m.attrs['startdate']
     enddate = ds_m.attrs['enddate']
     sdate = pd.to_datetime(f'{startdate[0:4]}-{startdate[4:6]}-{startdate[6:8]}T{startdate[9:11]}:{startdate[11:13]}')
@@ -46,21 +46,22 @@ def subset_stats(datafile_obs, datafile_m, out_dir, out_basename, hour_window):
 
 if __name__ == "__main__":
     # CSAPR track stats file
-    datadir_obs = '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/csapr/stats/'
+    datadir_obs = '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/csapr/stats/'
     datafile_obs = f'{datadir_obs}trackstats_20181015.0000_20190303.0000.nc'
 
     # LASSO tracking directory
-    root_datadir_m = '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/les/'
+    root_datadir_m = '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/'
     in_basename = 'trackstats_20'
 
     # Output directory
-    out_dir = '/gpfs/wolf/cli120/proj-shared/zfeng/cacti/csapr/stats4lasso/'
+    out_dir = '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/csapr/stats4lasso/'
     out_basename = 'csapr_trackstats_'
     # LASSO domain (d3, d4)
     domain = 'd3'
 
     # Hour window to extend beyond the model start/end time
-    hour_window = 3
+    # hour_window = 3
+    hour_window = 0
 
     # LASSO case dates
     start_dates = [
@@ -74,6 +75,9 @@ if __name__ == "__main__":
         "20190129",
         "20190208",
     ]
+
+    # Make output directory
+    os.makedirs(out_dir, exist_ok=True)
 
     # Loop over dates
     for ii in range(0, len(start_dates)):

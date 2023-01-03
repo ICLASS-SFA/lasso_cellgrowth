@@ -226,8 +226,10 @@ def calc_cellstats_singlefile(
     if (ny_p < ny) | (nx_p < nx):
         # Get lat/lon limits
         buffer = 0
-        lonmin, lonmax = geolimits[0]-buffer, geolimits[1]+buffer
-        latmin, latmax = geolimits[2]-buffer, geolimits[3]+buffer
+        latmin, latmax = geolimits[0]-buffer, geolimits[2]+buffer
+        lonmin, lonmax = geolimits[1]-buffer, geolimits[3]+buffer
+        # lonmin, lonmax = geolimits[0]-buffer, geolimits[1]+buffer
+        # latmin, latmax = geolimits[2]-buffer, geolimits[3]+buffer
         # Make a 2D mask
         mask = ((dsm['XLONG'] >= lonmin) & (dsm['XLONG'] <= lonmax) & \
                 (dsm['XLAT'] >= latmin) & (dsm['XLAT'] <= latmax)).squeeze()
@@ -241,12 +243,21 @@ def calc_cellstats_singlefile(
         PRESSURE = dsm['PRESSURE'][:, :, ymin:ymax+1, xmin:xmax+1]
         TV = dsm['TV'][:, :, ymin:ymax+1, xmin:xmax+1]
         WA = dsm['WA'][:, :, ymin:ymax+1, xmin:xmax+1]
+        # Update ny, nx with the subset
+        ny = XLONG.sizes['lat']
+        nx = XLONG.sizes['lon']
     else:
         XLONG = dsm['XLONG']
         XLAT = dsm['XLAT']
         PRESSURE = dsm['PRESSURE']
         TV = dsm['TV']
         WA = dsm['WA']
+
+    # Check dimensions again after subset
+    if (ny_p != ny) | (nx_p != nx):
+        print(f'ERROR: Inconsistent number of grids between pixel-level and MET files.')
+        print(f'ny: {ny}, ny_pixel: {ny_p}, nx: {nx}, nx_pixel: {nx_p}')
+        sys.exit()
 
     # Drop 1D lat/lon coordinates, and reasign 2D XLONG/XLAT coordinates from Met file
     # It does not seem like this is necessary in Xarray 0.21.1
