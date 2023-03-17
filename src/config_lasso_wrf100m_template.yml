@@ -51,3 +51,6 @@ ny: 300
 # Sub-sample spatial grid (2: sample every 2 grids)
 sub_x: 10
 sub_y: 10
+# Spatial resolution
+DX: 100
+DY: 100

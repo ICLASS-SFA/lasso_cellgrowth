@@ -241,7 +241,9 @@ def calc_cellstats_singlefile(
         XLONG = dsm['XLONG'][ymin:ymax+1, xmin:xmax+1]
         XLAT = dsm['XLAT'][ymin:ymax+1, xmin:xmax+1]
         PRESSURE = dsm['PRESSURE'][:, :, ymin:ymax+1, xmin:xmax+1]
-        TV = dsm['TV'][:, :, ymin:ymax+1, xmin:xmax+1]
+        TEMPERATURE = dsm['TEMPERATURE'][:, :, ymin:ymax+1, xmin:xmax+1]
+        QVAPOR = dsm['QVAPOR'][:, :, ymin:ymax+1, xmin:xmax+1]
+        # TV = dsm['TV'][:, :, ymin:ymax+1, xmin:xmax+1]
         WA = dsm['WA'][:, :, ymin:ymax+1, xmin:xmax+1]
         # Update ny, nx with the subset
         ny = XLONG.sizes['lat']
@@ -250,8 +252,11 @@ def calc_cellstats_singlefile(
         XLONG = dsm['XLONG']
         XLAT = dsm['XLAT']
         PRESSURE = dsm['PRESSURE']
-        TV = dsm['TV']
+        # TV = dsm['TV']
         WA = dsm['WA']
+
+    # Calculate virtual temperature
+    TV = TEMPERATURE * (1 + QVAPOR / 0.622) / (1 + QVAPOR)
 
     # Check dimensions again after subset
     if (ny_p != ny) | (nx_p != nx):
@@ -350,7 +355,10 @@ def calc_cellstats_singlefile(
                             W_max_up[ii] = np.nanmax(zW[core_label_up == core_numbers_up[ii]])
                             W_mean_up[ii] = np.nanmean(zW[core_label_up == core_numbers_up[ii]])
                         # Calculate total mass flux for all labeled cores
-                        MaFlx_sum_up = np.nansum(zMassFlux[core_label_up > 0])
+                        if ncores_all_up > 0:
+                            MaFlx_sum_up = np.nansum(zMassFlux[core_label_up > 0])
+                        else:
+                            MaFlx_sum_up = np.NaN
                         # if (ncores_all_up > 2):                         
                         #     import pdb; pdb.set_trace()
                         
@@ -363,7 +371,10 @@ def calc_cellstats_singlefile(
                             W_min_down[ii] = np.nanmin(zW[core_label_down == core_numbers_down[ii]])
                             W_mean_down[ii] = np.nanmean(zW[core_label_down == core_numbers_down[ii]])
                         # Calculate total mass flux for all labeled cores
-                        MaFlx_sum_down = np.nansum(zMassFlux[core_label_down > 0])
+                        if ncores_all_down > 0:
+                            MaFlx_sum_down = np.nansum(zMassFlux[core_label_down > 0])
+                        else:
+                            MaFlx_sum_down = np.NaN
                         
                         # Save data to output arrays
                         ncores_save_up = min([ncores_up, ncores_min])
@@ -481,9 +492,9 @@ if __name__ == '__main__':
     time_window = config['time_window']
     stats_path = config['stats_path']
     pixelfile_path = config['pixelfile_path']
-    metfile_path = config['metfile_path']
+    regfile_path = config['regfile_path']
     output_path = config['output_path']
-    met_filebase = config['met_filebase']
+    reg_filebase = config['reg_filebase']
     pixel_filebase = config['pixel_filebase']
     ncores_min = config['ncores_min']
 
@@ -509,23 +520,23 @@ if __name__ == '__main__':
     pixelfilelist = sorted(glob.glob(f'{pixelfile_path}{pixel_filebase}*.nc'))
     nfiles = len(pixelfilelist)
     # Find all Met files
-    metfilelist = sorted(glob.glob(f'{metfile_path}{met_filebase}*.nc'))
-    nmetfiles = len(metfilelist)
+    regfilelist = sorted(glob.glob(f'{regfile_path}{reg_filebase}*.nc'))
+    nregfiles = len(regfilelist)
     
     # Get basetime from pixel files
     pixel_basetime, pixelfile_dict = calc_basetime(pixelfilelist, pixel_filebase)
     # Get basetime from MET files
-    met_basetime, metfile_dict = calc_basetime(metfilelist, met_filebase)
-    # met_basetime, metfile_dict = convert_lasso_times(metfile_path, met_filebase)
+    met_basetime, regfile_dict = calc_basetime(regfilelist, reg_filebase)
+    # met_basetime, regfile_dict = convert_lasso_times(regfile_path, reg_filebase)
 
     # Find matching MET files for each pixel file
-    match_metfilelist = [''] * nfiles
+    match_regfilelist = [''] * nfiles
     for ifile in range(nfiles):
         # Find MET time closest to the pixel file time and get the index
         # Save the filename if time difference is < time_window
         idx = np.argmin(np.abs(met_basetime - pixel_basetime[ifile]))        
         if np.abs(met_basetime[idx] - pixel_basetime[ifile]) < time_window:
-            match_metfilelist[ifile] = metfile_dict[met_basetime[idx]]
+            match_regfilelist[ifile] = regfile_dict[met_basetime[idx]]
         else:
             print(f'No match file found for: {pixelfilelist[ifile]}')
 
@@ -543,7 +554,7 @@ if __name__ == '__main__':
     print(f'Total Number of Tracks: {ntracks}')
 
     # Read a MET file to get vertical coordinates
-    dsm = xr.open_dataset(match_metfilelist[0])
+    dsm = xr.open_dataset(match_regfilelist[0])
     nz = dsm.dims['HAMSL']
     height = dsm['HAMSL']
     dsm.close()
@@ -580,7 +591,7 @@ if __name__ == '__main__':
             if run_parallel == 0:
                 iresult = calc_cellstats_singlefile(
                     pixelfilelist[ifile], 
-                    match_metfilelist[ifile],
+                    match_regfilelist[ifile],
                     idx_track, 
                     config,
                 )
@@ -588,7 +599,7 @@ if __name__ == '__main__':
             elif run_parallel == 1:
                 iresult = dask.delayed(calc_cellstats_singlefile)(
                     pixelfilelist[ifile], 
-                    match_metfilelist[ifile],
+                    match_regfilelist[ifile],
                     idx_track, 
                     config,
                 )

@@ -2,7 +2,7 @@
 # Run in parallel
 run_parallel: 1
 # Number of workers for Dask
-n_workers: 6
+n_workers: 16
 # Threads per worker
 threads_per_worker: 1
 dask_tmp_dir: '/tmp'
@@ -19,11 +19,12 @@ resolution: 'les'
 time_window: 30  # [second]
 # Input/output file locations
 # Track stats directory
-stats_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4_15min/stats/'
+stats_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4_15min/stats/'
 # Track pixel file directory
-pixelfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4_15min/celltracking/'
+pixelfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4_15min/celltracking/'
 # 3D Met file directory
-metfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4/run/'
+regfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4/run/'
+metfile_path: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/base/les/subset_d4/'
 # Raw WRF output file directory
 wrfout_path1: '/gpfs/wolf/cli120/proj-shared/sey/cacti/wrf/prod/'
 wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/les/'
@@ -31,13 +32,14 @@ wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/les/'
 output_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4_15min/stats/'
 # File base names
 pixel_filebase: 'regrid_celltracks_'
-met_filebase: 'corlasso.methamsl.STARTDATE00ENSMEMBERd4.base.M1.m1.'
-cld_filebase: 'corlasso.cldhamsl.STARTDATE00ENSMEMBERd4.base.M1.m1.'
+reg_filebase: 'corlasso.methamsl.STARTDATE00ENSMEMBERd4.CONFIG.M1.m1.'
+met_filebase: 'corlasso.met.STARTDATE00ENSMEMBERd4.CONFIG.M1.m1.'
+cld_filebase: 'corlasso.cld.STARTDATE00ENSMEMBERd4.CONFIG.M1.m1.'
 # W thresholds to define cores
 W_up_thresh: 2.0  # [m/s]
 W_down_thresh: -1.0  # [m/s]
 # Minimum pixel count for a core
-min_core_npix: 1
+min_core_npix: 9
 # Number of cores to save per cell
 ncores_min: 20
 # Number of hours prior to initiation to extract environment
@@ -52,3 +54,25 @@ nz: 149
 # Sub-sample spatial grid (2: sample every 2 grids)
 sub_x: 10
 sub_y: 10
+# Spatial resolution
+DX: 100
+DY: 100
+# Number of grid point to compute center environment profile [-nx_center, +nx_center], [-ny_center,+ny_center]
+nx_center: 1
+ny_center: 1
+# List of 2D variables to pass through from the 3D file
+list_var_pass:
+  - 'conv_core'
+  - 'conv_mask'
+  - 'tracknumber_cmask'
+  - 'comp_ref'
+  - 'echotop10'
+  - 'LWP'
+  - 'IWP'
+  - 'PWV'
+  - 'T2'
+  - 'Q2'
+  - 'PSFC'
+  - 'U10'
+  - 'V10'
+  - 'RAINNC'

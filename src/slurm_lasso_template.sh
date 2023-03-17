@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -A atm123
 #SBATCH -J STARTDATEENSMEMBER
-#SBATCH --time=03:00:00
+#SBATCH --time=00:30:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=128
 #SBATCH -p batch_all
@@ -22,15 +22,15 @@ export NUMEXPR_MAX_THREADS=128
 # Run Python
 cd /ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src
 # Calculate W statistics
-# python calc_w_corestats_to_celltracks.py CONFIG_NAME.yml
+python calc_w_corestats_to_celltracks.py CONFIG_NAME.yml
 
 # Extract 3D preCI environments
-# python extract_cell_env3d_preCI.py CONFIG_NAME.yml
+# python extract_cell_env3d_preCI_met.py CONFIG_NAME.yml
 
 # Calculate 2D preCI environments
 # python calc_cell_env2d_from_3d.py CONFIG_NAME.yml
 
 # Calculate 1D preCI environments
-python calc_cell_center_env.py CONFIG_NAME.yml
+# python calc_cell_center_env.py CONFIG_NAME.yml
 
 date

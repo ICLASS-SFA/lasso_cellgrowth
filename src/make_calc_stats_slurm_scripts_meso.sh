@@ -1,7 +1,10 @@
 #!/bin/bash
-# Create LASSO cell tracking config and slurm scripts
+# Create LASSO cell statistics config and slurm scripts
 
 submit_job="yes"
+
+# Specify configuration: 'base' or 'morr'
+configuration="base"
 
 config_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
 slurm_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
@@ -28,42 +31,57 @@ slurm_basename="slurm_lasso_"
 # ens_members_short=(
 #     "gefs18"
 # )
-# Full list of runs
-start_dates=(
-    "20181129" "20181129" 
-    "20181204" "20181204" 
-    "20181205" 
-    "20181219" 
-    "20190122" 
-    "20190123"
-    "20190125" "20190125"
-    "20190129" "20190129"
-    "20190208" "20190208"
-)
-# Long ensemble member names (for directory names)
-ens_members=(
-    "gefs_en00" "gefs_en03" 
-    "gefs_en18" "gefs_en19" 
-    "gefs_en01" 
-    "eda_en09" 
-    "gefs_en01" 
-    "eda_en05"
-    "eda_en07" "gefs_en11"
-    "eda_en09" "gefs_en11"
-    "eda_en03" "eda_en08"
-)
-# Short ensemble member names (for file names)
-ens_members_short=(
-    "gefs00" "gefs03" 
-    "gefs18" "gefs19" 
-    "gefs01" 
-    "eda09" 
-    "gefs01" 
-    "eda05"
-    "eda07" "gefs11"
-    "eda09" "gefs11"
-    "eda03" "eda08"
-)
+# Base runs
+if [ ${configuration} == "base" ]
+then
+    start_dates=(
+        "20181129" "20181129" 
+        "20181204" "20181204" 
+        "20181205" 
+        "20181219" 
+        "20190122" 
+        "20190123"
+        "20190125" "20190125"
+        "20190129" "20190129"
+        "20190208" "20190208"
+    )
+    # Long ensemble member names (for directory names)
+    ens_members=(
+        "gefs00" "gefs03" 
+        "gefs18" "gefs19" 
+        "gefs01" 
+        "eda09" 
+        "gefs01" 
+        "eda05"
+        "eda07" "gefs11"
+        "eda09" "gefs11"
+        "eda03" "eda08"
+    )
+fi
+# Morrison runs
+if [ ${configuration} == "morr" ]
+then
+    start_dates=(
+        "20181204" "20181204" "20181204"
+        "20181205" "20181205"
+        "20181219" 
+        "20190122"
+        "20190123" "20190123"
+        "20190125"
+        "20190129"
+        "20190208"
+    )
+    ens_members=(
+        "gefs04" "gefs16" "gefs18"
+        "gefs01" "gefs02"
+        "eda09"
+        "eda00"
+        "eda05" "eda07"
+        "eda07"
+        "gefs11"
+        "eda03"
+    )
+fi
 
 # Loop over list
 for ((i = 0; i < ${#start_dates[@]}; ++i)); do   
@@ -71,13 +89,14 @@ for ((i = 0; i < ${#start_dates[@]}; ++i)); do
     # edate=${end_dates[$i]}
     edate="$((sdate+1))"
     ensmember=${ens_members[$i]}
-    ensmembershort=${ens_members_short[$i]}
+    # ensmembershort=${ens_members_short[$i]}
 
     config_name=${config_basename}${sdate}_${ensmember}
     config_file=${config_dir}${config_name}.yml
     slurm_file=${slurm_dir}${slurm_basename}${sdate}_${ensmember}.sh
 
-    sed "s/STARTDATE/"${sdate}"/g;s/ENDDATE/"${edate}/g";s/ENSMEMBER/"${ensmember}"/g;s/SHORTENS/"${ensmembershort}"/g" ${config_template} > ${config_file}
+    # sed "s/STARTDATE/"${sdate}"/g;s/ENDDATE/"${edate}/g";s/ENSMEMBER/"${ensmember}"/g;s/SHORTENS/"${ensmembershort}"/g" ${config_template} > ${config_file}
+    sed "s/STARTDATE/"${sdate}"/g;s/ENDDATE/"${edate}/g";s/ENSMEMBER/"${ensmember}"/g;s/CONFIG/"${configuration}"/g" ${config_template} > ${config_file}
     sed "s/STARTDATE/"${sdate}"/g;s/ENSMEMBER/"${ensmember}"/g;s/CONFIG_NAME/"${config_name}"/g" ${slurm_template} > ${slurm_file}
     echo ${config_file}
     echo ${slurm_file}
