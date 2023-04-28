@@ -2,7 +2,7 @@
 # Run in parallel
 run_parallel: 1
 # Number of workers for Dask
-n_workers: 16
+n_workers: 8
 # Threads per worker
 threads_per_worker: 1
 dask_tmp_dir: '/tmp'
@@ -29,7 +29,7 @@ metfile_path: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE
 wrfout_path1: '/gpfs/wolf/cli120/proj-shared/sey/cacti/wrf/prod/'
 wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/les/'
 # Output file directory
-output_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d3/stats/'
+output_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3/stats/'
 # File base names
 pixel_filebase: 'celltracks_'
 reg_filebase: 'corlasso.methamsl.STARTDATE00ENSMEMBERd3.CONFIG.M1.m1.'
@@ -58,12 +58,14 @@ DY: 500
 # Number of grid point to compute center environment profile [-nx_center, +nx_center], [-ny_center,+ny_center]
 nx_center: 1
 ny_center: 1
+# Subset boundary [lon_min, lon_max, lat_min, lat_max]
+geolimits: [-33.3, -65.9, -30.8, -63.4]
 # List of 2D variables to pass through from the 3D file
 list_var_pass:
   - 'conv_core'
   - 'conv_mask'
-  - 'tracknumber_cmask'
-  - 'comp_ref'
+  # - 'tracknumber'
+  - 'dbz_comp'
   - 'echotop10'
   - 'LWP'
   - 'IWP'

@@ -75,7 +75,7 @@ def location_to_idx(lat, lon, center):
     return lat_idx, lon_idx
 
 #--------------------------------------------------------------------------
-def pad_array(in_array, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y=1, sub_x=1):
+def pad_array(in_array, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y=1, sub_x=1, fillval=np.NaN):
     """
     Pad 2D or 3D array to ny, nx dimensions center at lat_idx, lon_idx.
     
@@ -98,6 +98,8 @@ def pad_array(in_array, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y=1, sub_x=1):
             Number of grids to sub-sample in y dimension
         sub_x: int, optional, default=1
             Number of grids to sub-sample in x dimension
+        fillval: optional, default=np.NaN
+            Default fill value to pad the array.
 
     Returns:
         out_array: np.array
@@ -124,14 +126,14 @@ def pad_array(in_array, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y=1, sub_x=1):
         # Subset array within the domain
         in_array = in_array[:, iy_min:iy_max, ix_min:ix_max]
         # Pad array on y & x dimensions
-        out_array = np.pad(in_array, ((0,0), (pny_b,pny_t), (pnx_l,pnx_r)), 'constant', constant_values=np.nan)
+        out_array = np.pad(in_array, ((0,0), (pny_b,pny_t), (pnx_l,pnx_r)), 'constant', constant_values=fillval)
         # Sub-sample array
         out_array = out_array[:, ::sub_y, ::sub_x]
     if ndim == 2:
         # Subset array within the domain
         in_array = in_array[iy_min:iy_max, ix_min:ix_max]
         # Pad array on y & x dimensions
-        out_array = np.pad(in_array, ((pny_b,pny_t), (pnx_l,pnx_r)), 'constant', constant_values=np.nan)
+        out_array = np.pad(in_array, ((pny_b,pny_t), (pnx_l,pnx_r)), 'constant', constant_values=fillval)
         # Sub-sample array
         out_array = out_array[::sub_y, ::sub_x]
     return out_array
@@ -139,7 +141,7 @@ def pad_array(in_array, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y=1, sub_x=1):
 #-----------------------------------------------------------------------
 def extract_env_prof(
     fname_pixel, 
-    fname_wrfout,
+    # fname_wrfout,
     fname_met,
     fname_cld,
     idx_track, 
@@ -188,7 +190,7 @@ def extract_env_prof(
     DY = config.get('DY')
 
     # Check file existance
-    wrfout_exist = os.path.isfile(fname_wrfout)
+    # wrfout_exist = os.path.isfile(fname_wrfout)
     met_exist = os.path.isfile(fname_met)
     cld_exist = os.path.isfile(fname_cld)
     pixel_exist = os.path.isfile(fname_pixel)
@@ -200,16 +202,19 @@ def extract_env_prof(
         pixel_attrs = {
             'conv_core': dsp['conv_core'].attrs,
             'conv_mask': dsp['conv_mask'].attrs,
-            'tracknumber_cmask': dsp['tracknumber_cmask'].attrs,
-            'comp_ref': dsp['comp_ref'].attrs,
+            # 'tracknumber_cmask': dsp['tracknumber_cmask'].attrs,
+            'tracknumber': dsp['tracknumber'].attrs,
+            # 'comp_ref': dsp['comp_ref'].attrs,
+            'dbz_comp': dsp['dbz_comp'].attrs,
             'echotop10': dsp['echotop10'].attrs,
         }
     else:
         pixel_attrs = {
             'conv_core': '',
             'conv_mask': '',
-            'tracknumber_cmask': '',
-            'comp_ref': '',
+            # 'tracknumber_cmask': '',
+            'tracknumber': '',
+            'dbz_comp': '',
             'echotop10': '',
         }
 
@@ -472,10 +477,10 @@ def extract_env_prof(
             if (pixel_exist == True) & (met_exist == True):
                 # lat_idx, lon_idx = location_to_idx(dsp['latitude'], dsp['longitude'], center)
                 lat_idx, lon_idx = location_to_idx(XLAT.data, XLONG.data, center)
-                _convcore = pad_array(dsp['conv_core'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
-                _convmask = pad_array(dsp['conv_mask'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
-                _tnmask = pad_array(dsp['tracknumber_cmask'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
-                _refl = pad_array(dsp['comp_ref'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
+                _convcore = pad_array(dsp['conv_core'].astype('float32').squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
+                _convmask = pad_array(dsp['conv_mask'].astype('float32').squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
+                _tnmask = pad_array(dsp['tracknumber'].astype('float32').squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
+                _refl = pad_array(dsp['dbz_comp'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
                 _eth10 = pad_array(dsp['echotop10'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
 
                 iny, inx = _refl.shape
@@ -586,8 +591,10 @@ def extract_env_prof(
             # 'MUCIN': out_MUCIN,
             'conv_core': out_convcore,
             'conv_mask': out_convmask,
-            'tracknumber_cmask': out_tnmask,
-            'comp_ref': out_refl,
+            # 'tracknumber_cmask': out_tnmask,
+            'tracknumber': out_tnmask,
+            # 'comp_ref': out_refl,
+            'dbz_comp': out_refl,
             'echotop10': out_eth10,
             'LWP': out_LWP,
             'IWP': out_IWP,
@@ -665,22 +672,22 @@ if __name__ == '__main__':
     nx = config['nx']
     ny = config['ny']
 
-    # Add ensemble member to WRF path
-    _startdate = startdate[0:8]
-    base_date = f"{_startdate[0:4]}-{_startdate[4:6]}-{_startdate[6:8]}T00"
-    ensmember_long = ensmemb_short_to_long(ensmember)
-    wrfout_path1 = f'{wrfout_path1}{_startdate}_{ensmember_long}/run/merged/'
-    wrfout_path2 = f'{wrfout_path2}{_startdate}/{ensmember_long}/run/merged/'
-    # Check which directory exists
-    if os.path.isdir(wrfout_path1):
-        wrfout_path = wrfout_path1
-    elif os.path.isdir(wrfout_path2):
-        wrfout_path = wrfout_path2
-    else:
-        print(f'WRF path does not exist: {wrfout_path1}')
-        print(f'WRF path does not exist: {wrfout_path2}')
-        print(f'Code will exit now.')
-        sys.exit()
+    # # Add ensemble member to WRF path
+    # _startdate = startdate[0:8]
+    # base_date = f"{_startdate[0:4]}-{_startdate[4:6]}-{_startdate[6:8]}T00"
+    # ensmember_long = ensmemb_short_to_long(ensmember)
+    # wrfout_path1 = f'{wrfout_path1}{_startdate}_{ensmember_long}/run/merged/'
+    # wrfout_path2 = f'{wrfout_path2}{_startdate}/{ensmember_long}/run/merged/'
+    # # Check which directory exists
+    # if os.path.isdir(wrfout_path1):
+    #     wrfout_path = wrfout_path1
+    # elif os.path.isdir(wrfout_path2):
+    #     wrfout_path = wrfout_path2
+    # else:
+    #     print(f'WRF path does not exist: {wrfout_path1}')
+    #     print(f'WRF path does not exist: {wrfout_path2}')
+    #     print(f'Code will exit now.')
+    #     sys.exit()
 
     # Add start/end date to pixel file path
     pixelfile_path = f'{pixelfile_path}{startdate}_{enddate}/'
@@ -836,7 +843,7 @@ if __name__ == '__main__':
 
         # File names
         fname_pixel = f'{pixelfile_path}{pixel_filebase}{itime_pixel}.nc'
-        fname_wrfout = f'{wrfout_path}wrfout_{domain}_{itime_wrfout}'
+        # fname_wrfout = f'{wrfout_path}wrfout_{domain}_{itime_wrfout}'
         # New MET file time format: yyyymmdd.hhmmss
         fname_met = f'{metfile_path}{met_filebase}{itime_met}.nc'
         fname_cld = f'{metfile_path}{cld_filebase}{itime_met}.nc'
@@ -857,7 +864,7 @@ if __name__ == '__main__':
             if run_parallel == 0:
                 result = extract_env_prof(
                     fname_pixel, 
-                    fname_wrfout,
+                    # fname_wrfout,
                     fname_met,
                     fname_cld,
                     idx_track, 
@@ -870,7 +877,7 @@ if __name__ == '__main__':
             elif run_parallel >= 1:
                 result = dask.delayed(extract_env_prof)(
                     fname_pixel, 
-                    fname_wrfout,
+                    # fname_wrfout,
                     fname_met,
                     fname_cld,
                     idx_track, 

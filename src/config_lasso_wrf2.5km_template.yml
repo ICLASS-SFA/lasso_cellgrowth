@@ -67,8 +67,8 @@ geolimits: [-33.3, -65.9, -30.8, -63.4]
 list_var_pass:
   - 'conv_core'
   - 'conv_mask'
-  - 'tracknumber_cmask'
-  - 'comp_ref'
+  # - 'tracknumber'
+  - 'dbz_comp'
   - 'echotop10'
   - 'LWP'
   - 'IWP'
@@ -78,5 +78,4 @@ list_var_pass:
   - 'PSFC'
   - 'U10'
   - 'V10'
-  - 'PBLH'
   - 'RAINNC'

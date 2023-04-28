@@ -51,57 +51,6 @@ def calc_basetime(filelist, filebase):
         file_dict[file_basetime[ifile]] = filelist[ifile]
     return file_basetime, file_dict
 
-# #-----------------------------------------------------------------------
-# def convert_lasso_times(data_path, data_basename):
-#     """
-#     Convert LASSO regridded file times to Epoch time.
-
-#     Args:
-#         data_path: string
-#             Input data path.
-#         data_basename: string
-#             Input data basename.
-    
-#     Returns:
-#         file_basetime: np.array
-#             Epoch time corresponding to the input files.
-#         file_dict: dictionary
-#             Direction key by basetime and value is the file names
-#     """
-#     # Isolate all possible files
-#     filenames = sorted(fnmatch.filter(os.listdir(data_path), data_basename + '*'))
-#     nfiles = len(filenames)
-#     # Make array to store basetime
-#     file_basetime = np.zeros(nfiles, dtype=int)
-#     file_dict = {}
-
-#     # Get start time from the file name
-#     # e.g., corlasso_sub_metOnHamsl.M1.m1.gefs18_2018120400_f143000_d3.nc
-#     # start time: 2018120400
-#     # forecast time: 143000
-#     nleadingchar = len(data_basename)
-#     start_datetime = filenames[0][nleadingchar:nleadingchar+10]
-#     syear = start_datetime[0:4]
-#     smonth = start_datetime[4:6]
-#     sday = start_datetime[6:8]
-#     shour = start_datetime[8:10]
-#     start_time = datetime(
-#         int(syear), int(smonth), int(sday), int(shour), tzinfo=utc,
-#     )
-#     # Get forecast times from each file name
-#     nleadingchar_fxtime = nleadingchar + len(start_datetime) + 2
-#     for ii in range(0, nfiles):
-#         fx_time = filenames[ii][nleadingchar_fxtime:nleadingchar_fxtime+6]
-#         fx_hour = int(fx_time[0:2])
-#         fx_min = int(fx_time[2:4])
-#         fx_sec = int(fx_time[4:6])
-#         # Add forecast time to start time to get the real time
-#         rtime = start_time + timedelta(hours=fx_hour, minutes=fx_min, seconds=fx_sec)
-#         # Convert to Epoch time (base time)
-#         file_basetime[ii] = rtime.timestamp()
-#         file_dict[file_basetime[ii]] = data_path + filenames[ii]
-    
-#     return file_basetime, file_dict
 
 #-----------------------------------------------------------------------
 def label_cores(W, W_thresh, ncores_min, min_core_npix, method='>'):
@@ -252,6 +201,8 @@ def calc_cellstats_singlefile(
         XLONG = dsm['XLONG']
         XLAT = dsm['XLAT']
         PRESSURE = dsm['PRESSURE']
+        TEMPERATURE = dsm['TEMPERATURE']
+        QVAPOR = dsm['QVAPOR']
         # TV = dsm['TV']
         WA = dsm['WA']
 
@@ -492,7 +443,8 @@ if __name__ == '__main__':
     time_window = config['time_window']
     stats_path = config['stats_path']
     pixelfile_path = config['pixelfile_path']
-    regfile_path = config['regfile_path']
+    # regfile_path = config['regfile_path']
+    metfile_path = config['metfile_path']
     output_path = config['output_path']
     reg_filebase = config['reg_filebase']
     pixel_filebase = config['pixel_filebase']
@@ -520,14 +472,15 @@ if __name__ == '__main__':
     pixelfilelist = sorted(glob.glob(f'{pixelfile_path}{pixel_filebase}*.nc'))
     nfiles = len(pixelfilelist)
     # Find all Met files
-    regfilelist = sorted(glob.glob(f'{regfile_path}{reg_filebase}*.nc'))
-    nregfiles = len(regfilelist)
+    # regfilelist = sorted(glob.glob(f'{regfile_path}{reg_filebase}*.nc'))
+    metfilelist = sorted(glob.glob(f'{metfile_path}{reg_filebase}*.nc'))
+    nmetfiles = len(metfilelist)
+    print(f'Number of MET files: {nmetfiles}')
     
     # Get basetime from pixel files
     pixel_basetime, pixelfile_dict = calc_basetime(pixelfilelist, pixel_filebase)
     # Get basetime from MET files
-    met_basetime, regfile_dict = calc_basetime(regfilelist, reg_filebase)
-    # met_basetime, regfile_dict = convert_lasso_times(regfile_path, reg_filebase)
+    met_basetime, regfile_dict = calc_basetime(metfilelist, reg_filebase)
 
     # Find matching MET files for each pixel file
     match_regfilelist = [''] * nfiles

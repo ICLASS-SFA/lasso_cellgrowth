@@ -2,7 +2,7 @@
 # Run in parallel
 run_parallel: 1
 # Number of workers for Dask
-n_workers: 16
+n_workers: 8
 # Threads per worker
 threads_per_worker: 1
 dask_tmp_dir: '/tmp'
@@ -24,12 +24,12 @@ stats_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/C
 pixelfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4_15min/celltracking/'
 # 3D Met file directory
 regfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4/run/'
-metfile_path: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/base/les/subset_d4/'
+metfile_path: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/les/subset_d4/'
 # Raw WRF output file directory
 wrfout_path1: '/gpfs/wolf/cli120/proj-shared/sey/cacti/wrf/prod/'
 wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/les/'
 # Output file directory
-output_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/d4_15min/stats/'
+output_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4_15min/stats/'
 # File base names
 pixel_filebase: 'regrid_celltracks_'
 reg_filebase: 'corlasso.methamsl.STARTDATE00ENSMEMBERd4.CONFIG.M1.m1.'
@@ -64,8 +64,8 @@ ny_center: 1
 list_var_pass:
   - 'conv_core'
   - 'conv_mask'
-  - 'tracknumber_cmask'
-  - 'comp_ref'
+  # - 'tracknumber'
+  - 'dbz_comp'
   - 'echotop10'
   - 'LWP'
   - 'IWP'

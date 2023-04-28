@@ -2,7 +2,7 @@
 # Run in parallel
 run_parallel: 1
 # Number of workers for Dask
-n_workers: 12
+n_workers: 8
 # Threads per worker
 threads_per_worker: 1
 dask_tmp_dir: '/tmp'

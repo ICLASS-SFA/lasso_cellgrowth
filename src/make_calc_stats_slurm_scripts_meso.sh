@@ -4,7 +4,7 @@
 submit_job="yes"
 
 # Specify configuration: 'base' or 'morr'
-configuration="base"
+configuration="morr"
 
 config_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
 slurm_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
@@ -91,9 +91,9 @@ for ((i = 0; i < ${#start_dates[@]}; ++i)); do
     ensmember=${ens_members[$i]}
     # ensmembershort=${ens_members_short[$i]}
 
-    config_name=${config_basename}${sdate}_${ensmember}
+    config_name=${config_basename}${sdate}_${ensmember}_${configuration}
     config_file=${config_dir}${config_name}.yml
-    slurm_file=${slurm_dir}${slurm_basename}${sdate}_${ensmember}.sh
+    slurm_file=${slurm_dir}${slurm_basename}${sdate}_${ensmember}_${configuration}.sh
 
     # sed "s/STARTDATE/"${sdate}"/g;s/ENDDATE/"${edate}/g";s/ENSMEMBER/"${ensmember}"/g;s/SHORTENS/"${ensmembershort}"/g" ${config_template} > ${config_file}
     sed "s/STARTDATE/"${sdate}"/g;s/ENDDATE/"${edate}/g";s/ENSMEMBER/"${ensmember}"/g;s/CONFIG/"${configuration}"/g" ${config_template} > ${config_file}
