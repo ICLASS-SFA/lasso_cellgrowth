@@ -584,10 +584,10 @@ def calc_cellstats_singlefile(
                             Thte_mean_up[ii] = np.nanmean(zThte[core_label_up == core_numbers_up[ii]]) # EJ
                             Thtv_max_up[ii] = np.nanmax(zThtv[core_label_up == core_numbers_up[ii]]) # EJ
                             Thtv_mean_prm[ii] = np.nanmean(zThtv[core_label_up_prm == core_numbers_up[ii]]) # EJ
-                            Buoy_Thtv_up[ii] = 9.81*(Thtv_max_up[ii]-Thtv_mean_prm[ii])/Thtv_max_up[ii] # EJ
+                            Buoy_Thtv_up[ii] = 9.81*(Thtv_max_up[ii]-Thtv_mean_prm[ii])/Thtv_mean_prm[ii] # EJ
                             Trho_max_up[ii] = np.nanmax(zTrho[core_label_up == core_numbers_up[ii]]) # EJ
                             Trho_mean_prm[ii] = np.nanmean(zTrho[core_label_up_prm == core_numbers_up[ii]]) # EJ
-                            Buoy_Trho_up[ii] = 9.81*(Trho_max_up[ii]-Trho_mean_prm[ii])/Trho_max_up[ii] # EJ
+                            Buoy_Trho_up[ii] = 9.81*(Trho_max_up[ii]-Trho_mean_prm[ii])/Trho_mean_prm[ii] # EJ
                             
                             Pres_pert_top[ii] = np.nanmean(zPrs2[core_label_up_prm == core_numbers_up[ii]])\
                                 - np.nanmax(zPrs2[core_label_up == core_numbers_up[ii]])
