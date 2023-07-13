@@ -378,8 +378,8 @@ def extract_env_prof(
         }
         
 #         dsp = dsp.drop_vars(['lon', 'lat']).assign_coords({'XLONG':XLONG, 'XLAT':XLAT})
-#         tracknumbermap = dsp['tracknumber_expand'].squeeze()
-        tracknumbermap = dsp['conv_core_label'].squeeze() # EJ
+        tracknumbermap = dsp['tracknumber'].squeeze()
+#         tracknumbermap = dsp['conv_core_label'].squeeze() # EJ
         
     else:
         pixel_attrs = {
@@ -545,10 +545,16 @@ def extract_env_prof(
                 tracknumbermap_mod = (zcloud + cc_mod) # Merge the cloudy regions with tmap
                 tracknumbermap_mod[tracknumbermap_mod > 0] = 1           # binarize and re-label
                 tracknumbermap_label = xr.DataArray(label(tracknumbermap_mod),coords=tracknumbermap.coords, dims=tracknumbermap.dims )
+                                
                 # Need to find a (any) cell index corresponding to the current itracknum
                 ind_tmap = np.where(da_cc == 1)
                 # Find the corresponding cell index in the re-labelled tracknumbermap
                 correct = tracknumbermap_label.data[ind_tmap[0][0],ind_tmap[1][0]]
+                
+                ind = np.where(tracknumbermap_label == correct)
+                tracknumbermap_evo = np.zeros_like(tracknumbermap)
+                tracknumbermap_evo[ind[0].min():ind[0].max(),ind[1].min():ind[1].max()] = 1
+                tracknumbermap_final = xr.DataArray(tracknumbermap_evo,coords=tracknumbermap.coords, dims=tracknumbermap.dims )
                 
 #                 import pdb; pdb.set_trace()
 #                 # For testing the overlapping updrafts 
@@ -578,26 +584,25 @@ def extract_env_prof(
                                 
                 
                 
-                iW = WA.where(tracknumbermap_label == correct, drop=True).squeeze().data
-                iQ = QA.where(tracknumbermap_label == correct, drop=True).squeeze().data
-                iQI = QI.where(tracknumbermap_label == correct, drop=True).squeeze().data
-                iMassFlux = MassFlux.where(tracknumbermap_label == correct, drop=True).squeeze().data
-                idBZ = dBZ.where(tracknumbermap_label == correct, drop=True).squeeze().data
-                iThte = Thte.where(tracknumbermap_label == correct, drop=True).squeeze().data
-                iThtv = Thtv.where(tracknumbermap_label == correct, drop=True).squeeze().data
-                iVapr = Vapr.where(tracknumbermap_label == correct, drop=True).squeeze().data
-                iEntr = Entr.where(tracknumbermap_label == correct, drop=True).squeeze().data
-                iDetr = Detr.where(tracknumbermap_label == correct, drop=True).squeeze().data
-                iTrho = Trho.where(tracknumbermap_label == correct, drop=True).squeeze().data
-                iPres = PRESSURE.where(tracknumbermap_label == correct, drop=True).squeeze().data
-                iMrho = Mrho.where(tracknumbermap_label == correct, drop=True).squeeze().data
+                iW = WA.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iQ = QA.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iQI = QI.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iMassFlux = MassFlux.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                idBZ = dBZ.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iThte = Thte.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iThtv = Thtv.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iVapr = Vapr.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iEntr = Entr.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iDetr = Detr.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iTrho = Trho.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iPres = PRESSURE.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iMrho = Mrho.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                zTnum = da_cc.where(tracknumbermap_final == 1, drop=True).squeeze().data
                                 
                 # Calculate new statistics of the cell
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore", category=RuntimeWarning)
-                    
-                    
-                    
+
                     for z in range(0, nz):                        
                         zW = iW[z,:,:]
                         zQ = iQ[z,:,:] #EJ
@@ -608,7 +613,6 @@ def extract_env_prof(
                         zThtv = iThtv[z,:,:] #EJ
                         zEntr = iEntr[z,:,:] #EJ
                         zDetr = iDetr[z,:,:] #EJ
-                        #zInfl = iInfl[z,:,:] #EJ
                         zVapr = iVapr[z,:,:] #EJ
                         zTrho = iTrho[z,:,:] #EJ
                         zMrho = iMrho[z,:,:] #EJ
@@ -620,8 +624,33 @@ def extract_env_prof(
                         zPrs1 = iPres[zz-1,:,:] *100 #EJ
                         zPrs2 = iPres[zz+1,:,:] *100 #EJ
                         
+#                         from matplotlib import pyplot as plt
+#                         import pdb; pdb.set_trace()
+#                         plt.clf
+#                         f1 = plt.figure(figsize=(5, 5))
+# #                         pm = plt.pcolormesh(tmap_label)
+#                         pm = plt.pcolormesh(zW_mask)
+#                         plt.colorbar(pm)
+#                         plt.savefig('/ccsopen/home/enochjo/test1.png')
+                        
+                        ind = np.where(np.isnan(zTnum) == 1)
+                        zTnum[ind] = 0
+                        
+                        cell_cloudy = np.full(zW.shape, 0, dtype=np.float32)     # Create zero array
+                        icloud = (zW > W_up_thresh) & (zQ > Q_up_thresh)         # Find cloudy region
+                        cell_cloudy[icloud] = 1                                  # Set cloudy region to 1
+                        tracknumbermap_mod = (cell_cloudy + zTnum)               # Merge the cloudy regions with tmap
+                        tracknumbermap_mod[tracknumbermap_mod > 0] = 1           # binarize and re-label        
+                        tmap_label = label(tracknumbermap_mod)
+                        
+                        zW_mask = np.zeros_like(zW)
+                        ind = np.where(zTnum == 1)
+                        ind_conv = tmap_label[ind[0][0],ind[1][0]]
+                        ind = tmap_label == ind_conv
+                        zW_mask[ind] = 1
+                        
                         # Label updraft cores
-                        dict_up = label_cores(zW, W_up_thresh, zQ, Q_up_thresh, ncores_min, min_core_npix, method='>')
+                        dict_up = label_cores(zW*zW_mask, W_up_thresh, zQ, Q_up_thresh, ncores_min, min_core_npix, method='>')
                         ncores_all_up = dict_up['ncores_all']
                         ncores_up = dict_up['ncores_save']
                         core_npix_up = dict_up['core_npix']
@@ -1152,7 +1181,7 @@ if __name__ == '__main__':
     # import pdb; pdb.set_trace()
     # Loop over each pixel-file and call function to calculate
     for ifile in range(nfiles):
-    # for ifile in range(500,501):
+#     for ifile in range(500,505):
     # for ifile in range(0, 12):
         # Convert time string to match different files
         itime = uniq_times[ifile]
