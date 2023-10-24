@@ -11,10 +11,13 @@ n_workers: 8 # For 3d environment output
 threads_per_worker: 1
 dask_tmp_dir: '/tmp'
 # Start/end date and time
-startdate: '20190129.1500'
-enddate: '20190129.1800'
+# startdate: '20190129.1500'
+# enddate: '20190129.1800'
+startdate: '20181129.1300'
+enddate: '20181129.1600'
 # Ensemble member name
-ensmember: 'eda09'
+# ensmember: 'eda09'
+ensmember: 'gefs09'
 # wrfout domain name (d01: 500m, d02: 100m)
 domain: 'd02'
 # Resolution: 'meso' or 'les'
@@ -23,29 +26,32 @@ resolution: 'les'
 time_window: 5  # [second]
 # Input/output file locations
 # Track stats directory
-# stats_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129_eda09_tracks_60s/stats/'
-stats_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129_eda09_tracks/stats/'
+# stats_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/tracks/stats/'
+stats_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/tracks/stats/'
 # Track pixel file directory
-# pixelfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129_eda09_tracks_60s/celltracking/'
-# pixelfile_path_tmp: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129_eda09_tracks/celltracking/'
-pixelfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129_eda09_tracks/celltracking/'
+# pixelfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/tracks/celltracking/'
+pixelfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/tracks/celltracking/'
 # 3D Met file directory
-metfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129_eda09_interp/'
+# metfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/subset_d4/'
+metfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/subset_d4/'
 # 3D Ent file directory EJ
-entfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129_eda09_entrain/'
+# entfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/entrain/'
+entfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/entrain/'
 # Raw WRF output file directory
 wrfout_path1: '/gpfs/wolf/cli120/proj-shared/sey/cacti/wrf/prod/'
 wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/les/'
 # Output file directory
-# output_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129_eda09_tracks_60s/stats/'
-output_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129_eda09_tracks/stats/'
+# output_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/tracks/stats/'
+output_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/tracks/stats/'
 # File base names
 pixel_filebase: 'regrid_celltracks_'
-met_filebase: 'corlasso.cldhamsl.2019012900eda09d4.base.M1.m1.'
-#(EJ)
-ent_filebase: 'entdvdt.cldhamsl.2019012900eda09d4.base.M1.m1.' 
-# ent_filebase: 'entrain.cldhamsl.2019012900eda09d4.base.M1.m1.' 
+# met_filebase: 'corlasso.cldhamsl.2019012900eda09d4.base.M1.m1.'
+met_filebase: 'corlasso.cldhamsl.2018112900gefs09d4.base.M1.m1.'
+
+# ent_filebase: 'entdvdt.cldhamsl.2019012900eda09d4.base.M1.m1.' 
+ent_filebase: 'entdvdt.cldhamsl.2018112900gefs09d4.base.M1.m1.' 
 cld_filebase: 'corlasso.cldhamsl.STARTDATE00ENSMEMBERd4.base.M1.m1.'
+
 # W thresholds to define cores
 W_up_thresh: 2.0  # [m/s]
 W_down_thresh: -1.0  # [m/s]
@@ -55,7 +61,7 @@ Q_down_thresh: 0.00005 # 0.05/1000  # [kg/kg]
 # Minimum pixel count for a core
 min_core_npix: 9
 # Number of cores to save per cell
-ncores_min: 35
+ncores_min: 12 # was 35
 # Number of hours prior to initiation to extract environment
 nhours: 1 # Not used anymore in env3d
 nminutes: 60

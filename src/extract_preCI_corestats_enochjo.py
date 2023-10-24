@@ -318,7 +318,7 @@ def extract_env_prof(
         TV = dsm['tv'] # EJ
         WA = dsm['WA']
         dBZ = dsm['REFL_10CM'] # EJ
-        #qc = dsm['QCLOUD'] # EJ
+        QC = dsm['QCLOUD'] # EJ
         #qi = dsm['QICE'] # EJ
         #qs = dsm['QSNOW'] # EJ
         qv = dsm['QVAPOR'] # EJ
@@ -326,9 +326,11 @@ def extract_env_prof(
         #qg = dsm['QGRAUP'] # EJ
         Thte = dsm['THETA_E'] # EJ
         TH = dsm['THETA'] # EJ
-        QA = dsm['QA'] # EJ
+        #QA = dsm['QA'] # EJ
         QT = dsm['QT'] # EJ
         QR = dsm['QRAIN'] # EJ
+        
+        QA = QC + QR
         
         # Calculate moist air density using virtual temperature
         R_dry = 287.058   # J kg−1 K−1
@@ -399,7 +401,7 @@ def extract_env_prof(
             'echotop10': '',
         }
 
-
+    out_dict1d = None
     out_dict2d = None
     out_dict3d = None
     out_dict_attrs = None
@@ -409,8 +411,14 @@ def extract_env_prof(
     nmatchcell = len(idx_track)
     if (nmatchcell > 0):
         # Create arrays for output statistics (EJ)
+        dims1d = (nmatchcell)
         dims2d = (nmatchcell, nz)
         dims3d = (nmatchcell, nz, ncores_min)
+        
+        # Adding some 1d variables that are needed
+        cell_maxETH_10dbz = np.full(dims1d, np.NaN, dtype=np.float32)
+        cell_max_dbz = np.full(dims1d, np.NaN, dtype=np.float32)
+        
         cell_nCore_up = np.full(dims2d, np.NaN, dtype=np.float32)
         cell_MassFlux_up = np.full(dims2d, np.NaN, dtype=np.float32)
         cell_ovlap_up = np.full(dims2d, np.NaN, dtype=np.float32) # EJ
@@ -418,11 +426,13 @@ def extract_env_prof(
         cell_CoreArea_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_CoreMaxW_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_CoreMeanW_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMaxQ_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMeanQ_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMeanQ_prm = np.full(dims3d, np.NaN, dtype=np.float32)
+        cell_CoreMaxQC_up = np.full(dims3d, np.NaN, dtype=np.float32)
+        cell_CoreMeanQC_up = np.full(dims3d, np.NaN, dtype=np.float32)
+        cell_CoreMeanQC_prm = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_CoreMaxQR_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
         cell_CoreMeanQR_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
+        cell_CoreMeanQV_up = np.full(dims3d, np.NaN, dtype=np.float32)
+        cell_CoreMeanQV_prm = np.full(dims3d, np.NaN, dtype=np.float32)
         
         cell_CoreMeanTHe_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_CoreMeanTHv_up = np.full(dims3d, np.NaN, dtype=np.float32)
@@ -596,7 +606,9 @@ def extract_env_prof(
                 
                 iW = WA.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 iQ = QA.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iQC = QC.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 iQR = QR.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iQV = qv.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 iMassFlux = MassFlux.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 idBZ = dBZ.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 iThte = Thte.where(tracknumbermap_final == 1, drop=True).squeeze().data
@@ -616,7 +628,9 @@ def extract_env_prof(
                     for z in range(0, nz):                        
                         zW = iW[z,:,:]
                         zQ = iQ[z,:,:] #EJ
+                        zQC = iQC[z,:,:] #EJ
                         zQR = iQR[z,:,:] #EJ
+                        zQV = iQV[z,:,:] #EJ
                         zMassFlux = iMassFlux[z,:,:]
                         zdBZ = idBZ[z,:,:] #EJ
                         zThte = iThte[z,:,:] #EJ
@@ -674,8 +688,19 @@ def extract_env_prof(
                         core_numbers_down = dict_down['core_numbers']
                         core_label_down = dict_down['core_label']
                         
-                        # Dilate core labels by 1 px
-#                         # Need to do something complex
+                        # Dilate core labels by a certain number of pixels
+                        core_label_up_prm = np.zeros_like(core_label_up)
+                        for ii in range(ncores_up):
+                            cell = np.zeros_like(core_label_up)
+                            cell[core_label_up == core_numbers_up[ii]] = 1
+                            expand = round(np.sqrt(core_npix_up[ii]/np.pi))
+                            dil = expand_labels(cell, distance = expand)
+                            core_label_up_prm[(dil - cell) == 1] = core_numbers_up[ii]
+                            
+                        # Getting rid of all the perimeter labels that exist within adjacent cores.
+                        # core_label_up_prm[core_label_up > 0] = 0
+                        
+#                         # The old way of doing things
 #                         struct = generate_binary_structure(2, 6)                        
 #                         core_label_up_dil = np.zeros_like(core_label_up)
 #                         core_label_up_prm = np.zeros_like(core_label_up)
@@ -687,7 +712,7 @@ def extract_env_prof(
 #                             core_label_up_prm[(dil - cell) == 1] = core_numbers_up[ii]
 
                         core_label_up_dil = expand_labels(core_label_up, distance=2) # Includes core
-                        core_label_up_prm = expand_labels(core_label_up, distance=2) - core_label_up # Just perimeter
+                        # core_label_up_prm = expand_labels(core_label_up, distance=2) - core_label_up # Just perimeter
                         
                         # Total number of cores
                         cell_nCore_up[icell, z] = ncores_all_up
@@ -699,9 +724,11 @@ def extract_env_prof(
                         MaFlx_core_up = np.full(ncores_up, np.NaN, dtype=np.float32)
                         W_max_up = np.full(ncores_up, np.NaN, dtype=np.float32)
                         W_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32)
-                        Q_max_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Q_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Q_mean_prm = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
+                        QC_max_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
+                        QC_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
+                        QC_mean_prm = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
+                        QV_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
+                        QV_mean_prm = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
                         QR_max_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
                         QR_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
                         Entr_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
@@ -727,11 +754,13 @@ def extract_env_prof(
                             MaFlx_core_up[ii] = np.nansum(zMassFlux[core_label_up == core_numbers_up[ii]])
                             W_max_up[ii] = np.nanmax(zW[core_label_up == core_numbers_up[ii]])
                             W_mean_up[ii] = np.nanmean(zW[core_label_up == core_numbers_up[ii]])
-                            Q_max_up[ii] = np.nanmax(zQ[core_label_up == core_numbers_up[ii]]) # EJ
-                            Q_mean_up[ii] = np.nanmean(zQ[core_label_up == core_numbers_up[ii]]) # EJ
-                            Q_mean_prm[ii] = np.nanmean(zQ[core_label_up_prm == core_numbers_up[ii]]) # EJ
+                            QC_max_up[ii] = np.nanmax(zQC[core_label_up == core_numbers_up[ii]]) # EJ
+                            QC_mean_up[ii] = np.nanmean(zQC[core_label_up == core_numbers_up[ii]]) # EJ
+                            QC_mean_prm[ii] = np.nanmean(zQC[core_label_up_prm == core_numbers_up[ii]]) # EJ
                             QR_max_up[ii] = np.nanmax(zQR[core_label_up == core_numbers_up[ii]]) # EJ
                             QR_mean_up[ii] = np.nanmean(zQR[core_label_up == core_numbers_up[ii]]) # EJ
+                            QV_mean_up[ii] = np.nanmean(zQV[core_label_up == core_numbers_up[ii]]) # EJ
+                            QV_mean_prm[ii] = np.nanmean(zQV[core_label_up_prm == core_numbers_up[ii]]) # EJ
                             Entr_up[ii] = np.nansum(zEntr[core_label_up_dil == core_numbers_up[ii]]) # EJ
                             Detr_up[ii] = np.nansum(zDetr[core_label_up_dil == core_numbers_up[ii]]) # EJ
                             Vapr_up[ii] = np.nansum(zVapr[core_label_up == core_numbers_up[ii]]) # EJ
@@ -781,11 +810,13 @@ def extract_env_prof(
                         cell_CoreMaxW_up[icell, z, 0:ncores_save_up] = W_max_up[0:ncores_save_up]
                         cell_CoreMeanW_up[icell, z, 0:ncores_save_up] = W_mean_up[0:ncores_save_up]
                         
-                        cell_CoreMaxQ_up[icell, z, 0:ncores_save_up] = Q_max_up[0:ncores_save_up] # EJ
-                        cell_CoreMeanQ_up[icell, z, 0:ncores_save_up] = Q_mean_up[0:ncores_save_up] # EJ
-                        cell_CoreMeanQ_prm[icell, z, 0:ncores_save_up] = Q_mean_prm[0:ncores_save_up] # EJ
+                        cell_CoreMaxQC_up[icell, z, 0:ncores_save_up] = QC_max_up[0:ncores_save_up] # EJ
+                        cell_CoreMeanQC_up[icell, z, 0:ncores_save_up] = QC_mean_up[0:ncores_save_up] # EJ
+                        cell_CoreMeanQC_prm[icell, z, 0:ncores_save_up] = QC_mean_prm[0:ncores_save_up] # EJ
                         cell_CoreMaxQR_up[icell, z, 0:ncores_save_up] = QR_max_up[0:ncores_save_up] # EJ
                         cell_CoreMeanQR_up[icell, z, 0:ncores_save_up] = QR_mean_up[0:ncores_save_up] # EJ
+                        cell_CoreMeanQV_up[icell, z, 0:ncores_save_up] = QV_mean_up[0:ncores_save_up] # EJ
+                        cell_CoreMeanQV_prm[icell, z, 0:ncores_save_up] = QV_mean_prm[0:ncores_save_up] # EJ
                         cell_Entr_up[icell, z, 0:ncores_save_up] = Entr_up[0:ncores_save_up] # EJ
                         cell_Detr_up[icell, z, 0:ncores_save_up] = Detr_up[0:ncores_save_up] # EJ
                         cell_Vapr_up[icell, z, 0:ncores_save_up] = Vapr_up[0:ncores_save_up] # EJ
@@ -810,6 +841,12 @@ def extract_env_prof(
                         cell_CoreMinQ_down[icell, z, 0:ncores_save_down] = Q_min_down[0:ncores_save_down] # EJ
                         cell_CoreMeanQ_down[icell, z, 0:ncores_save_down] = Q_mean_down[0:ncores_save_down] # EJ
                     
+#                     import pdb; pdb.set_trace()
+                    ind = np.where(idBZ > 10)[0]
+                    if ind.size > 0: 
+                        cell_maxETH_10dbz[icell] = np.max(ind)/10 # to convert to km.
+                    cell_max_dbz[icell] = np.nanmax(idBZ,axis=(0,1,2))
+                    
             else:
                 # print(f'No cell matching track # {itracknum}')
                 # Note that this error message will be mentioned if the relevant files do not exist
@@ -823,11 +860,13 @@ def extract_env_prof(
             'CoreArea_up': cell_CoreArea_up,
             'CoreMaxW_up': cell_CoreMaxW_up,
             'CoreMeanW_up': cell_CoreMeanW_up,
-            'CoreMaxQ_up': cell_CoreMaxQ_up,
-            'CoreMeanQ_up': cell_CoreMeanQ_up,
-            'CoreMeanQ_prm': cell_CoreMeanQ_prm,
+            'CoreMaxQC_up': cell_CoreMaxQC_up,
+            'CoreMeanQC_up': cell_CoreMeanQC_up,
+            'CoreMeanQC_prm': cell_CoreMeanQC_prm,
             'CoreMaxQR_up': cell_CoreMaxQR_up,
             'CoreMeanQR_up': cell_CoreMeanQR_up,
+            'CoreMeanQV_up': cell_CoreMeanQV_up,
+            'CoreMeanQV_prm': cell_CoreMeanQV_prm,
             'CoreMassFlux_up': cell_CoreMassFlux_up,
             'CoreReflMax_up': cell_dBZ_up,
             'CoreThteMax_up': cell_ThteMax_up,
@@ -860,11 +899,23 @@ def extract_env_prof(
             'nCore_down': cell_nCore_down,
             'MassFlux_down': cell_MassFlux_down,
         }
+        out_dict1d = {
+            'maxETH_10dbz': cell_maxETH_10dbz,
+            'max_dbz': cell_max_dbz,
+        }
         out_dict_attrs = {
             # Updraft
             'nCore_up': {
                 'long_name': 'Number of updraft cores',
                 'units': 'count',
+            },
+            'maxETH_10dbz': {
+                'long_name': 'Maximum 10dBZ echo-top height in a convective cell',
+                'units': 'km',
+            },
+            'max_dbz': {
+                'long_name': 'Maximum reflectivity in a convective cell',
+                'units': 'dBZ',
             },
             'CoreArea_up': {
                 'long_name': 'Updraft core area',
@@ -878,16 +929,16 @@ def extract_env_prof(
                 'long_name': 'Updraft core mean W',
                 'units': 'm/s',
             },
-            'CoreMaxQ_up': {
-                'long_name': 'Updraft core mean Q',
+            'CoreMaxQC_up': {
+                'long_name': 'Updraft core mean QC',
                 'units': 'kg/kg',
             },
-            'CoreMeanQ_up': {
-                'long_name': 'Updraft core mean Q',
+            'CoreMeanQC_up': {
+                'long_name': 'Updraft core mean QC',
                 'units': 'kg/kg',
             },
-            'CoreMeanQ_prm': {
-                'long_name': 'Updraft perim mean Q',
+            'CoreMeanQC_prm': {
+                'long_name': 'Updraft perim mean QC',
                 'units': 'kg/kg',
             },
             'CoreMaxQR_up': {
@@ -896,6 +947,14 @@ def extract_env_prof(
             },
             'CoreMeanQR_up': {
                 'long_name': 'Updraft core mean QR',
+                'units': 'kg/kg',
+            },
+            'CoreMeanQV_up': {
+                'long_name': 'Updraft core mean QV',
+                'units': 'kg/kg',
+            },
+            'CoreMeanQV_prm': {
+                'long_name': 'Updraft perim mean QV',
                 'units': 'kg/kg',
             },
             'CoreMassFlux_up': {
@@ -1000,7 +1059,7 @@ def extract_env_prof(
                 'units': 'kg s^-1',
             },
         }
-    return out_dict3d, out_dict2d, out_dict_attrs
+    return out_dict3d, out_dict2d, out_dict1d, out_dict_attrs
 
 
 #-----------------------------------------------------------------------
@@ -1210,7 +1269,7 @@ if __name__ == '__main__':
     # import pdb; pdb.set_trace()
     # Loop over each pixel-file and call function to calculate
     for ifile in range(nfiles):
-#     for ifile in range(500,505):
+#     for ifile in range(300,302):
     # for ifile in range(0, 12):
         # Convert time string to match different files
         itime = uniq_times[ifile]
@@ -1301,7 +1360,8 @@ if __name__ == '__main__':
         if final_results[counter] is not None:
             var_names3d = list(final_results[counter][0].keys())
             var_names2d = list(final_results[counter][1].keys())
-            var_attrs = final_results[counter][2]
+            var_names1d = list(final_results[counter][2].keys())
+            var_attrs = final_results[counter][3]
             break
         counter -= 1
         
@@ -1318,7 +1378,7 @@ if __name__ == '__main__':
     out_dict = {}
     out_dict_attrs = {}
 
-    var_names = var_names3d + var_names2d
+    var_names = var_names3d + var_names2d + var_names1d
     # 3D variables 
     for ivar in var_names3d:
         out_dict[ivar] = np.full((ntracks, ntimes, nz, ncores_min), np.nan, dtype=np.float32)
@@ -1326,6 +1386,10 @@ if __name__ == '__main__':
     # 2D variables
     for ivar in var_names2d:
         out_dict[ivar] = np.full((ntracks, ntimes, nz), np.nan, dtype=np.float32)
+        out_dict_attrs[ivar] = var_attrs[ivar]
+    # 1D variables
+    for ivar in var_names1d:
+        out_dict[ivar] = np.full((ntracks, ntimes), np.nan, dtype=np.float32)
         out_dict_attrs[ivar] = var_attrs[ivar]
 
     # Put the results to output track stats variables
@@ -1335,6 +1399,7 @@ if __name__ == '__main__':
         if final_results[ifile] is not None:
             iVAR3d = final_results[ifile][0]
             iVAR2d = final_results[ifile][1]
+            iVAR1d = final_results[ifile][2]
             if iVAR3d is not None:
                 trackindices = trackindices_all[ifile]
                 timeindices = timeindices_all[ifile]
@@ -1353,15 +1418,24 @@ if __name__ == '__main__':
                         out_dict[ivar][trackindices,timeindices,:] = iVAR2d[ivar]
                     else:
                         print(f'Warning: {ivar} dimension is not 2.')
+            if iVAR1d is not None:
+                trackindices = trackindices_all[ifile]
+                timeindices = timeindices_all[ifile]
+                # Loop over each variable and assign values to output dictionary
+                for ivar in var_names1d:
+                    if iVAR1d[ivar].ndim == 1:
+                        out_dict[ivar][trackindices,timeindices] = iVAR1d[ivar]
+                    else:
+                        print(f'Warning: {ivar} dimension is not 1.')
     
 #     # import pdb; pdb.set_trace()
-    from matplotlib import pyplot as plt
-    tmp1 = np.nanmax(out_dict['CoreArea_up'][:,:,:,0],axis=(0))
-    # Shape:(685, 720, 100, 35)
-    f1 = plt.figure(figsize=(9, 3))
-    plt.pcolormesh(tmp1)
-    plt.savefig('/ccsopen/home/enochjo/test.png')
-    # Confirmed that things are being generated.
+#     from matplotlib import pyplot as plt
+#     tmp1 = np.nanmax(out_dict['CoreArea_up'][:,:,:,0],axis=(0))
+#     # Shape:(685, 720, 100, 35)
+#     f1 = plt.figure(figsize=(9, 3))
+#     plt.pcolormesh(tmp1)
+#     plt.savefig('/ccsopen/home/enochjo/test.png')
+#     # Confirmed that things are being generated.
     
     
     ##########################################################
@@ -1372,6 +1446,8 @@ if __name__ == '__main__':
     var_dict = {}
     # Define output variable dictionary
     for key, value in out_dict.items():
+        if value.ndim == 1:
+            var_dict[key] = ([tracks_dimname], value, out_dict_attrs[key])
         if value.ndim == 2:
             var_dict[key] = ([tracks_dimname, times_dimname], value, out_dict_attrs[key])
         if value.ndim == 3:
