@@ -79,7 +79,7 @@ def location_to_idx(lat, lon, center):
     return lat_idx, lon_idx
 
 #--------------------------------------------------------------------------
-def label_cores(W, W_thresh, Q, Q_thresh, ncores_min, min_core_npix, method='>'):
+def label_cores(W, W_thresh, Q, Q_thresh, VMF, ncores_min, min_core_npix, method='>'):
     """
     Label up/down draft cores using threshold and connectivity.
 
@@ -128,9 +128,14 @@ def label_cores(W, W_thresh, Q, Q_thresh, ncores_min, min_core_npix, method='>')
     mask = npix_core > min_core_npix
     npix_core = npix_core[mask]
     core_numbers = core_numbers[mask]
-
+    
+    zVMF = np.zeros_like(npix_core)
+    for i in range(0,len(core_numbers)):
+        zVMF[i] = np.nansum(VMF[core_label == core_numbers[i]]) # Find VMF of cores
+    
     # Sort the core size by descending order
-    sort_idx = npix_core.argsort()[::-1]
+    # sort_idx = npix_core.argsort()[::-1] # Original Method of sorting by area
+    sort_idx = zVMF.argsort()[::-1] # New Method of sorting by VMF
     npix_core_sorted = npix_core[sort_idx]
     core_numbers_sorted = core_numbers[sort_idx]
     
@@ -674,14 +679,14 @@ def extract_env_prof(
                         zW_mask[ind] = 1
                         
                         # Label updraft cores
-                        dict_up = label_cores(zW*zW_mask, W_up_thresh, zQ, Q_up_thresh, ncores_min, min_core_npix, method='>')
+                        dict_up = label_cores(zW*zW_mask, W_up_thresh, zQ, Q_up_thresh, zMassFlux, ncores_min, min_core_npix, method='>')
                         ncores_all_up = dict_up['ncores_all']
                         ncores_up = dict_up['ncores_save']
                         core_npix_up = dict_up['core_npix']
                         core_numbers_up = dict_up['core_numbers']
                         core_label_up = dict_up['core_label']
                         # Label downdraft cores
-                        dict_down = label_cores(zW, W_down_thresh, zQ, Q_down_thresh, ncores_min, min_core_npix, method='<')
+                        dict_down = label_cores(zW, W_down_thresh, zQ, Q_down_thresh, zMassFlux, ncores_min, min_core_npix, method='<')
                         ncores_all_down = dict_down['ncores_all']
                         ncores_down = dict_down['ncores_save']
                         core_npix_down = dict_down['core_npix']
