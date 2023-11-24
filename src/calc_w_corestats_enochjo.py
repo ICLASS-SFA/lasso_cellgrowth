@@ -1159,8 +1159,8 @@ if __name__ == '__main__':
 
     # Loop over each pixel-file and call function to calculate
     # EJ change back to range(nfiles) for 15s.
-#     for ifile in range(nfiles):
-    for ifile in range(200,300):
+    for ifile in range(nfiles):
+#     for ifile in range(200,300):
         # print(ifile)
         # Find all matching time indices from track stats file to the current pixel file
         matchindices = np.array(
