@@ -16,7 +16,7 @@ from dask.distributed import Client, LocalCluster
 from scipy.ndimage import generate_binary_structure, binary_dilation,iterate_structure
 from skimage.measure import label
 from skimage.segmentation import expand_labels
-from skimage.measure import centroid
+import cc3d
 
 #-----------------------------------------------------------------------
 def calc_basetime(filelist, filebase):
@@ -109,7 +109,7 @@ def calc_basetime(filelist, filebase):
 #     return file_basetime, file_dict
 
 #-----------------------------------------------------------------------
-def label_cores(W, W_thresh, Q, Q_thresh, VMF, ncores_min, min_core_npix, ilist, z, method='>'):
+def label_cores(W, W_thresh, Q, Q_thresh, VMF, ncores_min, min_core_npix, method='>'):
     """
     Label up/down draft cores using threshold and connectivity.
 
@@ -158,54 +158,17 @@ def label_cores(W, W_thresh, Q, Q_thresh, VMF, ncores_min, min_core_npix, ilist,
     mask = npix_core > min_core_npix
     npix_core = npix_core[mask]
     core_numbers = core_numbers[mask]
-    
+
 #     if ( len(core_numbers) > 0 ) & ( method == '>' ):
 #         import pdb;pdb.set_trace()
-
-    cpoints = np.zeros((ncores_min,2))
-    for i in range(0,len(core_numbers)):
-        tmp_image = np.zeros_like(core_label)
-        ind = np.where(core_label==core_numbers[i])
-        tmp_image[ind] = 1
-        cpoints[i,:] = centroid(tmp_image)
-        # ^^ This contains the x and y points of all updrafts at current height
-        # Need to connect to the correct order of points from the previous height
-     
-    # If cores already exist from the lower levels, 
-    if sum(np.isnan(ilist[z-1,:,0])) != ncores_min:
     
-        order = np.zeros((ncores_min,))
-        for i in range(0,len(core_numbers)):
-        
-            dist = np.zeros((ncores_min,)).astype(float)
-            # Remember, ilist only has ncore_min amount of updrafts
-            for ip in range(0,ncores_min):
-                dist[ip] = np.sqrt((cpoints[i,0]-ilist[z-1,ip,0])**2+(cpoints[i,1]-ilist[z-1,ip,1])**2)
-                # Eventually, you should set up some sort of max limit for dist
-
-            imincore = dist.argmin()
-            order[i] = imincore
-            ilist[z,i,0] = cpoints[imincore,0]
-            ilist[z,i,1] = cpoints[imincore,1]
-            
-            sort_idx = # you need to build a sort_idx here.
-            
-    else:
-        # If not, arrange by VMF
-        zVMF = np.zeros_like(npix_core)
-        for i in range(0,len(core_numbers)):
-            zVMF[i] = np.nansum(VMF[core_label == core_numbers[i]]) # Find VMF of cores
-        
-        
-        
-        sort_idx = zVMF.argsort()[::-1] # New Method of sorting by VMF
-        ilist[z,sort_idx,0] = cpoints[sort_idx,0]
-        ilist[z,sort_idx,1] = cpoints[sort_idx,1]
-            
-
+    zVMF = np.zeros_like(npix_core)
+    for i in range(0,len(core_numbers)):
+        zVMF[i] = np.nansum(VMF[core_label == core_numbers[i]]) # Find VMF of cores
+    
     # Sort the core size by descending order
     # sort_idx = npix_core.argsort()[::-1] # Original Method of sorting by area
-    # sort_idx = zVMF.argsort()[::-1] # New Method of sorting by VMF
+    sort_idx = zVMF.argsort()[::-1] # New Method of sorting by VMF
     npix_core_sorted = npix_core[sort_idx]
     core_numbers_sorted = core_numbers[sort_idx]
     
@@ -524,14 +487,70 @@ def calc_cellstats_singlefile(
                 iPres = PRESSURE.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
                 iMrho = Mrho.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
                 zTnum = tracknumbermap.where(tracknumbermap_final == 1, drop=True).squeeze().data
-                
-                # (EJ) list of coordinates (x and y) of updrafts at each height
-                ilist = np.zeros((nz,ncores_min,2))*np.nan
+                # This array is going to be populated with the "z" loop
+                iCor1 = np.zeros_like(iW)
 
                 # Calculate new statistics of the cell
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore", category=RuntimeWarning)
-                                        
+                    
+                    # Temporary Loop to obtain vertically-aligned updrafts.
+                    for z in range(0, nz):
+                    
+                        zW = iW[z,:,:]
+                        zQ = iQ[z,:,:] #EJ
+                        zMassFlux = iMassFlux[z,:,:]
+                        
+                        cell_cloudy = np.full(zW.shape, 0, dtype=np.float32)     # Create zero array
+                        icloud = (zW > W_up_thresh) & (zQ > Q_up_thresh)         # Find cloudy region
+                        cell_cloudy[icloud] = 1                                  # Set cloudy region to 1
+                        tracknumbermap_mod = (cell_cloudy + zTnum)               # Merge the cloudy regions with tmap
+                        tracknumbermap_mod[tracknumbermap_mod > 0] = 1           # binarize and re-label        
+                        tmap_label = label(tracknumbermap_mod)
+                        
+                        zW_mask = np.zeros_like(zW)
+                        ind = np.where(zTnum == itracknum)
+                        ind_conv = tmap_label[ind[0][0],ind[1][0]]
+                        ind = tmap_label == ind_conv
+                        zW_mask[ind] = 1
+                        
+                        dict_up = label_cores(zW*zW_mask, W_up_thresh, zQ, Q_up_thresh, zMassFlux, ncores_min, min_core_npix, method='>')
+                        iCor1[z,:,:] = dict_up['core_label'] # EJ
+                        
+                    # You should have a fully populated 3D (x,y,z) iCor1 variable here
+                    # Then do the 3d labelling here.
+                    
+                    ibiry = np.zeros_like(iCor1).astype(int)
+                    ibiry[iCor1>0] = 1
+                    labels_out = cc3d.connected_components(ibiry,connectivity=6)
+                    core_idx = np.unique(labels_out)[1:]
+                    
+                    core_sze = np.zeros_like(core_idx)
+                    cc = 0
+                    for i in core_idx:
+                        core_sze[cc] = len(np.where(labels_out == i)[0])
+                        cc = cc+1
+                    # after you label, then order based on VMF at some height level...
+                    
+                    sort_idx = core_sze.argsort()[::-1]
+                    iCore = np.zeros_like(iCor1)
+                    
+                    cc = 1
+                    for i in range(0,len(core_idx)):
+                        ind = np.where(labels_out == core_idx[sort_idx][i])
+                        iCore[ind] = cc
+                        cc = cc+1
+                    
+#                     from matplotlib import pyplot as plt
+#                     plt.clf
+#                     f1 = plt.figure(figsize=(5, 5))
+#                     pm = plt.pcolormesh(iCore[25,:,:])
+#                     pm = plt.pcolormesh(iCor1[25,:,:])
+#                     plt.colorbar(pm)
+#                     plt.savefig('/ccsopen/home/enochjo/test.png')
+                    
+                    
+                        
                     # Loop over vertical levels
                     for z in range(0, nz):
 
@@ -549,6 +568,7 @@ def calc_cellstats_singlefile(
                         zVapr = iVapr[z,:,:] #EJ
                         zTrho = iTrho[z,:,:] #EJ
                         zMrho = iMrho[z,:,:] #EJ
+                        zCore = iCore[z,:,:]
                         
                         zz = z
                         if (z < 1): zz = 1
@@ -579,14 +599,43 @@ def calc_cellstats_singlefile(
                         zW_mask[ind] = 1
                         
                         # Label updraft cores
-                        dict_up = label_cores(zW*zW_mask, W_up_thresh, zQ, Q_up_thresh, zMassFlux, ncores_min, min_core_npix, ilist, z, method='>')
-                        ncores_all_up = dict_up['ncores_all']
-                        ncores_up = dict_up['ncores_save']
-                        core_npix_up = dict_up['core_npix']
-                        core_numbers_up = dict_up['core_numbers']
-                        core_label_up = dict_up['core_label']
+#                         dict_up = label_cores(zW*zW_mask, W_up_thresh, zQ, Q_up_thresh, zMassFlux, ncores_min, min_core_npix, method='>')
+#                         ncores_all_up = dict_up['ncores_all']
+#                         ncores_up = dict_up['ncores_save']
+#                         core_npix_up = dict_up['core_npix']
+#                         core_numbers_up = dict_up['core_numbers']
+#                         core_label_up = dict_up['core_label']
+#                         if z == 25:
+#                             import pdb; pdb.set_trace()
+                            
+                        
+                        core_numbers_up,core_npix_up = np.unique(zCore, return_counts=True) # want to exclude 0.
+                        core_numbers_up = np.delete(core_numbers_up,0) # These need to be sorted properly
+                        core_npix_up = np.delete(core_npix_up,0)
+                        
+                        
+                        ncores_all_up = len(core_numbers_up)
+                        ncores_up = np.nanmin([ncores_all_up, ncores_min])
+                        core_label_up = zCore
+#                         print(z)
+                        
+#                             ncores_all = len(npix_core)
+#     ncores_save = np.nanmin([ncores_all, ncores_min])
+#     
+#     for i in rm_core_numbers:
+#         core_label[core_label == i] = 0
+#         
+#     # Put output variables in a dictionary
+#     out_dict = {
+#         'ncores_all': ncores_all,
+#         'ncores_save': ncores_save,
+#         'core_npix': npix_core_sorted[:ncores_save+1],
+#         'core_numbers': core_numbers_sorted[:ncores_save+1],
+#         'core_label': core_label,
+#     }
+                        
                         # Label downdraft cores
-                        dict_down = label_cores(zW, W_down_thresh, zQ, Q_down_thresh, zMassFlux, ncores_min, min_core_npix, ilist, z, method='<')
+                        dict_down = label_cores(zW, W_down_thresh, zQ, Q_down_thresh, zMassFlux, ncores_min, min_core_npix, method='<')
                         ncores_all_down = dict_down['ncores_all']
                         ncores_down = dict_down['ncores_save']
                         core_npix_down = dict_down['core_npix']
@@ -752,6 +801,9 @@ def calc_cellstats_singlefile(
                         cell_CoreMeanW_down[icell, z, 0:ncores_save_down] = W_mean_down[0:ncores_save_down]
                         cell_CoreMinQ_down[icell, z, 0:ncores_save_down] = Q_min_down[0:ncores_save_down] # EJ
                         cell_CoreMeanQ_down[icell, z, 0:ncores_save_down] = Q_mean_down[0:ncores_save_down] # EJ
+                        
+                    # After z loop
+                    
                     
             else:
                 print(f'No cell matching track # {itracknum}')
