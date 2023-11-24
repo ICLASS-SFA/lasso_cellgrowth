@@ -16,6 +16,7 @@ from dask.distributed import Client, LocalCluster
 from scipy.ndimage import generate_binary_structure, binary_dilation,iterate_structure
 from skimage.measure import label
 from skimage.segmentation import expand_labels
+from skimage.measure import centroid
 
 #-----------------------------------------------------------------------
 def calc_basetime(filelist, filebase):
@@ -108,7 +109,7 @@ def calc_basetime(filelist, filebase):
 #     return file_basetime, file_dict
 
 #-----------------------------------------------------------------------
-def label_cores(W, W_thresh, Q, Q_thresh, VMF, ncores_min, min_core_npix, method='>'):
+def label_cores(W, W_thresh, Q, Q_thresh, VMF, ncores_min, min_core_npix, ilist, z, method='>'):
     """
     Label up/down draft cores using threshold and connectivity.
 
@@ -157,17 +158,54 @@ def label_cores(W, W_thresh, Q, Q_thresh, VMF, ncores_min, min_core_npix, method
     mask = npix_core > min_core_npix
     npix_core = npix_core[mask]
     core_numbers = core_numbers[mask]
-
+    
 #     if ( len(core_numbers) > 0 ) & ( method == '>' ):
 #         import pdb;pdb.set_trace()
-    
-    zVMF = np.zeros_like(npix_core)
+
+    cpoints = np.zeros((ncores_min,2))
     for i in range(0,len(core_numbers)):
-        zVMF[i] = np.nansum(VMF[core_label == core_numbers[i]]) # Find VMF of cores
+        tmp_image = np.zeros_like(core_label)
+        ind = np.where(core_label==core_numbers[i])
+        tmp_image[ind] = 1
+        cpoints[i,:] = centroid(tmp_image)
+        # ^^ This contains the x and y points of all updrafts at current height
+        # Need to connect to the correct order of points from the previous height
+     
+    # If cores already exist from the lower levels, 
+    if sum(np.isnan(ilist[z-1,:,0])) != ncores_min:
     
+        order = np.zeros((ncores_min,))
+        for i in range(0,len(core_numbers)):
+        
+            dist = np.zeros((ncores_min,)).astype(float)
+            # Remember, ilist only has ncore_min amount of updrafts
+            for ip in range(0,ncores_min):
+                dist[ip] = np.sqrt((cpoints[i,0]-ilist[z-1,ip,0])**2+(cpoints[i,1]-ilist[z-1,ip,1])**2)
+                # Eventually, you should set up some sort of max limit for dist
+
+            imincore = dist.argmin()
+            order[i] = imincore
+            ilist[z,i,0] = cpoints[imincore,0]
+            ilist[z,i,1] = cpoints[imincore,1]
+            
+            sort_idx = # you need to build a sort_idx here.
+            
+    else:
+        # If not, arrange by VMF
+        zVMF = np.zeros_like(npix_core)
+        for i in range(0,len(core_numbers)):
+            zVMF[i] = np.nansum(VMF[core_label == core_numbers[i]]) # Find VMF of cores
+        
+        
+        
+        sort_idx = zVMF.argsort()[::-1] # New Method of sorting by VMF
+        ilist[z,sort_idx,0] = cpoints[sort_idx,0]
+        ilist[z,sort_idx,1] = cpoints[sort_idx,1]
+            
+
     # Sort the core size by descending order
     # sort_idx = npix_core.argsort()[::-1] # Original Method of sorting by area
-    sort_idx = zVMF.argsort()[::-1] # New Method of sorting by VMF
+    # sort_idx = zVMF.argsort()[::-1] # New Method of sorting by VMF
     npix_core_sorted = npix_core[sort_idx]
     core_numbers_sorted = core_numbers[sort_idx]
     
@@ -486,6 +524,9 @@ def calc_cellstats_singlefile(
                 iPres = PRESSURE.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
                 iMrho = Mrho.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
                 zTnum = tracknumbermap.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                
+                # (EJ) list of coordinates (x and y) of updrafts at each height
+                ilist = np.zeros((nz,ncores_min,2))*np.nan
 
                 # Calculate new statistics of the cell
                 with warnings.catch_warnings():
@@ -538,14 +579,14 @@ def calc_cellstats_singlefile(
                         zW_mask[ind] = 1
                         
                         # Label updraft cores
-                        dict_up = label_cores(zW*zW_mask, W_up_thresh, zQ, Q_up_thresh, zMassFlux, ncores_min, min_core_npix, method='>')
+                        dict_up = label_cores(zW*zW_mask, W_up_thresh, zQ, Q_up_thresh, zMassFlux, ncores_min, min_core_npix, ilist, z, method='>')
                         ncores_all_up = dict_up['ncores_all']
                         ncores_up = dict_up['ncores_save']
                         core_npix_up = dict_up['core_npix']
                         core_numbers_up = dict_up['core_numbers']
                         core_label_up = dict_up['core_label']
                         # Label downdraft cores
-                        dict_down = label_cores(zW, W_down_thresh, zQ, Q_down_thresh, zMassFlux, ncores_min, min_core_npix, method='<')
+                        dict_down = label_cores(zW, W_down_thresh, zQ, Q_down_thresh, zMassFlux, ncores_min, min_core_npix, ilist, z, method='<')
                         ncores_all_down = dict_down['ncores_all']
                         ncores_down = dict_down['ncores_save']
                         core_npix_down = dict_down['core_npix']
@@ -1056,8 +1097,8 @@ if __name__ == '__main__':
 
     # Loop over each pixel-file and call function to calculate
     # EJ change back to range(nfiles) for 15s.
-    for ifile in range(nfiles):
-#     for ifile in range(200,300):
+#     for ifile in range(nfiles):
+    for ifile in range(200,300):
         # print(ifile)
         # Find all matching time indices from track stats file to the current pixel file
         matchindices = np.array(
