@@ -17,6 +17,7 @@ from scipy.ndimage import generate_binary_structure, binary_dilation,iterate_str
 from skimage.measure import label
 from skimage.segmentation import expand_labels
 import cc3d
+from skimage.measure import centroid
 
 #-----------------------------------------------------------------------
 def calc_basetime(filelist, filebase):
@@ -421,6 +422,8 @@ def calc_cellstats_singlefile(
         cell_TrhoMean_prm = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_BuoyTrho_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_PGF_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
+        cell_NS_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
+        cell_WE_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
         
         # This section of code used to determine how large the sub-domain needs to be
         cell_cloudy = np.full(QA.shape, 0, dtype=np.float32)     # Create zero array
@@ -452,9 +455,9 @@ def calc_cellstats_singlefile(
                 # e.g., where(tracknumbermap_label == correct)
                 
                 # Setting the largest-possible sub-domain as 1.
-                ind = np.where(tracknumbermap_label == correct)
+                ipos = np.where(tracknumbermap_label == correct)
                 tracknumbermap_evo = np.zeros_like(tracknumbermap)
-                tracknumbermap_evo[ind[0].min():ind[0].max(),ind[1].min():ind[1].max()] = 1
+                tracknumbermap_evo[ipos[0].min():ipos[0].max(),ipos[1].min():ipos[1].max()] = 1
                 tracknumbermap_final = xr.DataArray(tracknumbermap_evo,coords=tracknumbermap.coords, dims=tracknumbermap.dims )
                 
 #                 import pdb; pdb.set_trace()
@@ -487,6 +490,7 @@ def calc_cellstats_singlefile(
                 iPres = PRESSURE.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
                 iMrho = Mrho.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
                 zTnum = tracknumbermap.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iTnum = np.repeat(zTnum[np.newaxis,:,:],100,axis=0)
                 # This array is going to be populated with the "z" loop
                 iCor1 = np.zeros_like(iW)
 
@@ -494,47 +498,39 @@ def calc_cellstats_singlefile(
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore", category=RuntimeWarning)
                     
-                    # Temporary Loop to obtain vertically-aligned updrafts.
-                    for z in range(0, nz):
+                    cell_cloudy = np.full(iW.shape, 0, dtype=np.float32)     # Create zero array
+                    icloud = (iW > W_up_thresh) & (iQ > Q_up_thresh)         # Find cloudy region
+                    cell_cloudy[icloud] = 1
+                    tracknumbermap_mod = (cell_cloudy + iTnum)               # Merge the cloudy regions with tmap
+                    tracknumbermap_mod[tracknumbermap_mod > 0] = 1           # binarize and re-label        
+                    tmap_label = label(tracknumbermap_mod)
                     
-                        zW = iW[z,:,:]
-                        zQ = iQ[z,:,:] #EJ
-                        zMassFlux = iMassFlux[z,:,:]
-                        
-                        cell_cloudy = np.full(zW.shape, 0, dtype=np.float32)     # Create zero array
-                        icloud = (zW > W_up_thresh) & (zQ > Q_up_thresh)         # Find cloudy region
-                        cell_cloudy[icloud] = 1                                  # Set cloudy region to 1
-                        tracknumbermap_mod = (cell_cloudy + zTnum)               # Merge the cloudy regions with tmap
-                        tracknumbermap_mod[tracknumbermap_mod > 0] = 1           # binarize and re-label        
-                        tmap_label = label(tracknumbermap_mod)
-                        
-                        zW_mask = np.zeros_like(zW)
-                        ind = np.where(zTnum == itracknum)
-                        ind_conv = tmap_label[ind[0][0],ind[1][0]]
-                        ind = tmap_label == ind_conv
-                        zW_mask[ind] = 1
-                        
-                        dict_up = label_cores(zW*zW_mask, W_up_thresh, zQ, Q_up_thresh, zMassFlux, ncores_min, min_core_npix, method='>')
+                    # This section ensures that we are only analyzing regions that correspond to our current reflectivity track
+                    # ... and not some neighboring track that has encroached on our territory.
+                    iW_mask = np.zeros_like(iW)
+                    ind = np.where(iTnum == itracknum)
+                    ind_conv = tmap_label[ind[0][0],ind[1][0]]
+                    ind = tmap_label == ind_conv
+                    iW_mask[ind] = 1
+                    
+                    # Z Loop to obtain vertically-aligned updrafts.
+                    for z in range(0, nz):
+                        dict_up = label_cores(iW[z,:,:]*iW_mask[z,:,:], W_up_thresh, iQ[z,:,:], Q_up_thresh, iMassFlux[z,:,:], ncores_min, min_core_npix, method='>')
                         iCor1[z,:,:] = dict_up['core_label'] # EJ
                         
                     # You should have a fully populated 3D (x,y,z) iCor1 variable here
                     # Then do the 3d labelling here.
                     
                     ibiry = np.zeros_like(iCor1).astype(int)
-                    ibiry[iCor1>0] = 1
-                    labels_out = cc3d.connected_components(ibiry,connectivity=6)
-                    core_idx = np.unique(labels_out)[1:]
+                    ibiry[iCor1>0] = 1 # Converting the sort-of-3D core array to binary
+                    labels_out = cc3d.connected_components(ibiry,connectivity=6) # Find core array in 3D
+                    core_idx,core_sze = np.unique(labels_out, return_counts=True) # unique labels
+                    core_idx = np.delete(core_idx,0) # Remove the values corresponding to 0
+                    core_sze = np.delete(core_sze,0)                    
+                    sort_idx = core_sze.argsort()[::-1] # Ordering based on size of updraft (could change to VMF later if necessary)
                     
-                    core_sze = np.zeros_like(core_idx)
-                    cc = 0
-                    for i in core_idx:
-                        core_sze[cc] = len(np.where(labels_out == i)[0])
-                        cc = cc+1
-                    # after you label, then order based on VMF at some height level...
-                    
-                    sort_idx = core_sze.argsort()[::-1]
+                    # This loop re-labels the 3D cores according to size of updraft
                     iCore = np.zeros_like(iCor1)
-                    
                     cc = 1
                     for i in range(0,len(core_idx)):
                         ind = np.where(labels_out == core_idx[sort_idx][i])
@@ -548,9 +544,7 @@ def calc_cellstats_singlefile(
 #                     pm = plt.pcolormesh(iCor1[25,:,:])
 #                     plt.colorbar(pm)
 #                     plt.savefig('/ccsopen/home/enochjo/test.png')
-                    
-                    
-                        
+                      
                     # Loop over vertical levels
                     for z in range(0, nz):
 
@@ -585,55 +579,54 @@ def calc_cellstats_singlefile(
 #                         plt.colorbar(pm)
 #                         plt.savefig('/ccsopen/home/enochjo/test.png')
                         
-                        cell_cloudy = np.full(zW.shape, 0, dtype=np.float32)     # Create zero array
-                        icloud = (zW > W_up_thresh) & (zQ > Q_up_thresh)         # Find cloudy region
-                        cell_cloudy[icloud] = 1                                  # Set cloudy region to 1
-                        tracknumbermap_mod = (cell_cloudy + zTnum)               # Merge the cloudy regions with tmap
-                        tracknumbermap_mod[tracknumbermap_mod > 0] = 1           # binarize and re-label        
-                        tmap_label = label(tracknumbermap_mod)
+#                         cell_cloudy = np.full(zW.shape, 0, dtype=np.float32)     # Create zero array
+#                         icloud = (zW > W_up_thresh) & (zQ > Q_up_thresh)         # Find cloudy region
+#                         cell_cloudy[icloud] = 1                                  # Set cloudy region to 1
+#                         tracknumbermap_mod = (cell_cloudy + zTnum)               # Merge the cloudy regions with tmap
+#                         tracknumbermap_mod[tracknumbermap_mod > 0] = 1           # binarize and re-label        
+#                         tmap_label = label(tracknumbermap_mod)
+#                         
+#                         zW_mask = np.zeros_like(zW)
+#                         ind = np.where(zTnum == itracknum)
+#                         ind_conv = tmap_label[ind[0][0],ind[1][0]]
+#                         ind = tmap_label == ind_conv
+#                         zW_mask[ind] = 1
                         
-                        zW_mask = np.zeros_like(zW)
-                        ind = np.where(zTnum == itracknum)
-                        ind_conv = tmap_label[ind[0][0],ind[1][0]]
-                        ind = tmap_label == ind_conv
-                        zW_mask[ind] = 1
-                        
-                        # Label updraft cores
+#                         # Label updraft cores (previous method)
 #                         dict_up = label_cores(zW*zW_mask, W_up_thresh, zQ, Q_up_thresh, zMassFlux, ncores_min, min_core_npix, method='>')
 #                         ncores_all_up = dict_up['ncores_all']
 #                         ncores_up = dict_up['ncores_save']
 #                         core_npix_up = dict_up['core_npix']
 #                         core_numbers_up = dict_up['core_numbers']
 #                         core_label_up = dict_up['core_label']
-#                         if z == 25:
-#                             import pdb; pdb.set_trace()
-                            
-                        
-                        core_numbers_up,core_npix_up = np.unique(zCore, return_counts=True) # want to exclude 0.
-                        core_numbers_up = np.delete(core_numbers_up,0) # These need to be sorted properly
+
+                        # Label updraft cores (EJ)
+                        core_numbers_up,core_npix_up = np.unique(zCore, return_counts=True)
+                        core_numbers_up = np.delete(core_numbers_up,0) # Excluding 0
                         core_npix_up = np.delete(core_npix_up,0)
-                        
-                        
                         ncores_all_up = len(core_numbers_up)
                         ncores_up = np.nanmin([ncores_all_up, ncores_min])
                         core_label_up = zCore
-#                         print(z)
                         
-#                             ncores_all = len(npix_core)
-#     ncores_save = np.nanmin([ncores_all, ncores_min])
-#     
-#     for i in rm_core_numbers:
-#         core_label[core_label == i] = 0
-#         
-#     # Put output variables in a dictionary
-#     out_dict = {
-#         'ncores_all': ncores_all,
-#         'ncores_save': ncores_save,
-#         'core_npix': npix_core_sorted[:ncores_save+1],
-#         'core_numbers': core_numbers_sorted[:ncores_save+1],
-#         'core_label': core_label,
-#     }
-                        
+                        # Find Centroids here (EJ)
+                        cpoints = np.zeros((len(core_numbers_up),2))
+                        for i in range(0,len(core_numbers_up)):
+                            tmp_image = np.zeros_like(core_label_up)
+                            ind = np.where(core_label_up==core_numbers_up[i])
+                            tmp_image[ind] = 1
+                            cpoints[i,:] = centroid(tmp_image)
+                            
+#                         if z == 25:
+#                             import pdb; pdb.set_trace()
+#                             from matplotlib import pyplot as plt
+#                             plt.clf
+#                             f1 = plt.figure(figsize=(5, 5))
+#                             pm = plt.pcolormesh(iCore[25,:,:])
+#                             plt.scatter(cpoints[:,1],cpoints[:,0])
+#                             plt.scatter(ind[0],ind[1])
+#                             plt.colorbar(pm)
+#                             plt.savefig('/ccsopen/home/enochjo/test.png')
+
                         # Label downdraft cores
                         dict_down = label_cores(zW, W_down_thresh, zQ, Q_down_thresh, zMassFlux, ncores_min, min_core_npix, method='<')
                         ncores_all_down = dict_down['ncores_all']
@@ -710,6 +703,8 @@ def calc_cellstats_singlefile(
                         Pres_pert_bot = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
                         Mrho_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
                         PGF_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
+                        NS_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
+                        WE_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
                         
                         
                         for ii in range(ncores_up):                            
@@ -736,6 +731,8 @@ def calc_cellstats_singlefile(
                             Trho_max_up[ii] = np.nanmax(zTrho[core_label_up == core_numbers_up[ii]]) # EJ
                             Trho_mean_prm[ii] = np.nanmean(zTrho[core_label_up_prm == core_numbers_up[ii]]) # EJ
                             Buoy_Trho_up[ii] = 9.81*(Trho_max_up[ii]-Trho_mean_prm[ii])/Trho_mean_prm[ii] # EJ
+                            NS_up[ii] = ipos[0].min()+cpoints[ii,0] # EJ
+                            WE_up[ii] = ipos[1].min()+cpoints[ii,1]
                             
                             Pres_pert_top[ii] = np.nanmean(zPrs2[core_label_up_prm == core_numbers_up[ii]])\
                                 - np.nanmax(zPrs2[core_label_up == core_numbers_up[ii]])
@@ -792,6 +789,9 @@ def calc_cellstats_singlefile(
                         cell_TrhoMean_prm[icell , z, 0:ncores_save_up] = Trho_mean_prm[0:ncores_save_up] # EJ
                         cell_BuoyTrho_up[icell , z, 0:ncores_save_up] = Buoy_Trho_up[0:ncores_save_up] # EJ
                         cell_PGF_up[icell , z, 0:ncores_save_up] = PGF_up[0:ncores_save_up] # EJ
+                        cell_NS_up[icell , z, 0:ncores_save_up] = NS_up[0:ncores_save_up] # EJ
+                        cell_WE_up[icell , z, 0:ncores_save_up] = WE_up[0:ncores_save_up] # EJ
+                        
 
                         ncores_save_down = min([ncores_down, ncores_min])
                         cell_MassFlux_down[icell, z] = MaFlx_sum_down * DX * DY
@@ -834,6 +834,8 @@ def calc_cellstats_singlefile(
             'CoreTrhoMean_prm': cell_TrhoMean_prm,
             'CoreBuoyTrho_up': cell_BuoyTrho_up,
             'CorePGF_up': cell_PGF_up,
+            'CoreNS_up': cell_NS_up,
+            'CoreWE_up': cell_WE_up,
             
             'Entr_up': cell_Entr_up,
             'Detr_up': cell_Detr_up,
@@ -947,6 +949,14 @@ def calc_cellstats_singlefile(
             'CorePGF_up': {
                 'long_name': 'Pressure Gradient Force opposing Buoyancy',
                 'units': 'm s^-2',
+            },
+            'CoreNS_up': {
+                'long_name': 'North-South Location of Updraft Centroid',
+                'units': 'Grid points',
+            },
+            'CoreWE_up': {
+                'long_name': 'West-East Location of Updraft Centroid',
+                'units': 'Grid points',
             },
             'MassFlux_up': {
                 'long_name': 'Total updraft mass flux',
