@@ -98,8 +98,14 @@ nminutes: 30
 nx: 100
 ny: 100
 # Sub-sample spatial grid (2: sample every 2 grids)
-sub_x: 5
-sub_y: 5
+sub_x: 10
+sub_y: 10
+
+list_var_pass:
+  - 'conv_core'
+  - 'conv_mask'
+  - 'dbz_comp'
+  - 'echotop10'
 
 
 # radii_expand: [1,2,3,4,5]

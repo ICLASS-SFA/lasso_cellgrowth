@@ -279,20 +279,24 @@ def extract_env_prof(
         dsm = xr.open_dataset(fname_met)
         nx_d = dsm.sizes['west_east']
         ny_d = dsm.sizes['south_north']
-        nz = dsm.sizes['bottom_top']
+        # nz = dsm.sizes['bottom_top']
+        nz = dsm.sizes['HAMSL'] # EJ
         # 3D Variables
-        height = dsm['HAMSL'].squeeze()
         pressure = dsm['PRESSURE'].squeeze()
         # tk = dsm['TEMPERATURE'].squeeze()
         TH = dsm['THETA'].squeeze()
         qv = dsm['QVAPOR'].squeeze()
+        tmp = dsm['HAMSL'].squeeze().load().data # Loading to memory
+        tmp = np.repeat(tmp[:,np.newaxis],ny_d,axis=1) # Repeating across y dim
+        tmp = np.repeat(tmp[:,:,np.newaxis],nx_d,axis=2) # Repeating across x dim
+        height = xr.DataArray(tmp,dims=qv.dims,coords=qv.coords,attrs={'units': 'm', 'stagger': ''})
         # rh = dsm['RH'].squeeze()
         # umet = dsm['UMET'].squeeze()
         # vmet = dsm['VMET'].squeeze()
-        u = dsm['U'].squeeze()
-        v = dsm['V'].squeeze()
-        umet = (u[:,:,:,1:] + u[:,:,:,:-1])/2 # Interpolation Needed (EJ)
-        vmet = (v[:,:,1:,:] + v[:,:,:-1,:])/2
+        # iu = dsm['U'].squeeze()
+        # iv = dsm['V'].squeeze()
+        # umet = (iu[:,:,1:] + iu[:,:,:-1])/2 # Interpolation Needed (EJ)
+        # vmet = (iv[:,1:,:] + iv[:,:-1,:])/2
         wa = dsm['WA'].squeeze()
         # 2D variables
         XLAT = dsm['XLAT'].squeeze()
@@ -329,8 +333,8 @@ def extract_env_prof(
             tk.attrs.pop(key, None)
             qv.attrs.pop(key, None)
             rh.attrs.pop(key, None)
-            umet.attrs.pop(key, None)
-            vmet.attrs.pop(key, None)
+            # umet.attrs.pop(key, None)
+            # vmet.attrs.pop(key, None)
             wa.attrs.pop(key, None)
             # pwv.attrs.pop(key, None)
             # T2.attrs.pop(key, None)
@@ -348,8 +352,8 @@ def extract_env_prof(
         temperature_attrs = tk.attrs
         qv_attrs = qv.attrs
         rh_attrs = rh.attrs
-        u_attrs = umet.attrs
-        v_attrs = vmet.attrs
+        # u_attrs = umet.attrs
+        # v_attrs = vmet.attrs
         w_attrs = wa.attrs
         # T2_attrs = T2.attrs
         # Q2_attrs = Q2.attrs
@@ -366,8 +370,8 @@ def extract_env_prof(
         temperature_attrs = ''
         qv_attrs = ''
         rh_attrs = ''
-        u_attrs = ''
-        v_attrs = ''
+        # u_attrs = ''
+        # v_attrs = ''
         w_attrs = ''
         # PWV_attrs = ''
         # T2_attrs = ''
@@ -449,8 +453,8 @@ def extract_env_prof(
     out_T = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
     out_QV = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
     out_RH = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_U = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_V = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    # out_U = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    # out_V = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
     out_W = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
 
     # 2D variables
@@ -553,8 +557,8 @@ def extract_env_prof(
                 _pressure = pad_array(pressure.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _qv = pad_array(qv.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _rh = pad_array(rh.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _u = pad_array(umet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _v = pad_array(vmet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                # _u = pad_array(umet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                # _v = pad_array(vmet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _w = pad_array(wa.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 # Extract and pad 2D variables
                 # _PWV = pad_array(pwv.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
@@ -575,8 +579,8 @@ def extract_env_prof(
                     out_P[itrack, :, :, :] = _pressure
                     out_QV[itrack, :, :, :] = _qv
                     out_RH[itrack, :, :, :] = _rh
-                    out_U[itrack, :, :, :] = _u
-                    out_V[itrack, :, :, :] = _v
+                    # out_U[itrack, :, :, :] = _u
+                    # out_V[itrack, :, :, :] = _v
                     out_W[itrack, :, :, :] = _w
                     # 2D
                     # out_PWV[itrack, :, :] = _pwv
@@ -596,8 +600,8 @@ def extract_env_prof(
             'temperature': out_T,
             'qv': out_QV,
             'rh': out_RH,
-            'u': out_U,
-            'v': out_V,
+            # 'u': out_U,
+            # 'v': out_V,
             'w': out_W,
         }
         out_dict2d = {
@@ -632,8 +636,8 @@ def extract_env_prof(
             'temperature': temperature_attrs,
             'qv': qv_attrs,
             'rh': rh_attrs,
-            'u': u_attrs,
-            'v': v_attrs,
+            # 'u': u_attrs,
+            # 'v': v_attrs,
             'w': w_attrs,
             # 'PWV': PWV_attrs,
             # 'T2': T2_attrs,
@@ -714,7 +718,7 @@ if __name__ == '__main__':
     # Output statistics filename
     # track_start_str = str(track_start).zfill(digits)
     # output_filename = f'{output_path}stats_3d_env_{startdate}_{enddate}_t{track_start_str}.nc'
-    output_filename = f'{output_path}stats_3d_env_{startdate}_{enddate}.nc'
+    output_filename = f'{output_path}preCI_3d_env_{startdate}_{enddate}.nc'
     os.makedirs(output_path, exist_ok=True)
 
     # Track statistics file dimension names
@@ -858,7 +862,7 @@ if __name__ == '__main__':
 
     # Loop over each pixel-file and call function to calculate
     for ifile in range(nfiles):
-    # for ifile in range(0, 12):
+#     for ifile in range(200, 203):
         # Convert time string to match different files
         itime = uniq_times[ifile]
         itime_pixel = pd.to_datetime(str(itime)).strftime('%Y%m%d_%H%M')

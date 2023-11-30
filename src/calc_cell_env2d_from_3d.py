@@ -153,13 +153,13 @@ def calc_envs_track(in_filename, tracknumber, config):
     rh = ds['rh']
     height = ds['height']
     pressure = ds['pressure'] * 100  # Convert unit to Pa
-    u = ds['u']
-    v = ds['v']
+    # u = ds['u']
+    # v = ds['v']
     w = ds['w']
     # 2D variables
-    U10 = ds['U10']
-    V10 = ds['V10']
-    HGT = ds['HGT']
+    # U10 = ds['U10']
+    # V10 = ds['V10']
+    # HGT = ds['HGT']
 
     # Create arrays to store outputs
     var2d_dims = (ntimes, ny, nx)
@@ -194,15 +194,15 @@ def calc_envs_track(in_filename, tracknumber, config):
             _rh = rh[itime, :, :, :]
             _z = height[itime, :, :, :]
             _pressure = pressure[itime, :, :, :]
-            _u = u[itime, :, :, :]
-            _v = v[itime, :, :, :]
-            _w = w[itime, :, :, :]
-            _U10 = U10[itime, :, :]
-            _V10 = V10[itime, :, :]
+            # _u = u[itime, :, :, :]
+            # _v = v[itime, :, :, :]
+            # _w = w[itime, :, :, :]
+            # _U10 = U10[itime, :, :]
+            # _V10 = V10[itime, :, :]
 
             # Interpolate to specific levels
-            u_4km[itime, :, :] = interplevel(_u, _z, 4000.)
-            v_4km[itime, :, :] = interplevel(_v, _z, 4000.)
+            # u_4km[itime, :, :] = interplevel(_u, _z, 4000.)
+            # v_4km[itime, :, :] = interplevel(_v, _z, 4000.)
             # Pressure level variables (pressure unit is Pa, convert it to hPa)
             qv_pres = interplevel(_qv, _pressure/100, level_pres)
             qv_925mb[itime, :, :] = qv_pres.sel(level=925)
@@ -247,8 +247,8 @@ def calc_envs_track(in_filename, tracknumber, config):
         'LFC': lfc,
         'EL': el,
         'LPL': lpl,
-        'u_4km': u_4km,
-        'v_4km': v_4km,
+        # 'u_4km': u_4km,
+        # 'v_4km': v_4km,
         'qv_925mb': qv_925mb,
         'qv_850mb': qv_850mb,
         'qv_700mb': qv_700mb,
@@ -294,14 +294,14 @@ def calc_envs_track(in_filename, tracknumber, config):
             'units': 'm',
             # '_FillValue': fillval,
         },
-        'u_4km': {
-            'long_name': 'U wind at 4 km HAMSL',
-            'units': 'm/s',
-        }, 
-        'v_4km': {
-            'long_name': 'V wind at 4 km HAMSL',
-            'units': 'm/s',
-        }, 
+#         'u_4km': {
+#             'long_name': 'U wind at 4 km HAMSL',
+#             'units': 'm/s',
+#         }, 
+#         'v_4km': {
+#             'long_name': 'V wind at 4 km HAMSL',
+#             'units': 'm/s',
+#         }, 
         'qv_925mb': {
             'long_name': 'Water vapor mixing ratio at 925mb',
             'units': 'kg/kg',
@@ -425,7 +425,7 @@ def work_for_tracks(in_filename, out_filename, config):
 
     # Collect results
     for itrack in range(0, ntracks):
-    # for itrack in range(0, 5):
+#     for itrack in range(0, 5):
         if final_result[itrack] is not None:
             # Get the return results for this track
             # The result is a tuple: (out_dict, out_dict_attrs)
@@ -491,7 +491,7 @@ if __name__ == "__main__":
     output_path = config['output_path']
 
     # 3D environment filename
-    file_env3d = f'{input_path}stats_3d_env_{startdate}_{enddate}.nc'
+    file_env3d = f'{input_path}preCI_3d_env_{startdate}_{enddate}.nc'
     print(f'Input: {file_env3d}')
 
     # Output filename
