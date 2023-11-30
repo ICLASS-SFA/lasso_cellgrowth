@@ -16,7 +16,7 @@ from scipy import ndimage
 from scipy.ndimage import generate_binary_structure, binary_dilation,iterate_structure
 from skimage.measure import label
 from skimage.segmentation import expand_labels
-import cc3d
+# import cc3d
 from skimage.measure import centroid
 
 #-----------------------------------------------------------------------
@@ -629,55 +629,55 @@ def extract_env_prof(
                 iPres = PRESSURE.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 iMrho = Mrho.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 zTnum = da_cc.where(tracknumbermap_final == 1, drop=True).squeeze().data
-                iTnum = np.repeat(zTnum[np.newaxis,:,:],100,axis=0)
+#                 iTnum = np.repeat(zTnum[np.newaxis,:,:],100,axis=0)
                 # This array is going to be populated with the "z" loop
-                iCor1 = np.zeros_like(iW)
+#                 iCor1 = np.zeros_like(iW)
                                 
                 # Calculate new statistics of the cell
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore", category=RuntimeWarning)
                     
-                    ind = np.where(np.isnan(iTnum) == 1)
-                    iTnum[ind] = 0
-                    
-                    cell_cloudy = np.full(iW.shape, 0, dtype=np.float32)     # Create zero array
-                    icloud = (iW > W_up_thresh) & (iQ > Q_up_thresh)         # Find cloudy region
-                    cell_cloudy[icloud] = 1
-                    tracknumbermap_mod = (cell_cloudy + iTnum)               # Merge the cloudy regions with tmap
-                    tracknumbermap_mod[tracknumbermap_mod > 0] = 1           # binarize and re-label        
-                    tmap_label = label(tracknumbermap_mod)
-                    
-                    # This section ensures that we are only analyzing regions that correspond to our current reflectivity track
-                    # ... and not some neighboring track that has encroached on our territory.
-                    iW_mask = np.zeros_like(iW)
-                    ind = np.where(iTnum == 1)
-                    ind_conv = tmap_label[ind[0][0],ind[1][0]]
-                    ind = tmap_label == ind_conv
-                    iW_mask[ind] = 1
-                    
-                    # Z Loop to obtain vertically-aligned updrafts.
-                    for z in range(0, nz):
-                        dict_up = label_cores(iW[z,:,:]*iW_mask[z,:,:], W_up_thresh, iQ[z,:,:], Q_up_thresh, iMassFlux[z,:,:], ncores_min, min_core_npix, method='>')
-                        iCor1[z,:,:] = dict_up['core_label'] # EJ
-                        
-                    # You should have a fully populated 3D (x,y,z) iCor1 variable here
-                    # Then do the 3d labelling here.
-                    
-                    ibiry = np.zeros_like(iCor1).astype(int)
-                    ibiry[iCor1>0] = 1 # Converting the sort-of-3D core array to binary
-                    labels_out = cc3d.connected_components(ibiry,connectivity=6) # Find core array in 3D
-                    core_idx,core_sze = np.unique(labels_out, return_counts=True) # unique labels
-                    core_idx = np.delete(core_idx,0) # Remove the values corresponding to 0
-                    core_sze = np.delete(core_sze,0)                    
-                    sort_idx = core_sze.argsort()[::-1] # Ordering based on size of updraft (could change to VMF later if necessary)
-                    
-                    # This loop re-labels the 3D cores according to size of updraft
-                    iCore = np.zeros_like(iCor1)
-                    cc = 1
-                    for i in range(0,len(core_idx)):
-                        ind = np.where(labels_out == core_idx[sort_idx][i])
-                        iCore[ind] = cc
-                        cc = cc+1
+#                     ind = np.where(np.isnan(iTnum) == 1)
+#                     iTnum[ind] = 0
+#                     
+#                     cell_cloudy = np.full(iW.shape, 0, dtype=np.float32)     # Create zero array
+#                     icloud = (iW > W_up_thresh) & (iQ > Q_up_thresh)         # Find cloudy region
+#                     cell_cloudy[icloud] = 1
+#                     tracknumbermap_mod = (cell_cloudy + iTnum)               # Merge the cloudy regions with tmap
+#                     tracknumbermap_mod[tracknumbermap_mod > 0] = 1           # binarize and re-label        
+#                     tmap_label = label(tracknumbermap_mod)
+#                     
+#                     # This section ensures that we are only analyzing regions that correspond to our current reflectivity track
+#                     # ... and not some neighboring track that has encroached on our territory.
+#                     iW_mask = np.zeros_like(iW)
+#                     ind = np.where(iTnum == 1)
+#                     ind_conv = tmap_label[ind[0][0],ind[1][0]]
+#                     ind = tmap_label == ind_conv
+#                     iW_mask[ind] = 1
+#                     
+#                     # Z Loop to obtain vertically-aligned updrafts.
+#                     for z in range(0, nz):
+#                         dict_up = label_cores(iW[z,:,:]*iW_mask[z,:,:], W_up_thresh, iQ[z,:,:], Q_up_thresh, iMassFlux[z,:,:], ncores_min, min_core_npix, method='>')
+#                         iCor1[z,:,:] = dict_up['core_label'] # EJ
+#                         
+#                     # You should have a fully populated 3D (x,y,z) iCor1 variable here
+#                     # Then do the 3d labelling here.
+#                     
+#                     ibiry = np.zeros_like(iCor1).astype(int)
+#                     ibiry[iCor1>0] = 1 # Converting the sort-of-3D core array to binary
+#                     labels_out = cc3d.connected_components(ibiry,connectivity=6) # Find core array in 3D
+#                     core_idx,core_sze = np.unique(labels_out, return_counts=True) # unique labels
+#                     core_idx = np.delete(core_idx,0) # Remove the values corresponding to 0
+#                     core_sze = np.delete(core_sze,0)                    
+#                     sort_idx = core_sze.argsort()[::-1] # Ordering based on size of updraft (could change to VMF later if necessary)
+#                     
+#                     # This loop re-labels the 3D cores according to size of updraft
+#                     iCore = np.zeros_like(iCor1)
+#                     cc = 1
+#                     for i in range(0,len(core_idx)):
+#                         ind = np.where(labels_out == core_idx[sort_idx][i])
+#                         iCore[ind] = cc
+#                         cc = cc+1
 
                     for z in range(0, nz):                        
                         zW = iW[z,:,:]
@@ -694,7 +694,7 @@ def extract_env_prof(
                         zVapr = iVapr[z,:,:] #EJ
                         zTrho = iTrho[z,:,:] #EJ
                         zMrho = iMrho[z,:,:] #EJ
-                        zCore = iCore[z,:,:]
+#                         zCore = iCore[z,:,:]
                         
                         zz = z
                         if (z < 1): zz = 1
@@ -712,37 +712,37 @@ def extract_env_prof(
 #                         plt.colorbar(pm)
 #                         plt.savefig('/ccsopen/home/enochjo/test1.png')
                         
-#                         ind = np.where(np.isnan(zTnum) == 1)
-#                         zTnum[ind] = 0
+                        ind = np.where(np.isnan(zTnum) == 1)
+                        zTnum[ind] = 0
                         
-#                         cell_cloudy = np.full(zW.shape, 0, dtype=np.float32)     # Create zero array
-#                         icloud = (zW > W_up_thresh) & (zQ > Q_up_thresh)         # Find cloudy region
-#                         cell_cloudy[icloud] = 1                                  # Set cloudy region to 1
-#                         tracknumbermap_mod = (cell_cloudy + zTnum)               # Merge the cloudy regions with tmap
-#                         tracknumbermap_mod[tracknumbermap_mod > 0] = 1           # binarize and re-label        
-#                         tmap_label = label(tracknumbermap_mod)
-#                         
-#                         zW_mask = np.zeros_like(zW)
-#                         ind = np.where(zTnum == 1)
-#                         ind_conv = tmap_label[ind[0][0],ind[1][0]]
-#                         ind = tmap_label == ind_conv
-#                         zW_mask[ind] = 1
+                        cell_cloudy = np.full(zW.shape, 0, dtype=np.float32)     # Create zero array
+                        icloud = (zW > W_up_thresh) & (zQ > Q_up_thresh)         # Find cloudy region
+                        cell_cloudy[icloud] = 1                                  # Set cloudy region to 1
+                        tracknumbermap_mod = (cell_cloudy + zTnum)               # Merge the cloudy regions with tmap
+                        tracknumbermap_mod[tracknumbermap_mod > 0] = 1           # binarize and re-label        
+                        tmap_label = label(tracknumbermap_mod)
                         
-#                         # Label updraft cores
-#                         dict_up = label_cores(zW*zW_mask, W_up_thresh, zQ, Q_up_thresh, zMassFlux, ncores_min, min_core_npix, method='>')
-#                         ncores_all_up = dict_up['ncores_all']
-#                         ncores_up = dict_up['ncores_save']
-#                         core_npix_up = dict_up['core_npix']
-#                         core_numbers_up = dict_up['core_numbers']
-#                         core_label_up = dict_up['core_label']
+                        zW_mask = np.zeros_like(zW)
+                        ind = np.where(zTnum == 1)
+                        ind_conv = tmap_label[ind[0][0],ind[1][0]]
+                        ind = tmap_label == ind_conv
+                        zW_mask[ind] = 1
                         
-                        # Label updraft cores (EJ)
-                        core_numbers_up,core_npix_up = np.unique(zCore, return_counts=True)
-                        core_numbers_up = np.delete(core_numbers_up,0) # Excluding 0
-                        core_npix_up = np.delete(core_npix_up,0)
-                        ncores_all_up = len(core_numbers_up)
-                        ncores_up = np.nanmin([ncores_all_up, ncores_min])
-                        core_label_up = zCore
+                        # Label updraft cores
+                        dict_up = label_cores(zW*zW_mask, W_up_thresh, zQ, Q_up_thresh, zMassFlux, ncores_min, min_core_npix, method='>')
+                        ncores_all_up = dict_up['ncores_all']
+                        ncores_up = dict_up['ncores_save']
+                        core_npix_up = dict_up['core_npix']
+                        core_numbers_up = dict_up['core_numbers']
+                        core_label_up = dict_up['core_label']
+                        
+#                         # Label updraft cores (EJ)
+#                         core_numbers_up,core_npix_up = np.unique(zCore, return_counts=True)
+#                         core_numbers_up = np.delete(core_numbers_up,0) # Excluding 0
+#                         core_npix_up = np.delete(core_npix_up,0)
+#                         ncores_all_up = len(core_numbers_up)
+#                         ncores_up = np.nanmin([ncores_all_up, ncores_min])
+#                         core_label_up = zCore
                         
                         # Find Centroids here (EJ)
                         cpoints = np.zeros((len(core_numbers_up),2))
@@ -1382,7 +1382,7 @@ if __name__ == '__main__':
         careas = dsstats['core_area'].isel(times = 0).isel(tracks = idx_track) # We now want the core area
         # careas2 = dsstats['area'].isel(times = 0).isel(tracks = idx_track)
         # cradii = np.ceil( (np.sqrt(careas/np.pi).data + 5 )*1000/100).astype(int) # inflation
-        cradii = np.ceil(np.sqrt(careas/np.pi).data*1000/100).astype(int) # round up
+        cradii = np.ceil(np.sqrt(careas/np.pi).data*1000/100+1).astype(int) # round up
 #         import pdb;pdb.set_trace()
 
         if len(idx_track) > 0:

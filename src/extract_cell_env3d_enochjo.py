@@ -183,7 +183,7 @@ def extract_env_prof(
     # Get values from config
     nx = config['nx']
     ny = config['ny']
-    nz = config.get('nz', 100)
+    nz = config.get('nz', 100) # EJ
     sub_x = config.get('sub_x', 1)
     sub_y = config.get('sub_y', 1)
     DX = config.get('DX',100)
@@ -194,14 +194,8 @@ def extract_env_prof(
     met_exist = os.path.isfile(fname_met)
     cld_exist = os.path.isfile(fname_cld)
     pixel_exist = os.path.isfile(fname_pixel)
-    
-    # EJ (override met & cld files)
-    
-    cld_exist = False
 
     if pixel_exist:
-        # import pdb;pdb.set_trace()
-        # print(fname_pixel)
         dsp = xr.open_dataset(fname_pixel)
         nx_p = dsp.sizes['lon']
         ny_p = dsp.sizes['lat']
@@ -213,7 +207,6 @@ def extract_env_prof(
             # 'comp_ref': dsp['comp_ref'].attrs,
             'dbz_comp': dsp['dbz_comp'].attrs,
             'echotop10': dsp['echotop10'].attrs,
-            'wmax': '',
         }
     else:
         pixel_attrs = {
@@ -223,45 +216,44 @@ def extract_env_prof(
             'tracknumber': '',
             'dbz_comp': '',
             'echotop10': '',
-            'wmax': '',
         }
 
-    if wrfout_exist:
-        # Read WRF out file
-        print(fname_wrfout)
-        nc = Dataset(fname_wrfout)
-        # Domain dimension
-        # nx_d = nc.dimensions['west_east'].size
-        # ny_d = nc.dimensions['south_north'].size
-        # nz = nc.dimensions['bottom_top'].size
-        # 3D Variables
-        # height = wrf.getvar(nc, 'z', units='m')
-        # tk = wrf.getvar(nc, 'tk')
-        # pressure = wrf.getvar(nc, 'pressure')
-        # qv = wrf.getvar(nc, 'QVAPOR')
-        # rh = wrf.getvar(nc, 'rh')
-        # umet, vmet = wrf.getvar(nc, 'uvmet')
-        # wa = wrf.getvar(nc, 'wa')
-        # 2D variables
-        XLAT = wrf.getvar(nc, 'XLAT')
-        XLONG = wrf.getvar(nc, 'XLONG')
-        # pwv = wrf.getvar(nc, 'pw')
-        T2 = wrf.getvar(nc, 'T2')
-        Q2 = wrf.getvar(nc, 'Q2')
-        PSFC = wrf.getvar(nc, 'PSFC')
-        U10, V10 = wrf.getvar(nc, 'uvmet10')
-        # PBLH = wrf.getvar(nc, 'PBLH')
-        RAINNC = wrf.getvar(nc, 'RAINNC')
-        HGT = wrf.getvar(nc, 'HGT')
-        # Attributes
-        DX = nc.getncattr('DX')
-        DY = nc.getncattr('DY')
-        # Close WRF file
-        nc.close()
+    # if wrfout_exist:
+    #     # Read WRF out file
+    #     print(fname_wrfout)
+    #     nc = Dataset(fname_wrfout)
+    #     # Domain dimension
+    #     nx_d = nc.dimensions['west_east'].size
+    #     ny_d = nc.dimensions['south_north'].size
+    #     nz = nc.dimensions['bottom_top'].size
+    #     # 3D Variables
+    #     height = wrf.getvar(nc, 'z', units='m')
+    #     tk = wrf.getvar(nc, 'tk')
+    #     pressure = wrf.getvar(nc, 'pressure')
+    #     qv = wrf.getvar(nc, 'QVAPOR')
+    #     rh = wrf.getvar(nc, 'rh')
+    #     umet, vmet = wrf.getvar(nc, 'uvmet')
+    #     wa = wrf.getvar(nc, 'wa')
+    #     # 2D variables
+    #     XLAT = wrf.getvar(nc, 'XLAT')
+    #     XLONG = wrf.getvar(nc, 'XLONG')
+    #     pwv = wrf.getvar(nc, 'pw')
+    #     T2 = wrf.getvar(nc, 'T2')
+    #     Q2 = wrf.getvar(nc, 'Q2')
+    #     PSFC = wrf.getvar(nc, 'PSFC')
+    #     U10, V10 = wrf.getvar(nc, 'uvmet10')
+    #     PBLH = wrf.getvar(nc, 'PBLH')
+    #     RAINNC = wrf.getvar(nc, 'RAINNC')
+    #     HGT = wrf.getvar(nc, 'HGT')
+    #     # Attributes
+    #     DX = nc.getncattr('DX')
+    #     DY = nc.getncattr('DY')
+    #     # Close WRF file
+    #     nc.close()
 
     #     # Remove attributes ('projection' in particular conflicts with Xarray)
-        attrs_to_remove = ['FieldType', 'projection', 'MemoryOrder', 'stagger', 'coordinates', 'missing_value']
-        for key in attrs_to_remove:
+    #     attrs_to_remove = ['FieldType', 'projection', 'MemoryOrder', 'stagger', 'coordinates', 'missing_value']
+    #     for key in attrs_to_remove:
     #         pressure.attrs.pop(key, None)
     #         height.attrs.pop(key, None)
     #         tk.attrs.pop(key, None)
@@ -271,103 +263,50 @@ def extract_env_prof(
     #         vmet.attrs.pop(key, None)
     #         wa.attrs.pop(key, None)
     #         pwv.attrs.pop(key, None)
-            T2.attrs.pop(key, None)
-            Q2.attrs.pop(key, None)
-            PSFC.attrs.pop(key, None)
-            U10.attrs.pop(key, None)
-            V10.attrs.pop(key, None)
+    #         T2.attrs.pop(key, None)
+    #         Q2.attrs.pop(key, None)
+    #         PSFC.attrs.pop(key, None)
+    #         U10.attrs.pop(key, None)
+    #         V10.attrs.pop(key, None)
     #         PBLH.attrs.pop(key, None)
-            RAINNC.attrs.pop(key, None)
-            HGT.attrs.pop(key, None)
+    #         RAINNC.attrs.pop(key, None)
+    #         HGT.attrs.pop(key, None)
 
-    if met_exist:
-        print(fname_met)
-        dsm = xr.open_dataset(fname_met)
-        XLAT = dsm['XLAT'].squeeze()
-        XLONG = dsm['XLONG'].squeeze()
 
-    # met_exist = False # Override (EJ) We are not using this portion of the code.
     if met_exist:
         # Read Met file
         print(fname_met)
         dsm = xr.open_dataset(fname_met)
         nx_d = dsm.sizes['west_east']
         ny_d = dsm.sizes['south_north']
-        # nz = dsm.sizes['bottom_top']
-        nz = dsm.sizes['HAMSL']
+        nz = dsm.sizes['bottom_top']
         # 3D Variables
         height = dsm['HAMSL'].squeeze()
-        import pdb; pdb.set_trace()
         pressure = dsm['PRESSURE'].squeeze()
-        TH = dsm['THETA'].squeeze()
         # tk = dsm['TEMPERATURE'].squeeze()
+        TH = dsm['THETA'].squeeze()
         qv = dsm['QVAPOR'].squeeze()
-        qt = dsm['QT'].squeeze()
-        #rh = dsm['RH'].squeeze()
-        #umet = dsm['UMET'].squeeze()
-        #vmet = dsm['VMET'].squeeze()
+        # rh = dsm['RH'].squeeze()
+        # umet = dsm['UMET'].squeeze()
+        # vmet = dsm['VMET'].squeeze()
         u = dsm['U'].squeeze()
         v = dsm['V'].squeeze()
-        umet = (u.data[:,:,:,:-1]+u.data[:,:,:,1:])/2
-        vmet = (u.data[:,:,:-1,:]+u.data[:,:,1:,:])/2
-        
+        umet = (u[:,:,:,1:] + u[:,:,:,:-1])/2 # Interpolation Needed (EJ)
+        vmet = (v[:,:,1:,:] + v[:,:,:-1,:])/2
         wa = dsm['WA'].squeeze()
-
         # 2D variables
         XLAT = dsm['XLAT'].squeeze()
         XLONG = dsm['XLONG'].squeeze()
-        #T2 = dsm['T2'].squeeze()
-        #Q2 = dsm['Q2'].squeeze()
-        #PSFC = dsm['PSFC'].squeeze()
-        #U10 = dsm['UMET10'].squeeze()
-        #V10 = dsm['VMET10'].squeeze()
-        #RAINNC = dsm['RAINNC'].squeeze()
-        #HGT = dsm['HGT'].squeeze()
-        # # Attributes
-        # DX = dsm.attrs['DX']
-        # DY = dsm.attrs['DY']
-
-        # Remove attributes ('projection' in particular conflicts with Xarray)
-        attrs_to_remove = ['FieldType', 'projection', 'MemoryOrder', 'stagger', 'coordinates', 'missing_value']
-        for key in attrs_to_remove:
-            height.attrs.pop(key, None)
-            pressure.attrs.pop(key, None)
-            #tk.attrs.pop(key, None)
-            qv.attrs.pop(key, None)
-            qt.attrs.pop(key, None)
-            #rh.attrs.pop(key, None)
-            u.attrs.pop(key, None)
-            v.attrs.pop(key, None)
-            wa.attrs.pop(key, None)
-            # pwv.attrs.pop(key, None)
-            #T2.attrs.pop(key, None)
-            #Q2.attrs.pop(key, None)
-            #PSFC.attrs.pop(key, None)
-            #U10.attrs.pop(key, None)
-            #V10.attrs.pop(key, None)
-            # PBLH.attrs.pop(key, None)
-            #RAINNC.attrs.pop(key, None)
-            #HGT.attrs.pop(key, None)
-
-        # Save variable attributes
-        pressure_attrs = pressure.attrs
-        height_attrs = height.attrs
-        #temperature_attrs = tk.attrs
-        qv_attrs = qv.attrs
-        qt_attrs = qt.attrs
-        #rh_attrs = rh.attrs
-        u_attrs = u.attrs
-        v_attrs = v.attrs
-        w_attrs = wa.attrs
-        #T2_attrs = T2.attrs
-        #Q2_attrs = Q2.attrs
-        #PSFC_attrs = PSFC.attrs
-        #U10_attrs = U10.attrs
-        #V10_attrs = V10.attrs
-        #RAINNC_attrs = RAINNC.attrs
-        #HGT_attrs = HGT.attrs
+        # T2 = dsm['T2'].squeeze()
+        # Q2 = dsm['Q2'].squeeze()
+        # PSFC = dsm['PSFC'].squeeze()
+        # U10 = dsm['UMET10'].squeeze()
+        # V10 = dsm['VMET10'].squeeze()
+        # RAINNC = dsm['RAINNC'].squeeze()
+        # HGT = dsm['HGT'].squeeze()
         
-        tk = TH*(presure/1000)**(2/7) # Remember that PRESSURE is in hPa
+        # Calculate Temperature (AMS)
+        tk = TH*(pressure/1000)**(2/7) # Remember that PRESSURE is in hPa
     
         # Calculate Saturated Vapor Pressure (NWS)
         es = 6.11*10**((7.5*tk)/(237.3+tk))
@@ -377,26 +316,67 @@ def extract_env_prof(
         
         # Calculate RH
         rh = qv/ws*100
+        
+        # # Attributes
+        # DX = dsm.attrs['DX']
+        # DY = dsm.attrs['DY']
+
+        # Remove attributes ('projection' in particular conflicts with Xarray)
+        attrs_to_remove = ['FieldType', 'projection', 'MemoryOrder', 'stagger', 'coordinates', 'missing_value']
+        for key in attrs_to_remove:
+            height.attrs.pop(key, None)
+            pressure.attrs.pop(key, None)
+            tk.attrs.pop(key, None)
+            qv.attrs.pop(key, None)
+            rh.attrs.pop(key, None)
+            umet.attrs.pop(key, None)
+            vmet.attrs.pop(key, None)
+            wa.attrs.pop(key, None)
+            # pwv.attrs.pop(key, None)
+            # T2.attrs.pop(key, None)
+            # Q2.attrs.pop(key, None)
+            # PSFC.attrs.pop(key, None)
+            # U10.attrs.pop(key, None)
+            # V10.attrs.pop(key, None)
+            # PBLH.attrs.pop(key, None)
+            # RAINNC.attrs.pop(key, None)
+            # HGT.attrs.pop(key, None)
+
+        # Save variable attributes
+        pressure_attrs = pressure.attrs
+        height_attrs = height.attrs
+        temperature_attrs = tk.attrs
+        qv_attrs = qv.attrs
+        rh_attrs = rh.attrs
+        u_attrs = umet.attrs
+        v_attrs = vmet.attrs
+        w_attrs = wa.attrs
+        # T2_attrs = T2.attrs
+        # Q2_attrs = Q2.attrs
+        # PSFC_attrs = PSFC.attrs
+        # U10_attrs = U10.attrs
+        # V10_attrs = V10.attrs
+        # RAINNC_attrs = RAINNC.attrs
+        # HGT_attrs = HGT.attrs
 
     else:
         # Create empty attributes
         pressure_attrs = ''
         height_attrs = ''
-        #temperature_attrs = ''
+        temperature_attrs = ''
         qv_attrs = ''
-        qt_attrs = ''
         rh_attrs = ''
         u_attrs = ''
         v_attrs = ''
         w_attrs = ''
         # PWV_attrs = ''
-        #T2_attrs = ''
-        #Q2_attrs = ''
-        #PSFC_attrs = ''
-        #U10_attrs = ''
-        #V10_attrs = ''
-        #RAINNC_attrs = ''
-        #HGT_attrs = ''
+        # T2_attrs = ''
+        # Q2_attrs = ''
+        # PSFC_attrs = ''
+        # U10_attrs = ''
+        # V10_attrs = ''
+        # RAINNC_attrs = ''
+        # HGT_attrs = ''
 
 
     if cld_exist:
@@ -464,11 +444,10 @@ def extract_env_prof(
         'DY': DY_sub,
     }
     # 3D variables
-#     out_Z = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-#     out_P = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-#     out_T = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_Z = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_P = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_T = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
     out_QV = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_QT = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
     out_RH = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
     out_U = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
     out_V = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
@@ -481,24 +460,23 @@ def extract_env_prof(
     # out_LNB = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
     # out_MUCAPE = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
     # out_MUCIN = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-#     out_LWP = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-#     out_IWP = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-#     out_PWV = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_T2 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_Q2 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_PSFC = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_U10 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_V10 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_LWP = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_IWP = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_PWV = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_T2 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_Q2 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_PSFC = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_U10 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_V10 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
     # out_PBLH = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_RAINNC = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_HGT = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_RAINNC = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_HGT = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
     # 2D cell variables
     out_convcore = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
     out_convmask = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
     out_tnmask = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
     out_refl = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
     out_eth10 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_wmax = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
 
     out_dict3d = None
     out_dict2d = None
@@ -514,7 +492,7 @@ def extract_env_prof(
             center = (_lat[itrack], _lon[itrack])
 
             # Tracking pixel file
-            if (pixel_exist == True) & (met_exist == True) & (wrfout_exist == True):
+            if (pixel_exist == True) & (met_exist == True):
                 # lat_idx, lon_idx = location_to_idx(dsp['latitude'], dsp['longitude'], center)
                 lat_idx, lon_idx = location_to_idx(XLAT.data, XLONG.data, center)
                 _convcore = pad_array(dsp['conv_core'].astype('float32').squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
@@ -522,7 +500,6 @@ def extract_env_prof(
                 _tnmask = pad_array(dsp['tracknumber'].astype('float32').squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
                 _refl = pad_array(dsp['dbz_comp'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
                 _eth10 = pad_array(dsp['echotop10'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
-                _wmax = pad_array(wa.max(dim='HAMSL').astype('float32').squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
 
                 iny, inx = _refl.shape
                 if (iny == out_ny) & (inx == out_nx):
@@ -531,26 +508,25 @@ def extract_env_prof(
                     out_tnmask[itrack, :, :] = _tnmask
                     out_refl[itrack, :, :] = _refl
                     out_eth10[itrack, :, :] = _eth10
-                    out_wmax[itrack, :, :] = _wmax
 
-#             # Met file
-#             if met_exist:
-#                 lat_idx, lon_idx = location_to_idx(dsm['XLAT'], dsm['XLONG'], center)
-#                 _LCL = pad_array(dsm['LCL'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
-#                 _LFC = pad_array(dsm['LFC'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
-#                 _LPL = pad_array(dsm['LPL'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
-#                 _LNB = pad_array(dsm['LNB'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
-#                 _MUCAPE = pad_array(dsm['MUCAPE'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
-#                 _MUCIN = pad_array(dsm['MUCIN'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
-# 
-#                 iny, inx = _LCL.shape
-#                 if (iny == out_ny) & (inx == out_nx):
-#                     out_LCL[itrack, :, :] = _LCL
-#                     out_LFC[itrack, :, :] = _LFC
-#                     out_LPL[itrack, :, :] = _LPL
-#                     out_LNB[itrack, :, :] = _LNB
-#                     out_MUCAPE[itrack, :, :] = _MUCAPE
-#                     out_MUCIN[itrack, :, :] = _MUCIN
+            # # Met file
+            # if met_exist:
+            #     lat_idx, lon_idx = location_to_idx(dsm['XLAT'], dsm['XLONG'], center)
+            #     _LCL = pad_array(dsm['LCL'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
+            #     _LFC = pad_array(dsm['LFC'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
+            #     _LPL = pad_array(dsm['LPL'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
+            #     _LNB = pad_array(dsm['LNB'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
+            #     _MUCAPE = pad_array(dsm['MUCAPE'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
+            #     _MUCIN = pad_array(dsm['MUCIN'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
+
+            #     iny, inx = _LCL.shape
+            #     if (iny == out_ny) & (inx == out_nx):
+            #         out_LCL[itrack, :, :] = _LCL
+            #         out_LFC[itrack, :, :] = _LFC
+            #         out_LPL[itrack, :, :] = _LPL
+            #         out_LNB[itrack, :, :] = _LNB
+            #         out_MUCAPE[itrack, :, :] = _MUCAPE
+            #         out_MUCIN[itrack, :, :] = _MUCIN
 
             # Cloud file
             if cld_exist:
@@ -566,65 +542,62 @@ def extract_env_prof(
                     out_PWV[itrack, :, :] = _PWV
 
             # WRF out file
-            if wrfout_exist:
-#             if met_exist:
+            # if wrfout_exist:
+            if met_exist:
                 # Find closet lat/lon index to track center location                
                 lat_idx, lon_idx = location_to_idx(XLAT.data, XLONG.data, center)
 
                 # Extract and pad 3D variables
-                #_tk = pad_array(tk.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                #_Z = pad_array(height.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                #_pressure = pad_array(pressure.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                _tk = pad_array(tk.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                _Z = pad_array(height.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                _pressure = pad_array(pressure.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _qv = pad_array(qv.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _qt = pad_array(qt.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _rh = pad_array(rh.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _u = pad_array(umet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _v = pad_array(vmet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _w = pad_array(wa.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 # Extract and pad 2D variables
                 # _PWV = pad_array(pwv.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _T2 = pad_array(T2.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _Q2 = pad_array(Q2.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _PSFC = pad_array(PSFC.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _U10 = pad_array(U10.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _V10 = pad_array(V10.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                # _T2 = pad_array(T2.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                # _Q2 = pad_array(Q2.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                # _PSFC = pad_array(PSFC.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                # _U10 = pad_array(U10.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                # _V10 = pad_array(V10.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 # _PBLH = pad_array(PBLH.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _RAINNC = pad_array(RAINNC.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _HGT = pad_array(HGT.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                # _RAINNC = pad_array(RAINNC.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                # _HGT = pad_array(HGT.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
 
-                inz, iny, inx = _qt.shape
+                inz, iny, inx = _Z.shape
                 if (iny == out_ny) & (inx == out_nx):
                     # 3D
-                    #out_T[itrack, :, :, :] = _tk
-                    #out_Z[itrack, :, :, :] = _Z
-                    #out_P[itrack, :, :, :] = _pressure
+                    out_T[itrack, :, :, :] = _tk
+                    out_Z[itrack, :, :, :] = _Z
+                    out_P[itrack, :, :, :] = _pressure
                     out_QV[itrack, :, :, :] = _qv
-                    out_QT[itrack, :, :, :] = _qt
-                    #out_RH[itrack, :, :, :] = _rh
-                    #out_U[itrack, :, :, :] = _u
-                    #out_V[itrack, :, :, :] = _v
+                    out_RH[itrack, :, :, :] = _rh
+                    out_U[itrack, :, :, :] = _u
+                    out_V[itrack, :, :, :] = _v
                     out_W[itrack, :, :, :] = _w
                     # 2D
                     # out_PWV[itrack, :, :] = _pwv
-                    #out_T2[itrack, :, :] = _T2
-                    #out_Q2[itrack, :, :] = _Q2
-                    #out_PSFC[itrack, :, :] = _PSFC
-                    #out_U10[itrack, :, :] = _U10
-                    #out_V10[itrack, :, :] = _V10
+                    # out_T2[itrack, :, :] = _T2
+                    # out_Q2[itrack, :, :] = _Q2
+                    # out_PSFC[itrack, :, :] = _PSFC
+                    # out_U10[itrack, :, :] = _U10
+                    # out_V10[itrack, :, :] = _V10
                     # out_PBLH[itrack, :, :] = _PBLH
-                    #out_RAINNC[itrack, :, :] = _RAINNC
-                    #out_HGT[itrack, :, :] = _HGT
+                    # out_RAINNC[itrack, :, :] = _RAINNC
+                    # out_HGT[itrack, :, :] = _HGT
 
         # Put output variables to a dictionary for easier acceess
         out_dict3d = {
-#             'pressure': out_P,
-#             'height': out_Z,
-#             'temperature': out_T,
+            'pressure': out_P,
+            'height': out_Z,
+            'temperature': out_T,
             'qv': out_QV,
-            'qt': out_QT,
-#             'rh': out_RH,
-#             'u': out_U,
-#             'v': out_V,
+            'rh': out_RH,
+            'u': out_U,
+            'v': out_V,
             'w': out_W,
         }
         out_dict2d = {
@@ -641,40 +614,38 @@ def extract_env_prof(
             # 'comp_ref': out_refl,
             'dbz_comp': out_refl,
             'echotop10': out_eth10,
-            'wmax': out_wmax,
-#             'LWP': out_LWP,
-#             'IWP': out_IWP,
-#             'PWV': out_PWV,
-#             'T2': out_T2,
-#             'Q2': out_Q2,
-#             'PSFC': out_PSFC,
+            # 'LWP': out_LWP,
+            # 'IWP': out_IWP,
+            # 'PWV': out_PWV,
+            # 'T2': out_T2,
+            # 'Q2': out_Q2,
+            # 'PSFC': out_PSFC,
             # 'U10': out_U10,
             # 'V10': out_V10,
             # 'PBLH': out_PBLH,
-#             'RAINNC': out_RAINNC,
-#             'HGT': out_HGT,
+            # 'RAINNC': out_RAINNC,
+            # 'HGT': out_HGT,
         }
         out_dict_attrs = {
-#             'pressure': pressure_attrs,
-#             'height': height_attrs,
-#             'temperature': temperature_attrs,
+            'pressure': pressure_attrs,
+            'height': height_attrs,
+            'temperature': temperature_attrs,
             'qv': qv_attrs,
-            'qt': qt_attrs,
-#             'rh': rh_attrs,
-#             'u': u_attrs,
-#             'v': v_attrs,
+            'rh': rh_attrs,
+            'u': u_attrs,
+            'v': v_attrs,
             'w': w_attrs,
-#             # 'PWV': PWV_attrs,
-#             'T2': T2_attrs,
-#             'Q2': Q2_attrs,
-#             'PSFC': PSFC_attrs,
-#             'U10': U10_attrs,
-#             'V10': V10_attrs,
-#             # 'PBLH': PBLH_attrs,
-#             'RAINNC': RAINNC_attrs,
-#             'HGT': HGT_attrs,
-#             # 'DX': DX_sub,
-#             # 'DY': DY_sub,
+            # 'PWV': PWV_attrs,
+            # 'T2': T2_attrs,
+            # 'Q2': Q2_attrs,
+            # 'PSFC': PSFC_attrs,
+            # 'U10': U10_attrs,
+            # 'V10': V10_attrs,
+            # 'PBLH': PBLH_attrs,
+            # 'RAINNC': RAINNC_attrs,
+            # 'HGT': HGT_attrs,
+            # 'DX': DX_sub,
+            # 'DY': DY_sub,
         }
         # Merge attribute dictionaries
         # new_attrs = {**pixel_attrs, **met_attrs}
@@ -743,7 +714,7 @@ if __name__ == '__main__':
     # Output statistics filename
     # track_start_str = str(track_start).zfill(digits)
     # output_filename = f'{output_path}stats_3d_env_{startdate}_{enddate}_t{track_start_str}.nc'
-    output_filename = f'{output_path}stats_3d_actual_env_{startdate}_{enddate}.nc'
+    output_filename = f'{output_path}stats_3d_env_{startdate}_{enddate}.nc'
     os.makedirs(output_path, exist_ok=True)
 
     # Track statistics file dimension names
@@ -782,18 +753,19 @@ if __name__ == '__main__':
 
     # Convert time resolution of data to minutes
     time_res_sec = np.round(time_res_hour * 60 * 60).astype(int) # EJ
-    time_res_sec = 300 # EJ Override to reduce memory requirements
-    
+    ntimes_per_hour = np.round(60. / time_res_sec).astype(int) # EJ
+    # time_res_min = np.round(time_res_hour * 60).astype(int)
     # ntimes_per_hour = np.round(60. / time_res_min).astype(int)
 
     # Select initiation time, and round to the nearest minute
-    time0 = stats_basetime.isel(times=0).dt.round('S')
+    time0 = stats_basetime.isel(times=0).dt.round('min')
     # Get initiation lat/lon    
     stats_lon0 = stats_lon.isel(times=0).data
     stats_lat0 = stats_lat.isel(times=0).data
 
     # Make an array to store the full time series
-    ntimes_prior =  np.ceil(nminutes * 60 / time_res_sec).astype(int) # EJ
+    ntimes_prior = np.ceil(nminutes * 60 / time_res_sec).astype(int) # EJ
+    # ntimes_prior = np.ceil(nhours / time_res_hour).astype(int)
     # ntimes_full = np.ceil(ntimes_prior + ntimes_max).astype(int)
     ntimes_full = np.ceil(ntimes_prior + 1).astype(int)
     # 
@@ -808,14 +780,14 @@ if __name__ == '__main__':
     stats_mins = stats_basetime.data
     stats_lons = stats_lon.data
     stats_lats = stats_lat.data
-    
-#     import pdb; pdb.set_trace()
 
     # Loop over each track
     for itrack in range(0, ntracks):
         # Calculate start/end times prior to initiation
         # time0_start = stats_hour0[itrack] - pd.offsets.Hour(nhours-1)
         # time0_end = stats_hour0[itrack] - pd.offsets.Hour(1)
+        # time0_start = stats_min0[itrack] - pd.offsets.Hour(nhours)
+        # time0_end = stats_min0[itrack] - pd.offsets.Minute(time_res_min)
         time0_start = stats_min0[itrack] - pd.offsets.Minute(nminutes) # EJ
         time0_end = stats_min0[itrack] - pd.offsets.Second(time_res_sec) # EJ
         # Generate hourly time series leading up to initiation
@@ -842,7 +814,7 @@ if __name__ == '__main__':
         full_lons[itrack,ntimes_prior] = stats_lons[itrack,0]
         # full_lats[itrack,ntimes_prior:] = stats_lats[itrack,:]
         # full_lons[itrack,ntimes_prior:] = stats_lons[itrack,:]
-    # import pdb;pdb.set_trace()
+
     # # Convert to Xarray DataArray
     # coord_relativetimes = np.arange(-ntimes_prior, ntimes_max, 1)
     coord_relativetimes = np.arange(-ntimes_prior, 1, 1)
@@ -869,6 +841,7 @@ if __name__ == '__main__':
     uniq_basetimes = np.array([tt.tolist()/1e9 for tt in uniq_times])
     # import pdb; pdb.set_trace()
 
+    
 
     ##############################################################
     # Call function to calculate statistics
@@ -885,10 +858,10 @@ if __name__ == '__main__':
 
     # Loop over each pixel-file and call function to calculate
     for ifile in range(nfiles):
-    # for ifile in range(500, 502):
+    # for ifile in range(0, 12):
         # Convert time string to match different files
         itime = uniq_times[ifile]
-        itime_pixel = pd.to_datetime(str(itime)).strftime('%Y%m%d_%H%M%S')
+        itime_pixel = pd.to_datetime(str(itime)).strftime('%Y%m%d_%H%M')
         itime_wrfout = pd.to_datetime(str(itime)).strftime('%Y-%m-%d_%H_%M_%S')
         itime_met = pd.to_datetime(str(itime)).strftime('%Y%m%d.%H%M%S')
         itime_cld = pd.to_datetime(str(itime)).strftime('%Y%m%d.%H%M%S')
@@ -902,8 +875,6 @@ if __name__ == '__main__':
 
         # Get all MCS tracks/times indices in the same time (file)
         idx_track, idx_time = np.where(full_basetimes == uniq_basetimes[ifile])
-        
-        # import pdb;pdb.set_trace()
 
         if len(idx_track) > 0:
             # Save matchindices for the current pixel file to the overall list
@@ -943,7 +914,7 @@ if __name__ == '__main__':
             else:
                 print(f'Invalid parallization option run_parallel: {run_parallel}')
 
-    #import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     
     final_results = results
 
@@ -1016,19 +987,7 @@ if __name__ == '__main__':
                 for ivar in var_names2d:
                     if iVAR2d[ivar].ndim == 3:
                         out_dict[ivar][trackindices,timeindices,:,:] = iVAR2d[ivar]
-    
-#     import pdb;pdb.set_trace()
-#     
-#     from matplotlib import pyplot as plt
-#     # tmp1 = np.nanmax(out_dict['tracknumber'][:,:,:,:],axis=(0,1))
-#     # tmp1 = np.nanmax(out_dict['comp_ref'][:,:,:,:],axis=(0,1))
-#     tmp1 = np.nanmax(out_dict['wmax'][:,:,:,:],axis=(0,1))
-#     # tmp1 = np.nanmax(out_dict['qt'][:,:,:,:],axis=(0,1,2))
-#     f1 = plt.figure(figsize=(5, 5))
-#     plt.pcolormesh(tmp1)
-#     plt.savefig('/ccsopen/home/enochjo/test1.png')
-    
-    
+
     # Define a dataset containing all PF variables
     var_dict = {}
     print(f'Saving data to output arrays ...')
