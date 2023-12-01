@@ -153,13 +153,6 @@ def calc_envs_track(in_filename, tracknumber, config):
     rh = ds['rh']
     height = ds['height']
     pressure = ds['pressure'] * 100  # Convert unit to Pa
-    
-    
-    # Assume temp is the xarray of Temperature (x,y,z)
-    temp_stacked = pressure.stack(xy=('times','x', 'y')) # stack x and y into one dimension
-    temp_dropped = temp_stacked.dropna(dim='z') # drop NaN values along z dimension
-    temp_shifted = temp_dropped.unstack('xy') # unstack x and y back to original shape
-    
     # u = ds['u']
     # v = ds['v']
     # w = ds['w']
@@ -210,27 +203,8 @@ def calc_envs_track(in_filename, tracknumber, config):
             # Interpolate to specific levels
             # u_4km[itime, :, :] = interplevel(_u, _z, 4000.)
             # v_4km[itime, :, :] = interplevel(_v, _z, 4000.)
-            # Pressure level variables (pressure unit is Pa, convert it to hPa)
-            __qv = np.zeros_like(_qv)
-            __pressure = np.zeros_like(_pressure)
-            qvd = _qv.data
-            prd = _pressure.data
-            
-            ix = _qv.shape[2]
-            iy = _qv.shape[1]
-            for ii in range(ix):
-                for jj in range(iy):
-                    ind = np.where(np.isnan(_qv[:,jj,ii]) == 1)[0]
-                    __qv[:-ind[-1]-1,jj,ii] = qvd[ind[-1]+1:,jj,ii]
-                    __pressure[:-ind[-1]-1,jj,ii] = prd[ind[-1]+1:,jj,ii]
-                    
-            
-            tqv = xr.DataArray(__qv,dims=_qv.dims,coords=_qv.coords)
-            tpr = xr.DataArray(__pressure,dims=_qv.dims,coords=_qv.coords)
-            import pdb; pdb.set_trace()
-            
-            qv_pres = interplevel(tqv, tpr/100, level_pres)
-#             qv_pres = interplevel(_qv, _pressure/100, level_pres)
+            # Pressure level variables (pressure unit is Pa, convert it to hPa)                    
+            qv_pres = interplevel(_qv, _pressure/100, level_pres)
             qv_925mb[itime, :, :] = qv_pres.sel(level=925)
             qv_850mb[itime, :, :] = qv_pres.sel(level=850)
             qv_700mb[itime, :, :] = qv_pres.sel(level=700)
@@ -244,19 +218,8 @@ def calc_envs_track(in_filename, tracknumber, config):
             rh_600mb[itime, :, :] = rh_pres.sel(level=600)
             rh_500mb[itime, :, :] = rh_pres.sel(level=500)
 
-            # Call AFWA diagnostics on data filtered below surface
-#             import pdb; pdb.set_trace()
-            # Since _z has been converted from a 1D variable, need to add nans where appropriate
-            ind = np.isnan(_tk) == 1
-            __z = _z.data
-            __z[ind] = np.NaN
-#             __rh = _rh.data
-#             __rh = __rh*0+0.8
-            
-            _tk.attrs = {'description': 'temperature', 'units': 'K'}
-            _rh.attrs = {'description': 'relative humidity', 'units': '%'}
-            __z.attrs = {'description': 'model height - [MSL] (mass grid)', 'units': 'm'}
-            ostat, _mucape, _mucin, _lcl, _lfc, _el, _lpl = afwa.diag_functions.diag_map(_tk, _rh, _pressure, __z, 1, 1)
+            # Call AFWA diagnostics on data filtered below surface            
+            ostat, _mucape, _mucin, _lcl, _lfc, _el, _lpl = afwa.diag_functions.diag_map(_tk, _rh, _pressure, _z, 1, 1)
             if ostat == 1:
                 # Replace undefined values with NaN
                 _mucape[_mucape < 0] = np.NaN
@@ -529,7 +492,6 @@ if __name__ == "__main__":
 
     # 3D environment filename
     file_env3d = f'{input_path}preCI_3d_env_{startdate}_{enddate}.nc'
-#     file_env3d = '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/meso/20181129/gefs00/base/d2_15min/stats/stats_3d_env_20181129.1200_20181130.0000.nc'
     print(f'Input: {file_env3d}')
 
     # Output filename
