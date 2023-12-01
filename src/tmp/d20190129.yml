@@ -1,0 +1,75 @@
+---
+# Run in parallel
+run_parallel: 1
+# Number of workers for Dask
+# n_workers: 8 # For hi-mem corestats
+# n_workers: 8 # For hi-mem env3d
+n_workers: 8 # For 3d environment output
+# n_workers: 12 # For plotting
+# n_workers: 5
+# Threads per worker
+threads_per_worker: 1
+dask_tmp_dir: '/tmp'
+
+# wrfout domain name (d01: 500m, d02: 100m)
+domain: 'd02'
+# Resolution: 'meso' or 'les'
+resolution: 'les'
+# Maximum time difference allowed to match the datasets
+time_window: 5  # [second]
+# Input/output file locations
+# Track stats directory
+
+startdate: '20190129.1500'
+enddate: '20190129.1800'
+ensmember: 'eda09'
+stats_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/tracks/stats/'
+pixelfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/tracks/celltracking/'
+metfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/subset_d4/'
+entfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/entrain/'
+wrfout_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/out_d4/'
+output_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/tracks/stats/'
+pixel_filebase: 'regrid_celltracks_'
+met_filebase: 'corlasso.cldhamsl.2019012900eda09d4.base.M1.m1.'
+ent_filebase: 'entdvdt.cldhamsl.2019012900eda09d4.base.M1.m1.' 
+
+# Raw WRF output file directory
+wrfout_path1: '/gpfs/wolf/cli120/proj-shared/sey/cacti/wrf/prod/'
+wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/les/'
+# Output file directory
+cld_filebase: 'corlasso.cldhamsl.STARTDATE00ENSMEMBERd4.base.M1.m1.'
+
+
+# W thresholds to define cores
+W_up_thresh: 2.0  # [m/s]
+W_down_thresh: -1.0  # [m/s]
+# Hydrometeor thresholds to define moist updrafts (EJ)
+Q_up_thresh: 0.00001 # 0.01/1000  # [kg/kg]
+Q_down_thresh: 0.00005 # 0.05/1000  # [kg/kg]
+# Minimum pixel count for a core
+min_core_npix: 9
+# Number of cores to save per cell
+ncores_min: 6 # was 35 then 12, then 1, then back to 6
+# Number of hours prior to initiation to extract environment
+nhours: 1 # Not used anymore in env3d
+nminutes: 30
+# Set max number of times to keep for each track
+# ntimes_max: 40
+# Set domain size to extract environment
+# Number of grid point in lon/lat dimension [center-nx, center+nx], [center-ny, center+ny]
+# nx: 100
+# ny: 100
+nx: 50
+ny: 50
+# Sub-sample spatial grid (2: sample every 2 grids)
+sub_x: 10
+sub_y: 10
+
+list_var_pass:
+  - 'conv_core'
+  - 'conv_mask'
+  - 'dbz_comp'
+  - 'echotop10'
+
+
+# radii_expand: [1,2,3,4,5]
