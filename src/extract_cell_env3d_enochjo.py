@@ -183,7 +183,7 @@ def extract_env_prof(
     # Get values from config
     nx = config['nx']
     ny = config['ny']
-    nz = config.get('nz', 100) # EJ
+    nz = config.get('nz', 149)
     sub_x = config.get('sub_x', 1)
     sub_y = config.get('sub_y', 1)
     DX = config.get('DX',100)
@@ -279,25 +279,31 @@ def extract_env_prof(
         dsm = xr.open_dataset(fname_met)
         nx_d = dsm.sizes['west_east']
         ny_d = dsm.sizes['south_north']
-        # nz = dsm.sizes['bottom_top']
-        nz = dsm.sizes['HAMSL'] # EJ
+        nz = dsm.sizes['bottom_top']
         # 3D Variables
-        pressure = dsm['PRESSURE'].squeeze()
+        pressure = dsm['P'].squeeze()+dsm['PB'].squeeze()/100
         # tk = dsm['TEMPERATURE'].squeeze()
-        TH = dsm['THETA'].squeeze()
+        TH = dsm['T'].squeeze()+dsm['T00'].squeeze()
         qv = dsm['QVAPOR'].squeeze()
-        tmp = dsm['HAMSL'].squeeze().load().data # Loading to memory
-        tmp = np.repeat(tmp[:,np.newaxis],ny_d,axis=1) # Repeating across y dim
-        tmp = np.repeat(tmp[:,:,np.newaxis],nx_d,axis=2) # Repeating across x dim
-        height = xr.DataArray(tmp,dims=qv.dims,coords=qv.coords,attrs={'units': 'm', 'stagger': ''})
+        hstag = dsm['PH'].squeeze()+dsm['PHB'].squeeze()
+        height = ( hstag.data[1:,:,:]+hstag.data[:-1,:,:] )/(2*9.81)
+        height = xr.DataArray(height, coords=qv.coords, dims=qv.dims)
+        # import pdb; pdb.set_trace()
+        # Comparing between calculated and actual wrf-python values
+        # Found that LASSO-CACTI was using 290K base temp while wrf-python assumed 300K
+        # import wrf
+        # from netCDF4 import Dataset
+        # nc = Dataset(fname_met)
+        # TH2 = wrf.getvar(nc, 'theta', squeeze=True)
+        # height2 = wrf.getvar(nc, 'height', squeeze=True)  
+        # pressure2 = wrf.getvar(nc, 'pressure', squeeze=True) 
+        
         # rh = dsm['RH'].squeeze()
         # umet = dsm['UMET'].squeeze()
         # vmet = dsm['VMET'].squeeze()
-        # iu = dsm['U'].squeeze()
-        # iv = dsm['V'].squeeze()
-        # umet = (iu[:,:,1:] + iu[:,:,:-1])/2 # Interpolation Needed (EJ)
-        # vmet = (iv[:,1:,:] + iv[:,:-1,:])/2
-        wa = dsm['WA'].squeeze()
+        wastag = dsm['W'].squeeze()
+        wa = ( wastag.data[1:,:,:]+wastag.data[:-1,:,:] )/2
+        wa = xr.DataArray(wa, coords=qv.coords, dims=qv.dims)
         # 2D variables
         XLAT = dsm['XLAT'].squeeze()
         XLONG = dsm['XLONG'].squeeze()
@@ -310,13 +316,15 @@ def extract_env_prof(
         # HGT = dsm['HGT'].squeeze()
         
         # Calculate Temperature (AMS)
-        tk = TH*(pressure/1000)**(2/7) # Remember that PRESSURE is in hPa
+        tk = TH*(pressure/1000)**(2/7)
     
         # Calculate Saturated Vapor Pressure (NWS)
-        es = 6.11*10**((7.5*tk)/(237.3+tk))
+        # Need to convert K to C
+        es = 6.11*10**((7.5*(tk-273.15))/(237.3+(tk-273.15)))
     
         # Calculate Saturated Mixing Ratio (NWS)
-        ws = 621.97*(es/(pressure-es))
+        # Dividing by 1000 to convert to kg/kg
+        ws = 621.97*(es/( pressure - es ))/1000
         
         # Calculate RH
         rh = qv/ws*100
@@ -687,6 +695,7 @@ if __name__ == '__main__':
     pixel_filebase = config['pixel_filebase']
     wrfout_path1 = config['wrfout_path1']
     wrfout_path2 = config['wrfout_path2']
+    wrfout_path = config['wrfout_path']
     nhours = config['nhours']
     nminutes = config['nminutes']
     # ntimes_max = config['ntimes_max']
@@ -869,12 +878,13 @@ if __name__ == '__main__':
         itime_wrfout = pd.to_datetime(str(itime)).strftime('%Y-%m-%d_%H_%M_%S')
         itime_met = pd.to_datetime(str(itime)).strftime('%Y%m%d.%H%M%S')
         itime_cld = pd.to_datetime(str(itime)).strftime('%Y%m%d.%H%M%S')
-
+        
         # File names
         fname_pixel = f'{pixelfile_path}{pixel_filebase}{itime_pixel}.nc'
         # fname_wrfout = f'{wrfout_path}wrfout_{domain}_{itime_wrfout}'
         # New MET file time format: yyyymmdd.hhmmss
-        fname_met = f'{metfile_path}{met_filebase}{itime_met}.nc'
+        # fname_met = f'{metfile_path}{met_filebase}{itime_met}.nc'
+        fname_met = f'{wrfout_path}wrfout_{domain}_{itime_wrfout}' # EJ
         fname_cld = f'{metfile_path}{cld_filebase}{itime_met}.nc'
 
         # Get all MCS tracks/times indices in the same time (file)
