@@ -1,10 +1,10 @@
 ---
 # Run in parallel
-run_parallel: 0
+run_parallel: 1
 # Number of workers for Dask
 # n_workers: 8 # For hi-mem corestats
 # n_workers: 8 # For hi-mem env3d
-n_workers: 8 # For 3d environment output
+n_workers: 14 # For 3d environment output
 # n_workers: 12 # For plotting
 # n_workers: 5
 # Threads per worker
@@ -20,29 +20,29 @@ time_window: 5  # [second]
 # Input/output file locations
 # Track stats directory
 
-# startdate: '20181129.1300'
-# enddate: '20181129.1800'
-# ensmember: 'gefs09'
-# stats_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/tracks/stats/' 
-# pixelfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/tracks/celltracking/'
-# metfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/subset_d4/'
-# entfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/entrain/'
-# output_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/tracks/stats/'
-# pixel_filebase: 'regrid_celltracks_'
-# met_filebase: 'corlasso.cldhamsl.2018112900gefs09d4.base.M1.m1.'
-# ent_filebase: 'entdvdt.cldhamsl.2018112900gefs09d4.base.M1.m1.' 
-
-startdate: '20181204.1500'
-enddate: '20181204.1900'
-ensmember: 'gefs18'
-stats_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181204/gefs18/base/les/tracks/stats/' 
-pixelfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181204/gefs18/base/les/tracks/celltracking/'
-metfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181204/gefs18/base/les/subset_d4/'
-entfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181204/gefs18/base/les/entrain/'
-output_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181204/gefs18/base/les/tracks/stats/'
+startdate: '20181129.1300'
+enddate: '20181129.1800'
+ensmember: 'gefs09'
+stats_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/tracks/stats/' 
+pixelfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/tracks/celltracking/'
+metfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/subset_d4/'
+entfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/entrain/'
+output_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/tracks/stats/'
 pixel_filebase: 'regrid_celltracks_'
-met_filebase: 'corlasso.cldhamsl.2018120400gefs18d4.base.M1.m1.'
-ent_filebase: 'entdvdt.cldhamsl.2018120400gefs18d4.base.M1.m1.' 
+met_filebase: 'corlasso.cldhamsl.2018112900gefs09d4.base.M1.m1.'
+ent_filebase: 'entdvdt.cldhamsl.2018112900gefs09d4.base.M1.m1.' 
+
+# startdate: '20181204.1500'
+# enddate: '20181204.1900'
+# ensmember: 'gefs18'
+# stats_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181204/gefs18/base/les/tracks/stats/' 
+# pixelfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181204/gefs18/base/les/tracks/celltracking/'
+# metfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181204/gefs18/base/les/subset_d4/'
+# entfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181204/gefs18/base/les/entrain/'
+# output_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181204/gefs18/base/les/tracks/stats/'
+# pixel_filebase: 'regrid_celltracks_'
+# met_filebase: 'corlasso.cldhamsl.2018120400gefs18d4.base.M1.m1.'
+# ent_filebase: 'entdvdt.cldhamsl.2018120400gefs18d4.base.M1.m1.' 
 
 # startdate: '20190129.1500'
 # enddate: '20190129.1800'
@@ -95,8 +95,8 @@ nminutes: 30
 # Number of grid point in lon/lat dimension [center-nx, center+nx], [center-ny, center+ny]
 # nx: 100
 # ny: 100
-nx: 100
-ny: 100
+nx: 50
+ny: 50
 # Sub-sample spatial grid (2: sample every 2 grids)
 sub_x: 10
 sub_y: 10
