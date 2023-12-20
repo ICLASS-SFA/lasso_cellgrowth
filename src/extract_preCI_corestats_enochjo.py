@@ -348,12 +348,15 @@ def extract_env_prof(
 
         # Calculate Temperature (AMS)
         Temp = TH*(PRESSURE/1000)**(2/7) # Remember that PRESSURE is in hPa
-
+        tc = Temp - 273.15
+        
         # Calculate Saturated Vapor Pressure (NWS)
-        # es = 6.11*10**((7.5*Temp)/(237.3+Temp))
+        es = 6.11*10**((7.5*tc)/(237.3+tc))
 
         # Calculate Saturated Mixing Ratio (NWS)
-        # ws = 621.97*(es/(PRESSURE-es))
+        ws = 0.62197*(es/(PRESSURE-es))
+        
+        RH = qv/ws*100
 
         # Calculate Density Temperature (Eqn. 4.3.6 of some Emanuel textbook)
         # "Note that Tv is a special case of Trho, since when condensed water is absent rT = r."
@@ -456,15 +459,8 @@ def extract_env_prof(
         cell_PGF_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
         cell_NS_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
         cell_WE_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
-
-        cell_nCore_down = np.full(dims2d, np.NaN, dtype=np.float32)
-        cell_MassFlux_down = np.full(dims2d, np.NaN, dtype=np.float32)
-        cell_CoreMassFlux_down = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreArea_down = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMinW_down = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMeanW_down = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMinQ_down = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMeanQ_down = np.full(dims3d, np.NaN, dtype=np.float32)
+        cell_rhMean_up = np.full(dims3d, np.NaN, dtype=np.float32)
+        cell_rhMean_prm = np.full(dims3d, np.NaN, dtype=np.float32)
         
         # (EJ) new 3d variables for entrainment
         cell_Entr_up = np.full(dims3d, np.NaN, dtype=np.float32)
@@ -628,6 +624,7 @@ def extract_env_prof(
                 iTrho = Trho.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 iPres = PRESSURE.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 iMrho = Mrho.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iRH = RH.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
                 zTnum = da_cc.where(tracknumbermap_final == 1, drop=True).squeeze().data
 #                 iTnum = np.repeat(zTnum[np.newaxis,:,:],100,axis=0)
                 # This array is going to be populated with the "z" loop
@@ -694,6 +691,7 @@ def extract_env_prof(
                         zVapr = iVapr[z,:,:] #EJ
                         zTrho = iTrho[z,:,:] #EJ
                         zMrho = iMrho[z,:,:] #EJ
+                        zRH = iRH[z,:,:] #EJ
 #                         zCore = iCore[z,:,:]
                         
                         zz = z
@@ -753,12 +751,12 @@ def extract_env_prof(
                             cpoints[i,:] = centroid(tmp_image)
                         
                         # Label downdraft cores
-                        dict_down = label_cores(zW, W_down_thresh, zQ, Q_down_thresh, zMassFlux, ncores_min, min_core_npix, method='<')
-                        ncores_all_down = dict_down['ncores_all']
-                        ncores_down = dict_down['ncores_save']
-                        core_npix_down = dict_down['core_npix']
-                        core_numbers_down = dict_down['core_numbers']
-                        core_label_down = dict_down['core_label']
+                        # dict_down = label_cores(zW, W_down_thresh, zQ, Q_down_thresh, zMassFlux, ncores_min, min_core_npix, method='<')
+                        # ncores_all_down = dict_down['ncores_all']
+                        # ncores_down = dict_down['ncores_save']
+                        # core_npix_down = dict_down['core_npix']
+                        # core_numbers_down = dict_down['core_numbers']
+                        # core_label_down = dict_down['core_label']
                         
                         # Dilate core labels by a certain number of pixels
                         core_label_up_prm = np.zeros_like(core_label_up)
@@ -788,7 +786,6 @@ def extract_env_prof(
                         
                         # Total number of cores
                         cell_nCore_up[icell, z] = ncores_all_up
-                        cell_nCore_down[icell, z] = ncores_all_down
                         cell_ovlap_up[icell, z] = opct # EJ
                         
                         # Calculate core statistics
@@ -822,6 +819,8 @@ def extract_env_prof(
                         PGF_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
                         NS_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
                         WE_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
+                        RH_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
+                        RH_mean_prm = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
                         
                         
                         for ii in range(ncores_up):                            
@@ -850,6 +849,8 @@ def extract_env_prof(
                             Buoy_Trho_up[ii] = 9.81*(Trho_max_up[ii]-Trho_mean_prm[ii])/Trho_mean_prm[ii] # EJ
                             NS_up[ii] = ipos[0].min()+cpoints[ii,0] # EJ
                             WE_up[ii] = ipos[1].min()+cpoints[ii,1]
+                            RH_mean_up[ii] = np.nanmean(zRH[core_label_up == core_numbers_up[ii]]) # EJ
+                            RH_mean_prm[ii] = np.nanmean(zRH[core_label_up_prm == core_numbers_up[ii]]) # EJ
                             
                             Pres_pert_top[ii] = np.nanmean(zPrs2[core_label_up_prm == core_numbers_up[ii]])\
                                 - np.nanmax(zPrs2[core_label_up == core_numbers_up[ii]])
@@ -862,21 +863,6 @@ def extract_env_prof(
                         
                         # Calculate total mass flux for all labeled cores
                         MaFlx_sum_up = np.nansum(zMassFlux[core_label_up > 0])
-
-                        # MaFlx_sum_down = np.full(ncores_down, np.NaN, dtype=np.float32)
-                        MaFlx_core_down = np.full(ncores_down, np.NaN, dtype=np.float32)
-                        W_min_down = np.full(ncores_down, np.NaN, dtype=np.float32)
-                        W_mean_down = np.full(ncores_down, np.NaN, dtype=np.float32) 
-                        Q_min_down = np.full(ncores_down, np.NaN, dtype=np.float32) # EJ
-                        Q_mean_down = np.full(ncores_down, np.NaN, dtype=np.float32) # EJ
-                        for ii in range(ncores_down):
-                            MaFlx_core_down[ii] = np.nansum(zMassFlux[core_label_down == core_numbers_down[ii]])
-                            W_min_down[ii] = np.nanmin(zW[core_label_down == core_numbers_down[ii]])
-                            W_mean_down[ii] = np.nanmean(zW[core_label_down == core_numbers_down[ii]])
-                            Q_min_down[ii] = np.nanmin(zQ[core_label_down == core_numbers_down[ii]]) # EJ
-                            Q_mean_down[ii] = np.nanmean(zQ[core_label_down == core_numbers_down[ii]]) # EJ
-                        # Calculate total mass flux for all labeled cores
-                        MaFlx_sum_down = np.nansum(zMassFlux[core_label_down > 0])
                         
                         # Save data to output arrays
                         ncores_save_up = min([ncores_up, ncores_min])
@@ -909,17 +895,9 @@ def extract_env_prof(
                         cell_PGF_up[icell , z, 0:ncores_save_up] = PGF_up[0:ncores_save_up] # EJ
                         cell_NS_up[icell , z, 0:ncores_save_up] = NS_up[0:ncores_save_up] # EJ
                         cell_WE_up[icell , z, 0:ncores_save_up] = WE_up[0:ncores_save_up] # EJ
+                        cell_rhMean_up[icell , z, 0:ncores_save_up] = RH_mean_up[0:ncores_save_up] # EJ
+                        cell_rhMean_prm[icell , z, 0:ncores_save_up] = RH_mean_prm[0:ncores_save_up] # EJ
 
-                        ncores_save_down = min([ncores_down, ncores_min])
-                        cell_MassFlux_down[icell, z] = MaFlx_sum_down * DX * DY
-                        cell_CoreMassFlux_down[icell, z, 0:ncores_save_down] = MaFlx_core_down[0:ncores_save_down] * DX * DY
-                        cell_CoreArea_down[icell, z, 0:ncores_save_down] = core_npix_down[0:ncores_save_down] * grid_area
-                        cell_CoreMinW_down[icell, z, 0:ncores_save_down] = W_min_down[0:ncores_save_down]
-                        cell_CoreMeanW_down[icell, z, 0:ncores_save_down] = W_mean_down[0:ncores_save_down]
-                        cell_CoreMinQ_down[icell, z, 0:ncores_save_down] = Q_min_down[0:ncores_save_down] # EJ
-                        cell_CoreMeanQ_down[icell, z, 0:ncores_save_down] = Q_mean_down[0:ncores_save_down] # EJ
-                    
-#                     import pdb; pdb.set_trace()
                     ind = np.where(idBZ > 10)[0]
                     if ind.size > 0: 
                         cell_maxETH_10dbz[icell] = np.max(ind)/10 # to convert to km.
@@ -959,25 +937,16 @@ def extract_env_prof(
             'CorePGF_up': cell_PGF_up,
             'CoreNS_up': cell_NS_up,
             'CoreWE_up': cell_WE_up,
-            
+            'CoreRHMean_up': cell_rhMean_up,
+            'CoreRHMean_prm': cell_rhMean_prm,
             'Entr_up': cell_Entr_up,
             'Detr_up': cell_Detr_up,
             'Vapor_up': cell_Vapr_up,
-
-            'CoreArea_down': cell_CoreArea_down,
-            'CoreMinW_down': cell_CoreMinW_down,
-            'CoreMeanW_down': cell_CoreMeanW_down,
-            'CoreMinQ_down': cell_CoreMinQ_down,
-            'CoreMeanQ_down': cell_CoreMeanQ_down,
-            'CoreMassFlux_down': cell_CoreMassFlux_down,
         }
         out_dict2d = {
             'nCore_up': cell_nCore_up,
             'MassFlux_up': cell_MassFlux_up,
             'Ovlap_up': cell_ovlap_up,
-
-            'nCore_down': cell_nCore_down,
-            'MassFlux_down': cell_MassFlux_down,
         }
         out_dict1d = {
             'maxETH_10dbz': cell_maxETH_10dbz,
@@ -1093,6 +1062,14 @@ def extract_env_prof(
                 'long_name': 'West-East Location of Updraft Centroid',
                 'units': 'Grid points',
             },
+            'CoreRHMean_up': {
+                'long_name': 'Mean RH within updraft core',
+                'units': '%',
+            },
+            'CoreRHMean_prm': {
+                'long_name': 'Mean RH within updraft perimeter',
+                'units': '%',
+            },
             'MassFlux_up': {
                 'long_name': 'Total updraft mass flux',
                 'units': 'kg s^-1',
@@ -1111,39 +1088,6 @@ def extract_env_prof(
             },
             'Vapor_up': {
                 'long_name': 'Total flux of water vapor into core',
-                'units': 'kg s^-1',
-            },
-            # Downdraft
-            'nCore_down': {
-                'long_name': 'Number of downdraft cores',
-                'units': 'count',
-            },
-            'CoreArea_down': {
-                'long_name': 'Downdraft core area',
-                'units': 'km^2',
-            },
-            'CoreMinW_down': {
-                'long_name': 'Downdraft core minimum W',
-                'units': 'm/s',
-            },
-            'CoreMeanW_down': {
-                'long_name': 'Downdraft core mean W',
-                'units': 'm/s',
-            },
-            'CoreMinQ_down': {
-                'long_name': 'Downdraft core mean Q',
-                'units': 'kg/kg',
-            },
-            'CoreMeanQ_down': {
-                'long_name': 'Downdraft core mean Q',
-                'units': 'kg/kg',
-            },
-            'CoreMassFlux_down': {
-                'long_name': 'Downdraft core mass flux',
-                'units': 'kg s^-1',
-            },
-            'MassFlux_down': {
-                'long_name': 'Total downdraft mass flux',
                 'units': 'kg s^-1',
             },
         }

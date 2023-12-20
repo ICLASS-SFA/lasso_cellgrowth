@@ -281,10 +281,9 @@ def extract_env_prof(
         ny_d = dsm.sizes['south_north']
         nz = dsm.sizes['bottom_top']
         # 3D Variables
-        pressure = dsm['P'].squeeze()+dsm['PB'].squeeze()/100
-        # tk = dsm['TEMPERATURE'].squeeze()
-        TH = dsm['T'].squeeze()+dsm['T00'].squeeze()
         qv = dsm['QVAPOR'].squeeze()
+        pressure = (dsm['P'].squeeze()+dsm['PB'].squeeze())/100
+        TH = dsm['T'].squeeze()+300
         hstag = dsm['PH'].squeeze()+dsm['PHB'].squeeze()
         height = ( hstag.data[1:,:,:]+hstag.data[:-1,:,:] )/(2*9.81)
         height = xr.DataArray(height, coords=qv.coords, dims=qv.dims)
@@ -294,10 +293,15 @@ def extract_env_prof(
         # import wrf
         # from netCDF4 import Dataset
         # nc = Dataset(fname_met)
-        # TH2 = wrf.getvar(nc, 'theta', squeeze=True)
-        # height2 = wrf.getvar(nc, 'height', squeeze=True)  
-        # pressure2 = wrf.getvar(nc, 'pressure', squeeze=True) 
+        # TH = wrf.getvar(nc, 'theta', squeeze=True)
+        # height = wrf.getvar(nc, 'height', squeeze=True)  
+        # pressure = wrf.getvar(nc, 'pressure', squeeze=True) 
         
+#         import pdb; pdb.set_trace()
+        ustag = dsm['U'].squeeze()
+        umet = xr.DataArray( ( ustag.data[:,:,1:]+ustag.data[:,:,:-1] )/2, coords=qv.coords, dims=qv.dims)
+        vstag = dsm['V'].squeeze()
+        vmet = xr.DataArray( ( vstag.data[:,1:,:]+vstag.data[:,:-1,:] )/2, coords=qv.coords, dims=qv.dims)
         # rh = dsm['RH'].squeeze()
         # umet = dsm['UMET'].squeeze()
         # vmet = dsm['VMET'].squeeze()
@@ -315,16 +319,35 @@ def extract_env_prof(
         # RAINNC = dsm['RAINNC'].squeeze()
         # HGT = dsm['HGT'].squeeze()
         
+        
+        
         # Calculate Temperature (AMS)
         tk = TH*(pressure/1000)**(2/7)
+        tc = tk - 273.15 # Convert to Celsius
     
+#         C0 = 0.611583699e3
+#         C1 = 0.444606896e2
+#         C2 = 0.143177157e1
+#         C3 = 0.264224321e-1
+#         C4 = 0.299291081e-3
+#         C5 = 0.203154182e-5
+#         C6 = 0.702620698e-8
+#         C7 = 0.379534310e-11
+#         C8 = -0.321582393e-13
+#         
+#         tc = tc.where(tc > -80, -80) # setting values less than -80C to -80C 
+#         ESL = C0 + tc*(C1 + tc*(C2 + tc*(C3 + tc*(C4 + tc*(C5 + tc*(C6 + tc*(C7 + tc*C8))))))) #saturation vapor pressure
+#         QVS = 0.622*ESL/(pressure - ESL) #saturation vapor mixing ratio
+#         rh = 1e2*qv/QVS # RH
+        
         # Calculate Saturated Vapor Pressure (NWS)
         # Need to convert K to C
-        es = 6.11*10**((7.5*(tk-273.15))/(237.3+(tk-273.15)))
+        es = 6.11*10**((7.5*tc)/(237.3+tc))
+        # es = 0.61078*np.exp( 17.27*tc / (tc + 243.04) ) # Tetens equation
     
         # Calculate Saturated Mixing Ratio (NWS)
         # Dividing by 1000 to convert to kg/kg
-        ws = 621.97*(es/( pressure - es ))/1000
+        ws = 0.62197*(es/( pressure - es ))
         
         # Calculate RH
         rh = qv/ws*100
@@ -341,8 +364,8 @@ def extract_env_prof(
             tk.attrs.pop(key, None)
             qv.attrs.pop(key, None)
             rh.attrs.pop(key, None)
-            # umet.attrs.pop(key, None)
-            # vmet.attrs.pop(key, None)
+            umet.attrs.pop(key, None)
+            vmet.attrs.pop(key, None)
             wa.attrs.pop(key, None)
             # pwv.attrs.pop(key, None)
             # T2.attrs.pop(key, None)
@@ -360,8 +383,8 @@ def extract_env_prof(
         temperature_attrs = tk.attrs
         qv_attrs = qv.attrs
         rh_attrs = rh.attrs
-        # u_attrs = umet.attrs
-        # v_attrs = vmet.attrs
+        u_attrs = umet.attrs
+        v_attrs = vmet.attrs
         w_attrs = wa.attrs
         # T2_attrs = T2.attrs
         # Q2_attrs = Q2.attrs
@@ -378,8 +401,8 @@ def extract_env_prof(
         temperature_attrs = ''
         qv_attrs = ''
         rh_attrs = ''
-        # u_attrs = ''
-        # v_attrs = ''
+        u_attrs = ''
+        v_attrs = ''
         w_attrs = ''
         # PWV_attrs = ''
         # T2_attrs = ''
@@ -461,8 +484,8 @@ def extract_env_prof(
     out_T = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
     out_QV = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
     out_RH = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    # out_U = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    # out_V = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_U = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_V = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
     out_W = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
 
     # 2D variables
@@ -565,8 +588,8 @@ def extract_env_prof(
                 _pressure = pad_array(pressure.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _qv = pad_array(qv.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _rh = pad_array(rh.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                # _u = pad_array(umet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                # _v = pad_array(vmet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                _u = pad_array(umet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                _v = pad_array(vmet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _w = pad_array(wa.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 # Extract and pad 2D variables
                 # _PWV = pad_array(pwv.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
@@ -587,8 +610,8 @@ def extract_env_prof(
                     out_P[itrack, :, :, :] = _pressure
                     out_QV[itrack, :, :, :] = _qv
                     out_RH[itrack, :, :, :] = _rh
-                    # out_U[itrack, :, :, :] = _u
-                    # out_V[itrack, :, :, :] = _v
+                    out_U[itrack, :, :, :] = _u
+                    out_V[itrack, :, :, :] = _v
                     out_W[itrack, :, :, :] = _w
                     # 2D
                     # out_PWV[itrack, :, :] = _pwv
@@ -608,8 +631,8 @@ def extract_env_prof(
             'temperature': out_T,
             'qv': out_QV,
             'rh': out_RH,
-            # 'u': out_U,
-            # 'v': out_V,
+            'u': out_U,
+            'v': out_V,
             'w': out_W,
         }
         out_dict2d = {
@@ -644,8 +667,8 @@ def extract_env_prof(
             'temperature': temperature_attrs,
             'qv': qv_attrs,
             'rh': rh_attrs,
-            # 'u': u_attrs,
-            # 'v': v_attrs,
+            'u': u_attrs,
+            'v': v_attrs,
             'w': w_attrs,
             # 'PWV': PWV_attrs,
             # 'T2': T2_attrs,
