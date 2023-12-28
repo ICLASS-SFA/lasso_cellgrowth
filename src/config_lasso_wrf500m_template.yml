@@ -1,6 +1,6 @@
 ---
 # Run in parallel
-run_parallel: 1
+run_parallel: 0
 # Number of workers for Dask
 n_workers: 8
 # Threads per worker
@@ -23,23 +23,29 @@ stats_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/C
 # Track pixel file directory
 pixelfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3/celltracking/'
 # 3D Met file directory
-regfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3/run/'
-metfile_path: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
+metfile_path: '/gpfs/wolf/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/out_d3/'
+# metfile_path2: '/gpfs/wolf/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
+cldfile_path: '/gpfs/wolf/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
 # Raw WRF output file directory
-wrfout_path1: '/gpfs/wolf/cli120/proj-shared/sey/cacti/wrf/prod/'
-wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/les/'
+wrfout_path: '/gpfs/wolf/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/out_d3/'
+# wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/les/'
 # Output file directory
 output_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3/stats/'
 # File base names
 pixel_filebase: 'celltracks_'
-reg_filebase: 'corlasso.methamsl.STARTDATE00ENSMEMBERd3.CONFIG.M1.m1.'
-met_filebase: 'corlasso.met.STARTDATE00ENSMEMBERd3.CONFIG.M1.m1.'
-cld_filebase: 'corlasso.cld.STARTDATE00ENSMEMBERd3.CONFIG.M1.m1.'
+# wrfout_filebase: 'wrfout_d01_'
+reg_filebase: 'corlasso_methamsl_STARTDATE00ENSMEMBERd3_CONFIG_M1.m1.'
+met_filebase: 'wrfout_d01_'
+# cld_filebase: 'wrfout_d01_'
+# met_filebase: 'corlasso_met_STARTDATE00ENSMEMBERd3_CONFIG_M1.m1.'
+cld_filebase: 'corlasso_cld_STARTDATE00ENSMEMBERd3_CONFIG_M1.m1.'
 # W thresholds to define cores
 W_up_thresh: 2.0  # [m/s]
 W_down_thresh: -1.0  # [m/s]
 # Minimum pixel count for a core
 min_core_npix: 2
+# Number of pixel to expand a core to get perimeter
+core_expand_dist: 1
 # Number of cores to save per cell
 ncores_min: 20
 # Number of hours prior to initiation to extract environment
@@ -64,7 +70,6 @@ geolimits: [-33.3, -65.9, -30.8, -63.4]
 list_var_pass:
   - 'conv_core'
   - 'conv_mask'
-  # - 'tracknumber'
   - 'dbz_comp'
   - 'echotop10'
   - 'LWP'

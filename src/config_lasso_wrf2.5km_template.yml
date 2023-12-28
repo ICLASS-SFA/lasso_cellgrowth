@@ -24,18 +24,19 @@ stats_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/
 pixelfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/CONFIG/d2/celltracking/'
 # 3D Met file directory
 # metfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/d2/run/'
-regfile_path: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
-metfile_path: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
+# regfile_path: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
+metfile_path1: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
+metfile_path2: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs_2/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
 # Raw WRF output file directory
-wrfout_path1: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/meso/'
-wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/meso/'
+# wrfout_path1: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/meso/'
+# wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/meso/'
 # Output file directory
 output_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/CONFIG/d2/stats/'
 # File base names
 pixel_filebase: 'celltracks_'
-reg_filebase: 'corlasso.methamsl.STARTDATE00ENSMEMBERd2.CONFIG.M1.m1.'
-met_filebase: 'corlasso.met.STARTDATE00ENSMEMBERd2.CONFIG.M1.m1.'
-cld_filebase: 'corlasso.cld.STARTDATE00ENSMEMBERd2.CONFIG.M1.m1.'
+reg_filebase: 'corlasso_methamsl_STARTDATE00ENSMEMBERd2_CONFIG_M1.m1.'
+met_filebase: 'corlasso_met_STARTDATE00ENSMEMBERd2_CONFIG_M1.m1.'
+cld_filebase: 'corlasso_cld_STARTDATE00ENSMEMBERd2_CONFIG_M1.m1.'
 # W thresholds to define cores
 W_up_thresh: 2.0  # [m/s]
 W_down_thresh: -1.0  # [m/s]

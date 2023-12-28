@@ -12,55 +12,55 @@ enddate: 'ENDDATE.0000'
 # Ensemble member name
 ensmember: 'ENSMEMBER'
 # wrfout domain name (d01: 500m, d02: 100m)
-domain: 'd02'
+domain: 'd01'
 # Resolution: 'meso' or 'les'
 resolution: 'les'
 # Maximum time difference allowed to match the datasets
 time_window: 30  # [second]
 # Input/output file locations
 # Track stats directory
-stats_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4_15min/stats/'
+stats_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3_15min/stats/'
 # Track pixel file directory
-pixelfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4_15min/celltracking/'
+pixelfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3_15min/celltracking/'
 # 3D Met file directory
-# regfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4/run/'
-metfile_path1: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/les/subset_d4/'
-metfile_path2: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs_2/STARTDATE/ENSMEMBER/CONFIG/les/subset_d4/'
+# regfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3/run/'
+metfile_path1: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
+metfile_path2: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs_2/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
 # Raw WRF output file directory
 # wrfout_path1: '/gpfs/wolf/cli120/proj-shared/sey/cacti/wrf/prod/'
 # wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/les/'
 # Output file directory
-output_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4_15min/stats/'
+output_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3_15min/stats/'
 # File base names
-pixel_filebase: 'regrid_celltracks_'
-reg_filebase: 'corlasso_methamsl_STARTDATE00ENSMEMBERd4_CONFIG_M1.m1.'
-met_filebase: 'corlasso_met_STARTDATE00ENSMEMBERd4_CONFIG_M1.m1.'
-cld_filebase: 'corlasso_cld_STARTDATE00ENSMEMBERd4_CONFIG_M1.m1.'
+pixel_filebase: 'celltracks_'
+reg_filebase: 'corlasso_methamsl_STARTDATE00ENSMEMBERd3_CONFIG_M1.m1.'
+met_filebase: 'corlasso_met_STARTDATE00ENSMEMBERd3_CONFIG_M1.m1.'
+cld_filebase: 'corlasso_cld_STARTDATE00ENSMEMBERd3_CONFIG_M1.m1.'
 # W thresholds to define cores
 W_up_thresh: 2.0  # [m/s]
 W_down_thresh: -1.0  # [m/s]
 # Minimum pixel count for a core
-min_core_npix: 9
+min_core_npix: 2
 # Number of cores to save per cell
 ncores_min: 20
 # Number of hours prior to initiation to extract environment
 nhours: 1
-# Set max number of times to keep for each track
-# ntimes_max: 40
 # Set domain size to extract environment
 # Number of grid point in lon/lat dimension [center-nx, center+nx], [center-ny, center+ny]
-nx: 300
-ny: 300
+nx: 60
+ny: 60
 nz: 149
 # Sub-sample spatial grid (2: sample every 2 grids)
-sub_x: 10
-sub_y: 10
+sub_x: 2
+sub_y: 2
 # Spatial resolution
-DX: 100
-DY: 100
+DX: 500
+DY: 500
 # Number of grid point to compute center environment profile [-nx_center, +nx_center], [-ny_center,+ny_center]
 nx_center: 1
 ny_center: 1
+# Subset boundary [lon_min, lon_max, lat_min, lat_max]
+geolimits: [-33.3, -65.9, -30.8, -63.4]
 # List of 2D variables to pass through from the 3D file
 list_var_pass:
   - 'conv_core'

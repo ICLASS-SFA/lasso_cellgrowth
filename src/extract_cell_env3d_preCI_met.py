@@ -194,6 +194,7 @@ def extract_env_prof(
     met_exist = os.path.isfile(fname_met)
     cld_exist = os.path.isfile(fname_cld)
     pixel_exist = os.path.isfile(fname_pixel)
+    # import pdb; pdb.set_trace()
 
     if pixel_exist:
         dsp = xr.open_dataset(fname_pixel)
@@ -395,11 +396,11 @@ def extract_env_prof(
             'IWP': '',
             'PWV': '',
         }
-            
+    # import pdb; pdb.set_trace()
 
     # Make array to store output
     # Number of tracks in the file
-    ntracks = len(idx_track)
+    out_ntracks = len(idx_track)
     # out_ny = 2*ny+1
     # out_nx = 2*nx+1
     out_ny = np.round((2 * ny) / sub_y + 1).astype(int)
@@ -426,39 +427,39 @@ def extract_env_prof(
         'DY': DY_sub,
     }
     # 3D variables
-    out_Z = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_P = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_T = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_QV = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_RH = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_U = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_V = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_W = np.full((ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_Z = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_P = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_T = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_QV = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_RH = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_U = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_V = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_W = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
 
     # 2D variables
-    # out_LCL = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_LFC = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_LPL = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_LNB = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_MUCAPE = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_MUCIN = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_LWP = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_IWP = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_PWV = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_T2 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_Q2 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_PSFC = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_U10 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_V10 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_PBLH = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_RAINNC = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_HGT = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_LCL = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_LFC = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_LPL = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_LNB = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_MUCAPE = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_MUCIN = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_LWP = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_IWP = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_PWV = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_T2 = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_Q2 = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_PSFC = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_U10 = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_V10 = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_PBLH = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_RAINNC = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_HGT = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
     # 2D cell variables
-    out_convcore = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_convmask = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_tnmask = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_refl = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_eth10 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_convcore = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_convmask = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_tnmask = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_refl = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_eth10 = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
 
     out_dict3d = None
     out_dict2d = None
@@ -469,7 +470,7 @@ def extract_env_prof(
     if (nmatchcell > 0):
 
         # Loop over each track
-        for itrack in range(0, ntracks):
+        for itrack in range(0, out_ntracks):
             # track center location (lat, lon)
             center = (_lat[itrack], _lon[itrack])
 
@@ -634,7 +635,7 @@ def extract_env_prof(
         new_attrs = {**pixel_attrs, **cld_attrs}
         out_dict_attrs = {**out_dict_attrs, **new_attrs}
 
-    # import pdb; pdb.set_trace()
+    import pdb; pdb.set_trace()
     return out_dict3d, out_dict2d, out_dict_attrs, out_coords
 
 
@@ -658,19 +659,38 @@ if __name__ == '__main__':
     time_window = config['time_window']
     stats_path = config['stats_path']
     pixelfile_path = config['pixelfile_path']
+    wrfout_path = config.get('wrfout_path', None)
     metfile_path = config['metfile_path']
+    cldfile_path = config['cldfile_path']
+    # metfile_path1 = config['metfile_path1']
+    # metfile_path2 = config['metfile_path2']
     output_path = config['output_path']
-    met_filebase = config['met_filebase']
-    cld_filebase = config['cld_filebase']
+    # wrfout_filebase = config.get('wrfout_filebase', None)
+    met_filebase = config.get('met_filebase', None)
+    cld_filebase = config.get('cld_filebase', None)
     pixel_filebase = config['pixel_filebase']
-    wrfout_path1 = config['wrfout_path1']
-    wrfout_path2 = config['wrfout_path2']
+    # wrfout_path1 = config['wrfout_path1']
+    # wrfout_path2 = config['wrfout_path2']
     nhours = config['nhours']
     # ntimes_max = config['ntimes_max']
     ensmember = config['ensmember']
     domain = config['domain']
     nx = config['nx']
     ny = config['ny']
+
+    # Time threshold to match generated times with data times
+    dt_thresh = 1.0     # [second]
+
+    # # Check which directory exists
+    # if os.path.isdir(metfile_path1):
+    #     metfile_path = metfile_path1
+    # elif os.path.isdir(metfile_path2):
+    #     metfile_path = metfile_path2
+    # else:
+    #     print(f'WRF path does not exist: {metfile_path1}')
+    #     print(f'WRF path does not exist: {metfile_path2}')
+    #     print(f'Code will exit now.')
+    #     sys.exit()
 
     # # Add ensemble member to WRF path
     # _startdate = startdate[0:8]
@@ -743,9 +763,9 @@ if __name__ == '__main__':
     stats_lat0 = stats_lat.isel(times=0).data
 
     # Make an array to store the full time series
-    ntimes_prior = np.ceil(nhours / time_res_hour).astype(int)
+    ntimes_prior = np.round(nhours / time_res_hour).astype(int)
     # ntimes_full = np.ceil(ntimes_prior + ntimes_max).astype(int)
-    ntimes_full = np.ceil(ntimes_prior + 1).astype(int)
+    ntimes_full = np.round(ntimes_prior + 1).astype(int)
     # 
     full_times = np.ndarray((ntracks, ntimes_full), dtype='datetime64[ns]')
     full_basetimes = np.full((ntracks, ntimes_full), np.NaN, dtype=float)
@@ -836,25 +856,34 @@ if __name__ == '__main__':
     # for ifile in range(0, 12):
         # Convert time string to match different files
         itime = uniq_times[ifile]
-        itime_pixel = pd.to_datetime(str(itime)).strftime('%Y%m%d_%H%M')
+        itime_pixel = pd.to_datetime(str(itime)).strftime('%Y%m%d_%H%M%S')
         itime_wrfout = pd.to_datetime(str(itime)).strftime('%Y-%m-%d_%H_%M_%S')
         itime_met = pd.to_datetime(str(itime)).strftime('%Y%m%d.%H%M%S')
         itime_cld = pd.to_datetime(str(itime)).strftime('%Y%m%d.%H%M%S')
 
         # File names
         fname_pixel = f'{pixelfile_path}{pixel_filebase}{itime_pixel}.nc'
-        # fname_wrfout = f'{wrfout_path}wrfout_{domain}_{itime_wrfout}'
+        if wrfout_path:
+            fname_wrfout = f'{wrfout_path}wrfout_{domain}_{itime_wrfout}'
         # New MET file time format: yyyymmdd.hhmmss
-        fname_met = f'{metfile_path}{met_filebase}{itime_met}.nc'
-        fname_cld = f'{metfile_path}{cld_filebase}{itime_met}.nc'
+        if met_filebase:
+            fname_met = f'{metfile_path}{met_filebase}{itime_met}.nc'
+        else:
+            fname_met = fname_wrfout
+        if cld_filebase:
+            fname_cld = f'{cldfile_path}{cld_filebase}{itime_met}.nc'
+        else:
+            fname_cld = fname_wrfout
+        # import pdb; pdb.set_trace()
 
         # Get all MCS tracks/times indices in the same time (file)
-        idx_track, idx_time = np.where(full_basetimes == uniq_basetimes[ifile])
-
+        # idx_track, idx_time = np.where(full_basetimes == uniq_basetimes[ifile])
+        idx_track, idx_time = np.where(np.abs(full_basetimes - uniq_basetimes[ifile]) < dt_thresh)
         if len(idx_track) > 0:
             # Save matchindices for the current pixel file to the overall list
             trackindices_all.append(idx_track)
             timeindices_all.append(idx_time)
+            # import pdb; pdb.set_trace()
 
             # Get the track lat/lon/time values
             _lat = full_lats[idx_track, idx_time]
