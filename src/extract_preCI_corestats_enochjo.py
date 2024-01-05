@@ -333,11 +333,11 @@ def extract_env_prof(
         #qg = dsm['QGRAUP'] # EJ
         Thte = dsm['THETA_E'] # EJ
         TH = dsm['THETA'] # EJ
-        #QA = dsm['QA'] # EJ
+        QA = dsm['QA'] # EJ
         QT = dsm['QT'] # EJ
         QR = dsm['QRAIN'] # EJ
         
-        QA = QC + QR
+        # QA = QC + QR
         
         # Calculate moist air density using virtual temperature
         R_dry = 287.058   # J kg−1 K−1

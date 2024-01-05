@@ -300,6 +300,7 @@ def calc_cellstats_singlefile(
         QR = dsm['QRAIN'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
         QC = dsm['QCLOUD'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
         QT = dsm['QT'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
+        QA = dsm['QT'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
         dBZ = dsm['REFL_10CM'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
         # Update ny, nx with the subset
         ny = XLONG.sizes['lat']
@@ -321,7 +322,8 @@ def calc_cellstats_singlefile(
         TH = dsm['THETA'] # EJ
         QR = dsm['QRAIN'] # EJ
         QC = dsm['QCLOUD'] # EJ
-        QT = dsm['QT'] # EJ
+        QT = dsm['QT'] # EJ QT is QTOT + QV
+        QA = dsm['QA'] # EJ QA is QC + QI + QS
 
     # Check dimensions again after subset
     if (ny_p != ny) | (nx_p != nx):
@@ -339,7 +341,7 @@ def calc_cellstats_singlefile(
     R_dry = 287.058   # J kg−1 K−1
     Mrho = 100 * PRESSURE / (R_dry * TV)  # kg m-3
     
-    QA = QC + QR
+    # QA = QC + QR
     
     # import pdb; pdb.set_trace()
     

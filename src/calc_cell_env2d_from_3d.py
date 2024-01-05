@@ -139,7 +139,7 @@ def calc_envs_track(in_filename, tracknumber, config):
     # Define levels (HAGL) to calculate surface wind shear
     level_shear = [2000, 4000, 6000, 8000, 10000]   # [m AGL]
     level_theta_e = [3000, 5000, 7000]   # [m AGL]
-    level_pres = [925, 850, 700, 600, 500]
+    level_pres = [925, 850, 700, 680, 660, 640, 620, 600, 580, 560, 540, 520, 500]
 
     # Read 3D environment
     ds = xr.open_dataset(in_filename).sel(tracks=tracknumber)
@@ -169,19 +169,28 @@ def calc_envs_track(in_filename, tracknumber, config):
     lfc = np.full(var2d_dims, np.NaN, dtype=np.float32)
     el = np.full(var2d_dims, np.NaN, dtype=np.float32)
     lpl = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    hamsl = np.full(var2d_dims, np.NaN, dtype=np.float32)
 
     u_4km = np.full(var2d_dims, np.NaN, dtype=np.float32)
     v_4km = np.full(var2d_dims, np.NaN, dtype=np.float32)
 
-    qv_925mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
-    qv_850mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
-    qv_700mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
-    qv_600mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
-    qv_500mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    # qv_925mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    # qv_850mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    # qv_700mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    # qv_600mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    # qv_500mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
     rh_925mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
     rh_850mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
     rh_700mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    rh_680mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    rh_660mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    rh_640mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    rh_620mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
     rh_600mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    rh_580mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    rh_560mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    rh_540mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
+    rh_520mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
     rh_500mb = np.full(var2d_dims, np.NaN, dtype=np.float32)
 
     # Loop over times
@@ -192,7 +201,7 @@ def calc_envs_track(in_filename, tracknumber, config):
             _tk = tk[itime, :, :, :]
             _qv = qv[itime, :, :, :]
             _rh = rh[itime, :, :, :]
-            _z = height[itime, :, :, :]
+            _z = height[itime, :, :, :] 
             _pressure = pressure[itime, :, :, :]
             # _u = u[itime, :, :, :]
             # _v = v[itime, :, :, :]
@@ -204,19 +213,29 @@ def calc_envs_track(in_filename, tracknumber, config):
             # u_4km[itime, :, :] = interplevel(_u, _z, 4000.)
             # v_4km[itime, :, :] = interplevel(_v, _z, 4000.)
             # Pressure level variables (pressure unit is Pa, convert it to hPa)                    
-            qv_pres = interplevel(_qv, _pressure/100, level_pres)
-            qv_925mb[itime, :, :] = qv_pres.sel(level=925)
-            qv_850mb[itime, :, :] = qv_pres.sel(level=850)
-            qv_700mb[itime, :, :] = qv_pres.sel(level=700)
-            qv_600mb[itime, :, :] = qv_pres.sel(level=600)
-            qv_500mb[itime, :, :] = qv_pres.sel(level=500)
+            # qv_pres = interplevel(_qv, _pressure/100, level_pres)
+            # qv_925mb[itime, :, :] = qv_pres.sel(level=925)
+            # qv_850mb[itime, :, :] = qv_pres.sel(level=850)
+            # qv_700mb[itime, :, :] = qv_pres.sel(level=700)
+            # qv_600mb[itime, :, :] = qv_pres.sel(level=600)
+            # qv_500mb[itime, :, :] = qv_pres.sel(level=500)
 
             rh_pres = interplevel(_rh, _pressure/100, level_pres)
             rh_925mb[itime, :, :] = rh_pres.sel(level=925)
             rh_850mb[itime, :, :] = rh_pres.sel(level=850)
             rh_700mb[itime, :, :] = rh_pres.sel(level=700)
+            rh_680mb[itime, :, :] = rh_pres.sel(level=680)
+            rh_660mb[itime, :, :] = rh_pres.sel(level=660)
+            rh_640mb[itime, :, :] = rh_pres.sel(level=640)
+            rh_620mb[itime, :, :] = rh_pres.sel(level=620)
             rh_600mb[itime, :, :] = rh_pres.sel(level=600)
+            rh_580mb[itime, :, :] = rh_pres.sel(level=580)
+            rh_560mb[itime, :, :] = rh_pres.sel(level=560)
+            rh_540mb[itime, :, :] = rh_pres.sel(level=540)
+            rh_520mb[itime, :, :] = rh_pres.sel(level=520)
             rh_500mb[itime, :, :] = rh_pres.sel(level=500)
+            
+            hamsl[itime,:,:] = _z[0,:,:]
 
             # Call AFWA diagnostics on data filtered below surface            
             ostat, _mucape, _mucin, _lcl, _lfc, _el, _lpl = afwa.diag_functions.diag_map(_tk, _rh, _pressure, _z, 1, 1)
@@ -236,8 +255,7 @@ def calc_envs_track(in_filename, tracknumber, config):
                 el[itime, :, :] = _el
                 lpl[itime, :, :] = _lpl
 
-            # import pdb; pdb.set_trace()
-
+    
     # Group outputs in dictionaries
     var_dict = {
         'tracknumber': tracknumber,
@@ -247,17 +265,26 @@ def calc_envs_track(in_filename, tracknumber, config):
         'LFC': lfc,
         'EL': el,
         'LPL': lpl,
+        'hamsl': hamsl,
         # 'u_4km': u_4km,
         # 'v_4km': v_4km,
-        'qv_925mb': qv_925mb,
-        'qv_850mb': qv_850mb,
-        'qv_700mb': qv_700mb,
-        'qv_600mb': qv_600mb,
-        'qv_500mb': qv_500mb,
+        # 'qv_925mb': qv_925mb,
+        # 'qv_850mb': qv_850mb,
+        # 'qv_700mb': qv_700mb,
+        # 'qv_600mb': qv_600mb,
+        # 'qv_500mb': qv_500mb,
         'rh_925mb': rh_925mb,
         'rh_850mb': rh_850mb,
         'rh_700mb': rh_700mb,
+        'rh_680mb': rh_680mb,
+        'rh_660mb': rh_660mb,
+        'rh_640mb': rh_640mb,
+        'rh_620mb': rh_620mb,
         'rh_600mb': rh_600mb,
+        'rh_580mb': rh_580mb,
+        'rh_560mb': rh_560mb,
+        'rh_540mb': rh_540mb,
+        'rh_520mb': rh_520mb,
         'rh_500mb': rh_500mb,
     }
     var_attrs = {
@@ -294,6 +321,11 @@ def calc_envs_track(in_filename, tracknumber, config):
             'units': 'm',
             # '_FillValue': fillval,
         },
+        'hamsl': {
+            'long_name': 'Height Above Mean Sea Level Pressure',
+            'units': 'm',
+            # '_FillValue': fillval,
+        },
 #         'u_4km': {
 #             'long_name': 'U wind at 4 km HAMSL',
 #             'units': 'm/s',
@@ -302,26 +334,26 @@ def calc_envs_track(in_filename, tracknumber, config):
 #             'long_name': 'V wind at 4 km HAMSL',
 #             'units': 'm/s',
 #         }, 
-        'qv_925mb': {
-            'long_name': 'Water vapor mixing ratio at 925mb',
-            'units': 'kg/kg',
-        },
-        'qv_850mb': {
-            'long_name': 'Water vapor mixing ratio at 850mb',
-            'units': 'kg/kg',
-        },
-        'qv_700mb': {
-            'long_name': 'Water vapor mixing ratio at 700mb',
-            'units': 'kg/kg',
-        },
-        'qv_600mb': {
-            'long_name': 'Water vapor mixing ratio at 600mb',
-            'units': 'kg/kg',
-        },
-        'qv_500mb': {
-            'long_name': 'Water vapor mixing ratio at 500mb',
-            'units': 'kg/kg',
-        },
+#         'qv_925mb': {
+#             'long_name': 'Water vapor mixing ratio at 925mb',
+#             'units': 'kg/kg',
+#         },
+#         'qv_850mb': {
+#             'long_name': 'Water vapor mixing ratio at 850mb',
+#             'units': 'kg/kg',
+#         },
+#         'qv_700mb': {
+#             'long_name': 'Water vapor mixing ratio at 700mb',
+#             'units': 'kg/kg',
+#         },
+#         'qv_600mb': {
+#             'long_name': 'Water vapor mixing ratio at 600mb',
+#             'units': 'kg/kg',
+#         },
+#         'qv_500mb': {
+#             'long_name': 'Water vapor mixing ratio at 500mb',
+#             'units': 'kg/kg',
+#         },
         'rh_925mb': {
             'long_name': 'Relative humidity at 925mb',
             'units': '%',
@@ -334,8 +366,40 @@ def calc_envs_track(in_filename, tracknumber, config):
             'long_name': 'Relative humidity at 700mb',
             'units': '%',
         },
+        'rh_680mb': {
+            'long_name': 'Relative humidity at 650mb',
+            'units': '%',
+        },
+        'rh_660mb': {
+            'long_name': 'Relative humidity at 650mb',
+            'units': '%',
+        },
+        'rh_640mb': {
+            'long_name': 'Relative humidity at 650mb',
+            'units': '%',
+        },
+        'rh_620mb': {
+            'long_name': 'Relative humidity at 650mb',
+            'units': '%',
+        },
         'rh_600mb': {
             'long_name': 'Relative humidity at 600mb',
+            'units': '%',
+        },
+        'rh_580mb': {
+            'long_name': 'Relative humidity at 580mb',
+            'units': '%',
+        },
+        'rh_560mb': {
+            'long_name': 'Relative humidity at 560mb',
+            'units': '%',
+        },
+        'rh_540mb': {
+            'long_name': 'Relative humidity at 540mb',
+            'units': '%',
+        },
+        'rh_520mb': {
+            'long_name': 'Relative humidity at 520mb',
             'units': '%',
         },
         'rh_500mb': {

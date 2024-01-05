@@ -207,7 +207,9 @@ def extract_env_prof(
             # 'comp_ref': dsp['comp_ref'].attrs,
             'dbz_comp': dsp['dbz_comp'].attrs,
             'echotop10': dsp['echotop10'].attrs,
+            'hamsl': dsp['echotop10'].attrs,
         }
+#         import pdb; pdb.set_trace()
     else:
         pixel_attrs = {
             'conv_core': '',
@@ -216,8 +218,9 @@ def extract_env_prof(
             'tracknumber': '',
             'dbz_comp': '',
             'echotop10': '',
+            'hamsl': '',
         }
-
+    
     # if wrfout_exist:
     #     # Read WRF out file
     #     print(fname_wrfout)
@@ -512,6 +515,7 @@ def extract_env_prof(
     out_tnmask = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
     out_refl = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
     out_eth10 = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_hamsl = np.full((ntracks, out_ny, out_nx), np.NaN, dtype=float)
 
     out_dict3d = None
     out_dict2d = None
@@ -591,6 +595,12 @@ def extract_env_prof(
                 _u = pad_array(umet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _v = pad_array(vmet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _w = pad_array(wa.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                
+                out_hamsl[itrack, :, :] = _Z[0,:,:]
+#                 import pdb; pdb.set_trace()
+                # Could overlay _convcore with _Z and take median to get height above
+                # sea level, then add to J.M.'s code to get HAMSL LCL and LFC heights
+                
                 # Extract and pad 2D variables
                 # _PWV = pad_array(pwv.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 # _T2 = pad_array(T2.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
@@ -649,6 +659,7 @@ def extract_env_prof(
             # 'comp_ref': out_refl,
             'dbz_comp': out_refl,
             'echotop10': out_eth10,
+            'hamsl': out_hamsl,
             # 'LWP': out_LWP,
             # 'IWP': out_IWP,
             # 'PWV': out_PWV,
