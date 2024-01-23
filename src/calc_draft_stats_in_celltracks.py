@@ -11,6 +11,7 @@ import yaml
 import xarray as xr
 from scipy import ndimage
 from skimage.segmentation import expand_labels
+from scipy.ndimage import generate_binary_structure, binary_dilation, iterate_structure
 import warnings
 import dask
 from dask.distributed import Client, LocalCluster
@@ -58,7 +59,7 @@ def calc_basetime(filelist, filebase):
 
 
 #-----------------------------------------------------------------------
-def label_cores(W, W_thresh, ncores_min, min_core_npix, method='>'):
+def label_cores(W, W_thresh, Q, Q_thresh, VMF, ncores_min, min_core_npix, method='>'):
     """
     Label up/down draft cores using threshold and connectivity.
 
@@ -67,6 +68,12 @@ def label_cores(W, W_thresh, ncores_min, min_core_npix, method='>'):
             Vertical velocity array
         W_thresh: float
             Vertical velocity threshold
+        Q: np.array
+            Mixing ratio array
+        Q_thresh: float
+            Mixing ratio threshold
+        VMF: np.array
+            Vertical mass flux array
         ncores_min: int
             Minimum number of cores to save
         min_core_npix: int
@@ -85,10 +92,11 @@ def label_cores(W, W_thresh, ncores_min, min_core_npix, method='>'):
             Labeled core numbers map (2D)
     """
     # Label cores at a given vertical level
+    # struct = generate_binary_structure(2, 1).astype(int)
     if method == '>':
-        core_label, ncores = ndimage.label((W > W_thresh))
+        core_label, ncores = ndimage.label((W > W_thresh) & (Q > Q_thresh))
     elif method == '<':
-        core_label, ncores = ndimage.label((W < W_thresh))
+        core_label, ncores = ndimage.label((W < W_thresh) & (Q < Q_thresh))
     else:
         print(f'Error: Undefined method to label cores: {method}!')
     
@@ -104,10 +112,20 @@ def label_cores(W, W_thresh, ncores_min, min_core_npix, method='>'):
     npix_core = npix_core[mask]
     core_numbers = core_numbers[mask]
 
+    # Calculate VMF of cores
+    zVMF = np.zeros_like(npix_core)
+    for i in range(0,len(core_numbers)):
+        zVMF[i] = np.nansum(VMF[core_label == core_numbers[i]])
+
     # Sort the core size by descending order
-    sort_idx = npix_core.argsort()[::-1]
+    # sort_idx = npix_core.argsort()[::-1]
+    # Sort the cores by VMF
+    sort_idx = zVMF.argsort()[::-1] 
     npix_core_sorted = npix_core[sort_idx]
     core_numbers_sorted = core_numbers[sort_idx]
+
+    # if ( len(core_numbers) > 2 ) & ( method == '>' ):
+    #     import pdb;pdb.set_trace()
     
     # Save the largest X cores
     ncores_all = len(npix_core)
@@ -127,6 +145,7 @@ def label_cores(W, W_thresh, ncores_min, min_core_npix, method='>'):
 def calc_cellstats_singlefile(
     pixel_filename, 
     met_filename, 
+    cld_filename,
     idx_track, 
     config,
 ):
@@ -138,6 +157,8 @@ def calc_cellstats_singlefile(
             Cell tracking pixel filename
         met_filename: string
             MET filename
+        cld_filename: string
+            CLD filename
         idx_track: np.array
             Tracknumber indices in the pixel file
         config: dictionary
@@ -154,6 +175,8 @@ def calc_cellstats_singlefile(
     # Get thresholds from config
     W_up_thresh = config['W_up_thresh']
     W_down_thresh = config['W_down_thresh']
+    Q_up_thresh = config['Q_up_thresh']
+    Q_down_thresh = config['Q_down_thresh']
     min_core_npix = config['min_core_npix']
     ncores_min = config['ncores_min']
     core_expand_dist = config.get('core_expand_dist', 1)
@@ -170,6 +193,11 @@ def calc_cellstats_singlefile(
     DX = dsm.attrs['DX']
     DY = dsm.attrs['DY']
     grid_area = DX * DY / 1e6
+
+    # Read CLD file
+    dsc = xr.open_dataset(cld_filename)
+    # Rename dimenensions
+    dsc = dsc.rename_dims({'south_north':'lat', 'west_east':'lon'})
 
     # Read pixel-level track file
     ds = xr.open_dataset(pixel_filename, decode_times=False)
@@ -201,6 +229,12 @@ def calc_cellstats_singlefile(
         # TV = dsm['TV'][:, :, ymin:ymax+1, xmin:xmax+1]
         THETA = dsm['THETA'][:, :, ymin:ymax+1, xmin:xmax+1]
         WA = dsm['WA'][:, :, ymin:ymax+1, xmin:xmax+1]
+        # Get cld variables
+        QCLOUD = dsc['QCLOUD'][:, :, ymin:ymax+1, xmin:xmax+1]
+        # QRAIN = dsc['QRAIN'][:, :, ymin:ymax+1, xmin:xmax+1]
+        QICE = dsc['QICE'][:, :, ymin:ymax+1, xmin:xmax+1]
+        QSNOW = dsc['QSNOW'][:, :, ymin:ymax+1, xmin:xmax+1]
+        # QGRAUP = dsc['QGRAUP'][:, :, ymin:ymax+1, xmin:xmax+1]
         # Update ny, nx with the subset
         ny = XLONG.sizes['lat']
         nx = XLONG.sizes['lon']
@@ -213,6 +247,14 @@ def calc_cellstats_singlefile(
         THETA = dsm['THETA']
         # TV = dsm['TV']
         WA = dsm['WA']
+        # Get cld variables
+        QCLOUD = dsc['QCLOUD']
+        # QRAIN = dsc['QRAIN']
+        QICE = dsc['QICE']
+        QSNOW = dsc['QSNOW']
+        # QGRAUP = dsc['QGRAUP']
+
+    # import pdb; pdb.set_trace()
 
     # Check dimensions again after subset
     if (ny_p != ny) | (nx_p != nx):
@@ -224,6 +266,9 @@ def calc_cellstats_singlefile(
     # It does not seem like this is necessary in Xarray 0.21.1
     ds = ds.drop_vars(['lon', 'lat']).assign_coords({'XLONG':XLONG, 'XLAT':XLAT})
     tracknumbermap = ds['tracknumber'].squeeze()
+
+    # Total cloud condensates
+    Qcld = QCLOUD + QICE + QSNOW
 
     # Calculate virtual temperature
     TV = TEMPERATURE * (1 + QVAPOR / 0.622) / (1 + QVAPOR)
@@ -334,6 +379,7 @@ def calc_cellstats_singlefile(
                 # iRho = RHO_DRY.where(icellmask, drop=True).squeeze().data
                 # iP = PRESSURE.where(icellmask, drop=True).squeeze().data
                 # iT = TEMPERATURE.where(icellmask, drop=True).squeeze().data
+                iQcld = Qcld.where(icellmask, drop=True).squeeze().data
                 iQv = QVAPOR.where(icellmask, drop=True).squeeze().data
                 iTheta = THETA.where(icellmask, drop=True).squeeze().data
                 # iThetae = THETAE.where(icellmask, drop=True).squeeze().data
@@ -370,6 +416,7 @@ def calc_cellstats_singlefile(
                         # zP = iP[z,:,:]
                         # zT = iT[z,:,:]
                         # zQv = iQv[z,:,:]
+                        zQcld = iQcld[z,:,:]
                         zThtv = iThtv[z,:,:]
                         zThte = iThte[z,:,:]
                         # zTv = iTv[z,:,:]
@@ -392,7 +439,7 @@ def calc_cellstats_singlefile(
                         if np.nanmax(zW) > W_up_thresh:
 
                             # Label updraft cores
-                            dict_up = label_cores(zW, W_up_thresh, ncores_min, min_core_npix, method='>')
+                            dict_up = label_cores(zW, W_up_thresh, zQcld, Q_up_thresh, zMassFlux, ncores_min, min_core_npix, method='>')
                             ncores_all_up = dict_up['ncores_all']
                             ncores_up = dict_up['ncores_save']
                             core_npix_up = dict_up['core_npix']
@@ -445,7 +492,6 @@ def calc_cellstats_singlefile(
                                 W_max_up[ii] = np.nanmax(zW[icoremask])
                                 W_mean_up[ii] = np.nanmean(zW[icoremask])
 
-                                # if (ncores_save_up > 0): import pdb; pdb.set_trace()
                                 Thte_max_up[ii] = np.nanmax(zThte[icoremask])
                                 Thte_mean_up[ii] = np.nanmean(zThte[icoremask])
                                 Thte_mean_prm[ii] = np.nanmean(zThte[iperimask])
@@ -480,7 +526,7 @@ def calc_cellstats_singlefile(
                         # Proceed if min(W) < threshold
                         if np.nanmin(zW) < W_down_thresh:
                             # Label downdraft cores
-                            dict_down = label_cores(zW, W_down_thresh, ncores_min, min_core_npix, method='<')
+                            dict_down = label_cores(zW, W_down_thresh, zQcld, Q_down_thresh, zMassFlux, ncores_min, min_core_npix, method='<')
                             ncores_all_down = dict_down['ncores_all']
                             ncores_down = dict_down['ncores_save']
                             core_npix_down = dict_down['core_npix']
@@ -653,7 +699,8 @@ if __name__ == '__main__':
     pixelfile_path = config['pixelfile_path']
     metfile_path = config['metfile_path']
     output_path = config['output_path']
-    reg_filebase = config['reg_filebase']
+    methamsl_filebase = config['methamsl_filebase']
+    cldhamsl_filebase = config['cldhamsl_filebase']
     pixel_filebase = config['pixel_filebase']
     ncores_min = config['ncores_min']
 
@@ -679,26 +726,34 @@ if __name__ == '__main__':
     pixelfilelist = sorted(glob.glob(f'{pixelfile_path}{pixel_filebase}*.nc'))
     nfiles = len(pixelfilelist)
     # Find all Met files
-    # regfilelist = sorted(glob.glob(f'{regfile_path}{reg_filebase}*.nc'))
-    metfilelist = sorted(glob.glob(f'{metfile_path}{reg_filebase}*.nc'))
+    metfilelist = sorted(glob.glob(f'{metfile_path}{methamsl_filebase}*.nc'))
+    cldfilelist = sorted(glob.glob(f'{metfile_path}{cldhamsl_filebase}*.nc'))
     nmetfiles = len(metfilelist)
     print(f'Number of MET files: {nmetfiles}')
     
     # Get basetime from pixel files
     pixel_basetime, pixelfile_dict = calc_basetime(pixelfilelist, pixel_filebase)
-    # Get basetime from MET files
-    met_basetime, regfile_dict = calc_basetime(metfilelist, reg_filebase)
+    # Get basetime from met & cld files
+    met_basetime, regfile_dict = calc_basetime(metfilelist, methamsl_filebase)
+    cld_basetime, cldfile_dict = calc_basetime(cldfilelist, cldhamsl_filebase)
 
     # Find matching MET files for each pixel file
-    match_regfilelist = [''] * nfiles
+    match_metfilelist = [''] * nfiles
+    match_cldfilelist = [''] * nfiles
     for ifile in range(nfiles):
         # Find MET time closest to the pixel file time and get the index
         # Save the filename if time difference is < time_window
         idx = np.argmin(np.abs(met_basetime - pixel_basetime[ifile]))
         if np.abs(met_basetime[idx] - pixel_basetime[ifile]) < time_window:
-            match_regfilelist[ifile] = regfile_dict[met_basetime[idx]]
+            match_metfilelist[ifile] = regfile_dict[met_basetime[idx]]
         else:
-            print(f'No match file found for: {pixelfilelist[ifile]}')
+            print(f'No match met file found for: {pixelfilelist[ifile]}')
+
+        idx = np.argmin(np.abs(cld_basetime - pixel_basetime[ifile]))
+        if np.abs(cld_basetime[idx] - pixel_basetime[ifile]) < time_window:
+            match_cldfilelist[ifile] = cldfile_dict[cld_basetime[idx]]
+        else:
+            print(f'No match cld file found for: {pixelfilelist[ifile]}')
 
     # Read track statistics file
     print(trackstats_file)
@@ -714,7 +769,7 @@ if __name__ == '__main__':
     print(f'Total Number of Tracks: {ntracks}')
 
     # Read a MET file to get vertical coordinates
-    dsm = xr.open_dataset(match_regfilelist[0])
+    dsm = xr.open_dataset(match_metfilelist[0])
     nz = dsm.dims['HAMSL']
     height = dsm['HAMSL']
     dsm.close()
@@ -751,7 +806,8 @@ if __name__ == '__main__':
             if run_parallel == 0:
                 iresult = calc_cellstats_singlefile(
                     pixelfilelist[ifile], 
-                    match_regfilelist[ifile],
+                    match_metfilelist[ifile],
+                    match_cldfilelist[ifile],
                     idx_track, 
                     config,
                 )
@@ -759,7 +815,8 @@ if __name__ == '__main__':
             elif run_parallel == 1:
                 iresult = dask.delayed(calc_cellstats_singlefile)(
                     pixelfilelist[ifile], 
-                    match_regfilelist[ifile],
+                    match_metfilelist[ifile],
+                    match_cldfilelist[ifile],
                     idx_track, 
                     config,
                 )

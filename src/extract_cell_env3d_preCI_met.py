@@ -635,7 +635,6 @@ def extract_env_prof(
         new_attrs = {**pixel_attrs, **cld_attrs}
         out_dict_attrs = {**out_dict_attrs, **new_attrs}
 
-    import pdb; pdb.set_trace()
     return out_dict3d, out_dict2d, out_dict_attrs, out_coords
 
 

@@ -1,9 +1,10 @@
 #!/bin/bash
 #SBATCH -A atm123
 #SBATCH -J STARTDATEENSMEMBER
-#SBATCH --time=01:00:00
+#SBATCH --time=02:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=128
+##SBATCH -p batch_short
 ##SBATCH -p batch_all
 #SBATCH -p batch_high_memory
 #SBATCH --exclusive
@@ -24,16 +25,18 @@ cd /ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src
 # Calculate W statistics
 # python calc_draft_stats_in_celltracks.py CONFIG_NAME.yml
 
-# # Extract 3D preCI environments
+# # Extract 3D preCI environments (wallclock: 1-2 h)
 # # For 100m runs, use: #SBATCH -p batch_high_memory, set n_workers=8 in config
+# # For 100m runs, use: #SBATCH -p batch_short, set n_workers=8 in config
 # # For 500m runs, use: #SBATCH -p batch_high_memory, set n_workers=8 in config
+# # For 500m runs, use: #SBATCH -p batch_short, set n_workers=12 in config
 python extract_cell_env3d_preCI_met.py CONFIG_NAME.yml
 
 # # Calculate 2D preCI environments
 # # For 100m runs, use: #SBATCH -p batch_high_memory, set n_workers=16 in config
-# python calc_cell_env2d_from_3d.py CONFIG_NAME.yml
+python calc_cell_env2d_from_3d.py CONFIG_NAME.yml
 
 # # Calculate 1D preCI environments
-# python calc_cell_center_env.py CONFIG_NAME.yml
+python calc_cell_center_env.py CONFIG_NAME.yml
 
 date

@@ -1,6 +1,6 @@
 ---
 # Run in parallel
-run_parallel: 0
+run_parallel: 1
 # Number of workers for Dask
 n_workers: 8
 # Threads per worker
@@ -35,18 +35,22 @@ cldfile_path: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE
 output_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4/stats/'
 # File base names
 pixel_filebase: 'regrid_celltracks_'
-reg_filebase: 'corlasso_methamsl_STARTDATE00ENSMEMBERd4_CONFIG_M1.m1.'
+methamsl_filebase: 'corlasso_methamsl_STARTDATE00ENSMEMBERd4_CONFIG_M1.m1.'
+cldhamsl_filebase: 'corlasso_cldhamsl_STARTDATE00ENSMEMBERd4_CONFIG_M1.m1.'
 met_filebase: 'corlasso_met_STARTDATE00ENSMEMBERd4_CONFIG_M1.m1.'
 cld_filebase: 'corlasso_cld_STARTDATE00ENSMEMBERd4_CONFIG_M1.m1.'
 # W thresholds to define cores
 W_up_thresh: 2.0  # [m/s]
 W_down_thresh: -1.0  # [m/s]
+# Hydrometeor thresholds to define moist updrafts
+Q_up_thresh: 0.00001 # 0.01/1000  # [kg/kg]
+Q_down_thresh: 0.00005 # 0.05/1000  # [kg/kg]
 # Minimum pixel count for a core
 min_core_npix: 9
 # Number of pixel to expand a core to get perimeter
 core_expand_dist: 3
 # Number of cores to save per cell
-ncores_min: 20
+ncores_min: 10
 # Number of hours prior to initiation to extract environment
 nhours: 1
 # Set max number of times to keep for each track

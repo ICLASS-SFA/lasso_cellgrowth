@@ -12,7 +12,8 @@ slurm_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
 config_template=${config_dir}"config_lasso_wrf100m_template.yml"
 # D4 (100m) 15min tracking
 # config_template=${config_dir}"config_lasso_wrf100m_15min_template.yml"
-# D3 (500m) 15min tracking
+# D3 (500m) tracking
+# config_template=${config_dir}"config_lasso_wrf500m_template.yml"
 # config_template=${config_dir}"config_lasso_wrf500m_15min_template.yml"
 # D3 (500m) 5min tracking
 # config_template=${config_dir}"config_lasso_wrf500m_template.yml"
@@ -23,17 +24,15 @@ slurm_basename="slurm_lasso_"
 # Base runs
 if [ ${configuration} == "base" ]
 then
-    # start_dates=("20190122" "20181129" "20181129")
-    # ens_members=("gefs18" "gefs18" "gefs09")
     start_dates=(
         "20181129" "20181129" "20181129" "20181129"
         "20181204" "20181204" 
         "20181205" 
         "20181219" 
-        "20190122" "20190122" 
+        "20190122" "20190122"
         "20190123" "20190123"
         "20190125" "20190125"
-        "20190129" "20190129" 
+        "20190129" "20190129"
         "20190208" "20190208"
     )
     # Long ensemble member names (for directory names)
