@@ -452,10 +452,14 @@ def calc_cellstats_singlefile(
                 # Then, carve out the appropriate region in the modified tracknumbermap
                 # e.g., where(tracknumbermap_label == correct)
                 
+#                 import pdb; pdb.set_trace()
                 # Setting the largest-possible sub-domain as 1.
                 ipos = np.where(tracknumbermap_label == correct)
                 tracknumbermap_evo = np.zeros_like(tracknumbermap)
                 tracknumbermap_evo[ipos[0].min():ipos[0].max(),ipos[1].min():ipos[1].max()] = 1
+                
+                # Binary Dilation of 20 grid points as largest updraft has a diameter of approximately 2 km 
+                tracknumbermap_evo = expand_labels(tracknumbermap_evo, distance = 20)
                 tracknumbermap_final = xr.DataArray(tracknumbermap_evo,coords=tracknumbermap.coords, dims=tracknumbermap.dims )
                 
 #                 import pdb; pdb.set_trace()
@@ -467,7 +471,7 @@ def calc_cellstats_singlefile(
 #         
 #                 plt.clf
 #                 f1 = plt.figure(figsize=(5, 5))
-#                 pm = plt.pcolormesh(tmp[1500:1800,400:600])
+#                 pm = plt.pcolormesh(tst)
 #                 plt.colorbar(pm)
 #                 plt.savefig('/ccsopen/home/enochjo/test.png')
                                 
@@ -599,6 +603,10 @@ def calc_cellstats_singlefile(
                         core_npix_up = dict_up['core_npix']
                         core_numbers_up = dict_up['core_numbers']
                         core_label_up = dict_up['core_label']
+                        
+                        # import pdb; pdb.set_trace()
+                        
+                        ncores_save_up = min([ncores_up, ncores_min])
 
 #                         # Label updraft cores (EJ)
 #                         core_numbers_up,core_npix_up = np.unique(zCore, return_counts=True)
@@ -609,12 +617,15 @@ def calc_cellstats_singlefile(
 #                         core_label_up = zCore
                         
                         # Find Centroids here (EJ)
-                        cpoints = np.zeros((len(core_numbers_up),2))
-                        for i in range(0,len(core_numbers_up)):
+                        # cpoints = np.zeros((len(ncores_save_up),2))
+                        cpoints = np.zeros((ncores_save_up,2))
+                        
+                        for i in range(0,ncores_save_up):
                             tmp_image = np.zeros_like(core_label_up)
                             ind = np.where(core_label_up==core_numbers_up[i])
                             tmp_image[ind] = 1
                             cpoints[i,:] = centroid(tmp_image)
+                        
                             
 #                         if z == 25:
 #                             import pdb; pdb.set_trace()
@@ -637,13 +648,15 @@ def calc_cellstats_singlefile(
 
                         # Dilate core labels by a certain number of pixels
                         core_label_up_prm = np.zeros_like(core_label_up)
-                        for ii in range(ncores_up):
+                        for ii in range(ncores_save_up):
                             cell = np.zeros_like(core_label_up)
                             cell[core_label_up == core_numbers_up[ii]] = 1
                             expand = round(np.sqrt(core_npix_up[ii]/np.pi))
                             dil = expand_labels(cell, distance = expand)
                             core_label_up_prm[(dil - cell) == 1] = core_numbers_up[ii]
+                        
                             
+                        
                         # Getting rid of all the perimeter labels that exist within adjacent cores.
                         # core_label_up_prm[core_label_up > 0] = 0 # Don't do this
                         
@@ -662,12 +675,7 @@ def calc_cellstats_singlefile(
                         # core_label_up_prm = expand_labels(core_label_up, distance = 2) - core_label_up # Just perimeter
                         # ^^ Not needed for now as we are dynamically adjusting the perimeter.
                         
-#                             from matplotlib import pyplot as plt
-#                             plt.clf
-#                             f1 = plt.figure(figsize=(5, 5))
-#                             pm = plt.pcolormesh(core_label_up_prm)
-#                             plt.colorbar(pm)
-#                             plt.savefig('/ccsopen/home/enochjo/test.png')
+                        
                         
                         # Total number of cores
                         cell_nCore_up[icell, z] = ncores_all_up
@@ -676,40 +684,50 @@ def calc_cellstats_singlefile(
                         
                         # Calculate core statistics
                         # MaFlx_sum_up = np.full(ncores_up, np.NaN, dtype=np.float32)
-                        MaFlx_core_up = np.full(ncores_up, np.NaN, dtype=np.float32)
-                        W_max_up = np.full(ncores_up, np.NaN, dtype=np.float32)
-                        W_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32)
-                        QC_max_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        QC_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        QC_mean_prm = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        QR_max_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        QR_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        QV_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        QV_mean_prm = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Entr_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Detr_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Vapr_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        dBZ_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Thte_max_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Thte_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Thte_mean_prm = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Thtv_max_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Thtv_mean_prm = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Buoy_Thtv_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Trho_max_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Trho_mean_prm = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Buoy_Trho_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Pres_pert_top = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Pres_pert_bot = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        Mrho_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        PGF_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        NS_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        WE_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        RH_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        RH_mean_prm = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
+                        MaFlx_core_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
+                        W_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
+                        W_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
+                        QC_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        QC_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        QC_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        QR_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        QR_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        QV_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        QV_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        Entr_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        Detr_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        Vapr_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        dBZ_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        Thte_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        Thte_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        Thte_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        Thtv_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        Thtv_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        Buoy_Thtv_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        Trho_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        Trho_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        Buoy_Trho_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        Pres_pert_top = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        Pres_pert_bot = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        Mrho_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        PGF_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        NS_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        WE_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        RH_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        RH_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
                         
                         
-                        for ii in range(ncores_up):                            
+                        for ii in range(ncores_save_up): 
+                        
+#                             if z >= 25:
+#                                 import pdb; pdb.set_trace()
+#                                 from matplotlib import pyplot as plt
+#                                 plt.clf
+#                                 f1 = plt.figure(figsize=(5, 5))
+#                                 pm = plt.pcolormesh(core_label_up_prm)
+#                                 plt.colorbar(pm)
+#                                 plt.savefig('/ccsopen/home/enochjo/test.png')
+                                                       
                             MaFlx_core_up[ii] = np.nansum(zMassFlux[core_label_up == core_numbers_up[ii]])
                             W_max_up[ii] = np.nanmax(zW[core_label_up == core_numbers_up[ii]])
                             W_mean_up[ii] = np.nanmean(zW[core_label_up == core_numbers_up[ii]])
@@ -750,7 +768,7 @@ def calc_cellstats_singlefile(
                         MaFlx_sum_up = np.nansum(zMassFlux[core_label_up > 0])
                         
                         # Save data to output arrays
-                        ncores_save_up = min([ncores_up, ncores_min])
+                        # ncores_save_up = min([ncores_up, ncores_min])
                         cell_MassFlux_up[icell, z] = MaFlx_sum_up * DX * DY
                         cell_CoreMassFlux_up[icell, z, 0:ncores_save_up] = MaFlx_core_up[0:ncores_save_up] * DX * DY
                         cell_CoreArea_up[icell, z, 0:ncores_save_up] = core_npix_up[0:ncores_save_up] * grid_area
