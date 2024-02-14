@@ -325,7 +325,7 @@ def extract_env_prof(
         TV = dsm['tv'] # EJ
         WA = dsm['WA']
         dBZ = dsm['REFL_10CM'] # EJ
-        QC = dsm['QCLOUD'] # EJ
+        #QC = dsm['QCLOUD'] # EJ
         #qi = dsm['QICE'] # EJ
         #qs = dsm['QSNOW'] # EJ
         qv = dsm['QVAPOR'] # EJ
@@ -335,7 +335,7 @@ def extract_env_prof(
         TH = dsm['THETA'] # EJ
         QA = dsm['QA'] # EJ
         QT = dsm['QT'] # EJ
-        QR = dsm['QRAIN'] # EJ
+        #QR = dsm['QRAIN'] # EJ
         
         # QA = QC + QR
         
@@ -344,11 +344,27 @@ def extract_env_prof(
         Mrho = 100 * PRESSURE / (R_dry * TV)  # kg m-3
 
         # Calculate Virtual Potential Temperature # EJ
-        Thtv = TH * (qv + 0.622)/(0.622 * (1 + qv))
+        # Thtv = TH * (qv + 0.622)/(0.622 * (1 + qv))
 
         # Calculate Temperature (AMS)
         Temp = TH*(PRESSURE/1000)**(2/7) # Remember that PRESSURE is in hPa
         tc = Temp - 273.15
+        
+        # Calculate RH (Thompson Scheme)
+#         C0 = 0.611583699e3
+#         C1 = 0.444606896e2
+#         C2 = 0.143177157e1
+#         C3 = 0.264224321e-1
+#         C4 = 0.299291081e-3
+#         C5 = 0.203154182e-5
+#         C6 = 0.702620698e-8
+#         C7 = 0.379534310e-11
+#         C8 = -0.321582393e-13
+#         X = tc.where(tc > -80)
+#         X = X.fillna(-80) #setting values less than -80C to -80C 
+#         ESL = C0 + X*(C1 + X*(C2 + X*(C3 + X*(C4 + X*(C5 + X*(C6 + X*(C7 + X*C8))))))) #saturation vapor pressure
+#         QVS = 0.622*ESL/(PRESSURE - ESL) #saturation vapor mixing ratio
+#         RH = 1e2*qv/QVS # %
         
         # Calculate Saturated Vapor Pressure (NWS)
         es = 6.11*10**((7.5*tc)/(237.3+tc))
@@ -361,6 +377,30 @@ def extract_env_prof(
         # Calculate Density Temperature (Eqn. 4.3.6 of some Emanuel textbook)
         # "Note that Tv is a special case of Trho, since when condensed water is absent rT = r."
         Trho = Temp*(1 + qv/0.622)/(1 + QT)
+        
+        # Calculate Theta E using the Emmanuel Textbook
+        cpd = 1006
+        g = 9.81
+        cpv = 1870
+        E = 0.622
+        lv0 = 2501000
+        Rv = 461.5
+        Rd = 287.04
+        cw = 4190
+        cc = 2320
+        ccl = 4200
+        cvv = 1410
+        cvd = 719
+    
+        alv = lv0 - cc*tc
+    
+        Tv = Temp*(1+0.608*QT)
+        Thtv = Tv*(1000/PRESSURE)**0.286
+    
+        teA = Temp*(1000/PRESSURE)**(Rd/(cpd + ccl*QT))
+        teB = np.exp( (lv0*QT)/((cpd + QT*ccl)*Temp))
+        teC = (RH/100)**( (-1*QT*Rv) / (cpd + ccl*QT) )
+        Thte = teA * teB * teC
 
         # Calculate mass flux (kg m-2 s-1)
         MassFlux = (Mrho * WA).squeeze()
@@ -436,11 +476,11 @@ def extract_env_prof(
         cell_CoreArea_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_CoreMaxW_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_CoreMeanW_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMaxQC_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMeanQC_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMeanQC_prm = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMaxQR_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
-        cell_CoreMeanQR_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
+#         cell_CoreMaxQC_up = np.full(dims3d, np.NaN, dtype=np.float32)
+#         cell_CoreMeanQC_up = np.full(dims3d, np.NaN, dtype=np.float32)
+#         cell_CoreMeanQC_prm = np.full(dims3d, np.NaN, dtype=np.float32)
+#         cell_CoreMaxQR_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
+#         cell_CoreMeanQR_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
         cell_CoreMeanQV_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_CoreMeanQV_prm = np.full(dims3d, np.NaN, dtype=np.float32)
         
@@ -611,8 +651,8 @@ def extract_env_prof(
                 
                 iW = WA.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 iQ = QA.where(tracknumbermap_final == 1, drop=True).squeeze().data
-                iQC = QC.where(tracknumbermap_final == 1, drop=True).squeeze().data
-                iQR = QR.where(tracknumbermap_final == 1, drop=True).squeeze().data
+#                 iQC = QC.where(tracknumbermap_final == 1, drop=True).squeeze().data
+#                 iQR = QR.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 iQV = qv.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 iMassFlux = MassFlux.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 idBZ = dBZ.where(tracknumbermap_final == 1, drop=True).squeeze().data
@@ -679,8 +719,8 @@ def extract_env_prof(
                     for z in range(0, nz):                        
                         zW = iW[z,:,:]
                         zQ = iQ[z,:,:] #EJ
-                        zQC = iQC[z,:,:] #EJ
-                        zQR = iQR[z,:,:] #EJ
+#                         zQC = iQC[z,:,:] #EJ
+#                         zQR = iQR[z,:,:] #EJ
                         zQV = iQV[z,:,:] #EJ
                         zMassFlux = iMassFlux[z,:,:]
                         zdBZ = idBZ[z,:,:] #EJ
@@ -793,13 +833,13 @@ def extract_env_prof(
                         MaFlx_core_up = np.full(ncores_up, np.NaN, dtype=np.float32)
                         W_max_up = np.full(ncores_up, np.NaN, dtype=np.float32)
                         W_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32)
-                        QC_max_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        QC_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        QC_mean_prm = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
+#                         QC_max_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
+#                         QC_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
+#                         QC_mean_prm = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
                         QV_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
                         QV_mean_prm = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        QR_max_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
-                        QR_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
+#                         QR_max_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
+#                         QR_mean_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
                         Entr_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
                         Detr_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
                         Vapr_up = np.full(ncores_up, np.NaN, dtype=np.float32) # EJ
@@ -827,11 +867,11 @@ def extract_env_prof(
                             MaFlx_core_up[ii] = np.nansum(zMassFlux[core_label_up == core_numbers_up[ii]])
                             W_max_up[ii] = np.nanmax(zW[core_label_up == core_numbers_up[ii]])
                             W_mean_up[ii] = np.nanmean(zW[core_label_up == core_numbers_up[ii]])
-                            QC_max_up[ii] = np.nanmax(zQC[core_label_up == core_numbers_up[ii]]) # EJ
-                            QC_mean_up[ii] = np.nanmean(zQC[core_label_up == core_numbers_up[ii]]) # EJ
-                            QC_mean_prm[ii] = np.nanmean(zQC[core_label_up_prm == core_numbers_up[ii]]) # EJ
-                            QR_max_up[ii] = np.nanmax(zQR[core_label_up == core_numbers_up[ii]]) # EJ
-                            QR_mean_up[ii] = np.nanmean(zQR[core_label_up == core_numbers_up[ii]]) # EJ
+#                             QC_max_up[ii] = np.nanmax(zQC[core_label_up == core_numbers_up[ii]]) # EJ
+#                             QC_mean_up[ii] = np.nanmean(zQC[core_label_up == core_numbers_up[ii]]) # EJ
+#                             QC_mean_prm[ii] = np.nanmean(zQC[core_label_up_prm == core_numbers_up[ii]]) # EJ
+#                             QR_max_up[ii] = np.nanmax(zQR[core_label_up == core_numbers_up[ii]]) # EJ
+#                             QR_mean_up[ii] = np.nanmean(zQR[core_label_up == core_numbers_up[ii]]) # EJ
                             QV_mean_up[ii] = np.nanmean(zQV[core_label_up == core_numbers_up[ii]]) # EJ
                             QV_mean_prm[ii] = np.nanmean(zQV[core_label_up_prm == core_numbers_up[ii]]) # EJ
                             Entr_up[ii] = np.nansum(zEntr[core_label_up_dil == core_numbers_up[ii]]) # EJ
@@ -872,11 +912,11 @@ def extract_env_prof(
                         cell_CoreMaxW_up[icell, z, 0:ncores_save_up] = W_max_up[0:ncores_save_up]
                         cell_CoreMeanW_up[icell, z, 0:ncores_save_up] = W_mean_up[0:ncores_save_up]
                         
-                        cell_CoreMaxQC_up[icell, z, 0:ncores_save_up] = QC_max_up[0:ncores_save_up] # EJ
-                        cell_CoreMeanQC_up[icell, z, 0:ncores_save_up] = QC_mean_up[0:ncores_save_up] # EJ
-                        cell_CoreMeanQC_prm[icell, z, 0:ncores_save_up] = QC_mean_prm[0:ncores_save_up] # EJ
-                        cell_CoreMaxQR_up[icell, z, 0:ncores_save_up] = QR_max_up[0:ncores_save_up] # EJ
-                        cell_CoreMeanQR_up[icell, z, 0:ncores_save_up] = QR_mean_up[0:ncores_save_up] # EJ
+#                         cell_CoreMaxQC_up[icell, z, 0:ncores_save_up] = QC_max_up[0:ncores_save_up] # EJ
+#                         cell_CoreMeanQC_up[icell, z, 0:ncores_save_up] = QC_mean_up[0:ncores_save_up] # EJ
+#                         cell_CoreMeanQC_prm[icell, z, 0:ncores_save_up] = QC_mean_prm[0:ncores_save_up] # EJ
+#                         cell_CoreMaxQR_up[icell, z, 0:ncores_save_up] = QR_max_up[0:ncores_save_up] # EJ
+#                         cell_CoreMeanQR_up[icell, z, 0:ncores_save_up] = QR_mean_up[0:ncores_save_up] # EJ
                         cell_CoreMeanQV_up[icell, z, 0:ncores_save_up] = QV_mean_up[0:ncores_save_up] # EJ
                         cell_CoreMeanQV_prm[icell, z, 0:ncores_save_up] = QV_mean_prm[0:ncores_save_up] # EJ
                         cell_Entr_up[icell, z, 0:ncores_save_up] = Entr_up[0:ncores_save_up] # EJ
@@ -916,11 +956,11 @@ def extract_env_prof(
             'CoreArea_up': cell_CoreArea_up,
             'CoreMaxW_up': cell_CoreMaxW_up,
             'CoreMeanW_up': cell_CoreMeanW_up,
-            'CoreMaxQC_up': cell_CoreMaxQC_up,
-            'CoreMeanQC_up': cell_CoreMeanQC_up,
-            'CoreMeanQC_prm': cell_CoreMeanQC_prm,
-            'CoreMaxQR_up': cell_CoreMaxQR_up,
-            'CoreMeanQR_up': cell_CoreMeanQR_up,
+#             'CoreMaxQC_up': cell_CoreMaxQC_up,
+#             'CoreMeanQC_up': cell_CoreMeanQC_up,
+#             'CoreMeanQC_prm': cell_CoreMeanQC_prm,
+#             'CoreMaxQR_up': cell_CoreMaxQR_up,
+#             'CoreMeanQR_up': cell_CoreMeanQR_up,
             'CoreMeanQV_up': cell_CoreMeanQV_up,
             'CoreMeanQV_prm': cell_CoreMeanQV_prm,
             'CoreMassFlux_up': cell_CoreMassFlux_up,
@@ -978,26 +1018,26 @@ def extract_env_prof(
                 'long_name': 'Updraft core mean W',
                 'units': 'm/s',
             },
-            'CoreMaxQC_up': {
-                'long_name': 'Updraft core mean QC',
-                'units': 'kg/kg',
-            },
-            'CoreMeanQC_up': {
-                'long_name': 'Updraft core mean QC',
-                'units': 'kg/kg',
-            },
-            'CoreMeanQC_prm': {
-                'long_name': 'Updraft perim mean QC',
-                'units': 'kg/kg',
-            },
-            'CoreMaxQR_up': {
-                'long_name': 'Updraft core mean QR',
-                'units': 'kg/kg',
-            },
-            'CoreMeanQR_up': {
-                'long_name': 'Updraft core mean QR',
-                'units': 'kg/kg',
-            },
+#             'CoreMaxQC_up': {
+#                 'long_name': 'Updraft core mean QC',
+#                 'units': 'kg/kg',
+#             },
+#             'CoreMeanQC_up': {
+#                 'long_name': 'Updraft core mean QC',
+#                 'units': 'kg/kg',
+#             },
+#             'CoreMeanQC_prm': {
+#                 'long_name': 'Updraft perim mean QC',
+#                 'units': 'kg/kg',
+#             },
+#             'CoreMaxQR_up': {
+#                 'long_name': 'Updraft core mean QR',
+#                 'units': 'kg/kg',
+#             },
+#             'CoreMeanQR_up': {
+#                 'long_name': 'Updraft core mean QR',
+#                 'units': 'kg/kg',
+#             },
             'CoreMeanQV_up': {
                 'long_name': 'Updraft core mean QV',
                 'units': 'kg/kg',
