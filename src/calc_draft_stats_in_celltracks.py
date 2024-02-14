@@ -107,6 +107,10 @@ def label_cores(W, W_thresh, Q, Q_thresh, VMF, ncores_min, min_core_npix, method
     npix_core = npix_core[core_numbers > 0]
     core_numbers = core_numbers[core_numbers > 0]
     
+    # Find the small cores (EJ) 
+    mask = npix_core <= min_core_npix
+    rm_core_numbers = core_numbers[mask]
+
     # Remove small cores
     mask = npix_core > min_core_npix
     npix_core = npix_core[mask]
@@ -123,13 +127,14 @@ def label_cores(W, W_thresh, Q, Q_thresh, VMF, ncores_min, min_core_npix, method
     sort_idx = zVMF.argsort()[::-1] 
     npix_core_sorted = npix_core[sort_idx]
     core_numbers_sorted = core_numbers[sort_idx]
-
-    # if ( len(core_numbers) > 2 ) & ( method == '>' ):
-    #     import pdb;pdb.set_trace()
-    
+   
     # Save the largest X cores
     ncores_all = len(npix_core)
     ncores_save = np.nanmin([ncores_all, ncores_min])
+
+    # Remove small cores in the 2D mask (EJ)
+    for i in rm_core_numbers:
+        core_label[core_label == i] = 0
     
     # Put output variables in a dictionary
     out_dict = {
@@ -140,6 +145,103 @@ def label_cores(W, W_thresh, Q, Q_thresh, VMF, ncores_min, min_core_npix, method
         'core_label': core_label,
     }
     return out_dict
+
+#--------------------------------------------------------------------------
+def make_dilation_structure(dilate_radius, DX, DY):
+    """
+    Make a circular dilation structure
+
+    Args:
+        dilate_radius: float
+            Dilation radius [kilometer].
+        DX: float
+            Grid spacing in x-direction [meter].
+        DY: float
+            Grid spacing in y-direction [meter]. 
+    
+    Returns:
+        struc: np.array
+            Dilation structure array.
+    """
+    # Convert radius to number grids
+    rad_gridx = int(dilate_radius * 1000 / DX)
+    rad_gridy = int(dilate_radius * 1000 / DY)
+    xgrd, ygrd = np.ogrid[-rad_gridx:rad_gridx+1, -rad_gridy:rad_gridy+1]
+    # Make dilation structure
+    strc = xgrd*xgrd + ygrd*ygrd <= (dilate_radius * 1000 / DX) * (dilate_radius * 1000 / DY)
+    return strc
+
+#-----------------------------------------------------------------------
+def calc_rh_thompson(TEMPERATURE, PRESSURE, QVAPOR):
+    """
+    Calculate relative humidity following the Thompson scheme for supersaturation
+
+    Args:
+        TEMPERATURE: array-like
+            Dry air temp [K]
+        PRESSURE: array-like
+            Air pressure [Pa]
+        QVAPOR: array-like
+            Water vapor mixing ratio [kg/kg]
+   
+    Returns:
+        RH: array-like
+            Relative humidity [%]
+    """
+    # RH (formula is used in Thompson scheme for supersaturation)
+    C0 = 0.611583699e3
+    C1 = 0.444606896e2
+    C2 = 0.143177157e1
+    C3 = 0.264224321e-1
+    C4 = 0.299291081e-3
+    C5 = 0.203154182e-5
+    C6 = 0.702620698e-8
+    C7 = 0.379534310e-11
+    C8 = -0.321582393e-13
+    X = TEMPERATURE - 273.16
+    X[X < -80] = -80  #setting values less than -80C to -80C
+    # X = X.where(X > -80, -80)
+    # X = X.where(X > -80)
+    # X = X.fillna(-80) #setting values less than -80C to -80C 
+    ESL = C0 + X*(C1 + X*(C2 + X*(C3 + X*(C4 + X*(C5 + X*(C6 + X*(C7 + X*C8))))))) #saturation vapor pressure
+    QVS = 0.622 * ESL / (PRESSURE - ESL) #saturation vapor mixing ratio
+    RH = 1e2 * QVAPOR / QVS # %
+    #SS = RH - 100 #supersaturation in %
+    return RH
+
+#-----------------------------------------------------------------------
+def calc_theta_e(TEMPERATURE, PRESSURE, QVAPOR, Qliq, RH):
+    """
+    Calculate equivalent potential temperature following the Emanuel formular
+
+    Args:
+        TEMPERATURE: array-like
+            Dry air temp [K]
+        PRESSURE: array-like
+            Air pressure [Pa]
+        QVAPOR: array-like
+            Water vapor mixing ratio [kg/kg]
+        Qliq: array-like
+            Total liquid condensate mixing ratio [kg/kg]
+        RH: array-like
+            Relative humidity [%]
+    
+    Returns:
+        THETAE: array-like
+            Equivalent potential temperature.
+    """
+    # constants:
+    cpd = 1006 # J/kg K
+    lv0 = 2501000
+    Rv = 461.5
+    Rd = 287.04
+    cl = 4200
+
+    teA = TEMPERATURE * (100000. / PRESSURE)**(Rd / (cpd + cl * Qliq))
+    teB = np.exp((lv0 * QVAPOR) / ((cpd + Qliq * cl) * TEMPERATURE))
+    teC = (RH/100)**((-QVAPOR * Rv) / (cpd + cl * Qliq))
+    THETAE = teA * teB * teC
+    return THETAE
 
 #-----------------------------------------------------------------------
 def calc_cellstats_singlefile(
@@ -173,13 +275,14 @@ def calc_cellstats_singlefile(
     print(met_filename)
 
     # Get thresholds from config
-    W_up_thresh = config['W_up_thresh']
-    W_down_thresh = config['W_down_thresh']
-    Q_up_thresh = config['Q_up_thresh']
-    Q_down_thresh = config['Q_down_thresh']
-    min_core_npix = config['min_core_npix']
-    ncores_min = config['ncores_min']
-    core_expand_dist = config.get('core_expand_dist', 1)
+    W_up_thresh = config.get('W_up_thresh')
+    W_down_thresh = config.get('W_down_thresh')
+    Q_up_thresh = config.get('Q_up_thresh')
+    Q_down_thresh = config.get('Q_down_thresh')
+    min_core_npix = config.get('min_core_npix')
+    ncores_min = config.get('ncores_min')
+    core_expand_dist = config.get('core_expand_dist')
+    core_shell_buffer_radius = config.get('core_shell_buffer_radius')
     geolimits = config.get('geolimits', None)
 
     # Read MET file
@@ -223,7 +326,7 @@ def calc_cellstats_singlefile(
         # Subset 
         XLONG = dsm['XLONG'][ymin:ymax+1, xmin:xmax+1]
         XLAT = dsm['XLAT'][ymin:ymax+1, xmin:xmax+1]
-        PRESSURE = dsm['PRESSURE'][:, :, ymin:ymax+1, xmin:xmax+1]
+        PRESSURE = dsm['PRESSURE'][:, :, ymin:ymax+1, xmin:xmax+1]*100  # [Pa]
         TEMPERATURE = dsm['TEMPERATURE'][:, :, ymin:ymax+1, xmin:xmax+1]
         QVAPOR = dsm['QVAPOR'][:, :, ymin:ymax+1, xmin:xmax+1]
         # TV = dsm['TV'][:, :, ymin:ymax+1, xmin:xmax+1]
@@ -231,7 +334,7 @@ def calc_cellstats_singlefile(
         WA = dsm['WA'][:, :, ymin:ymax+1, xmin:xmax+1]
         # Get cld variables
         QCLOUD = dsc['QCLOUD'][:, :, ymin:ymax+1, xmin:xmax+1]
-        # QRAIN = dsc['QRAIN'][:, :, ymin:ymax+1, xmin:xmax+1]
+        QRAIN = dsc['QRAIN'][:, :, ymin:ymax+1, xmin:xmax+1]
         QICE = dsc['QICE'][:, :, ymin:ymax+1, xmin:xmax+1]
         QSNOW = dsc['QSNOW'][:, :, ymin:ymax+1, xmin:xmax+1]
         # QGRAUP = dsc['QGRAUP'][:, :, ymin:ymax+1, xmin:xmax+1]
@@ -241,7 +344,7 @@ def calc_cellstats_singlefile(
     else:
         XLONG = dsm['XLONG']
         XLAT = dsm['XLAT']
-        PRESSURE = dsm['PRESSURE']
+        PRESSURE = dsm['PRESSURE']*100  # [Pa]
         TEMPERATURE = dsm['TEMPERATURE']
         QVAPOR = dsm['QVAPOR']
         THETA = dsm['THETA']
@@ -249,7 +352,7 @@ def calc_cellstats_singlefile(
         WA = dsm['WA']
         # Get cld variables
         QCLOUD = dsc['QCLOUD']
-        # QRAIN = dsc['QRAIN']
+        QRAIN = dsc['QRAIN']
         QICE = dsc['QICE']
         QSNOW = dsc['QSNOW']
         # QGRAUP = dsc['QGRAUP']
@@ -265,51 +368,83 @@ def calc_cellstats_singlefile(
     # Drop 1D lat/lon coordinates, and reasign 2D XLONG/XLAT coordinates from Met file
     # It does not seem like this is necessary in Xarray 0.21.1
     ds = ds.drop_vars(['lon', 'lat']).assign_coords({'XLONG':XLONG, 'XLAT':XLAT})
+    # Cell mask
     tracknumbermap = ds['tracknumber'].squeeze()
 
     # Total cloud condensates
     Qcld = QCLOUD + QICE + QSNOW
+    # Total liquid condensates
+    Qliq = QVAPOR + QCLOUD + QRAIN
 
     # Calculate virtual temperature
     TV = TEMPERATURE * (1 + QVAPOR / 0.622) / (1 + QVAPOR)
 
-    # theta-e following Bolton (1980); error of < 0.3 K between -35 and 35C; from Thompson scheme
-    # more accurate formula from Emanuel could be implemented; ice effects also excluded
-    es = PRESSURE*QVAPOR/(0.622*QVAPOR)
-    TDEW = (35.86*np.log(es) - 4947.2325)/(np.log(es) - 23.6837)
-    TLCL = 1/(1/(TDEW - 56) + np.log(TEMPERATURE/TDEW)/800) + 56
-    p1 = 3.376/TLCL - 0.00254
-    p2 = 1e3*QVAPOR*(1 + 0.81*QVAPOR)
-    THETAE = (TEMPERATURE*(100000./PRESSURE)**(0.2854*(1 - 0.28*QVAPOR)))*np.exp(p1*p2) #K
+    # # theta-e following Bolton (1980); error of < 0.3 K between -35 and 35C; from Thompson scheme
+    # # more accurate formula from Emanuel could be implemented; ice effects also excluded
+    # es = PRESSURE*QVAPOR/(0.622*QVAPOR)
+    # TDEW = (35.86*np.log(es) - 4947.2325)/(np.log(es) - 23.6837)
+    # TLCL = 1/(1/(TDEW - 56) + np.log(TEMPERATURE/TDEW)/800) + 56
+    # p1 = 3.376/TLCL - 0.00254
+    # p2 = 1e3*QVAPOR*(1 + 0.81*QVAPOR)
+    # THETAE_Bolton = (TEMPERATURE*(100000./PRESSURE)**(0.2854*(1 - 0.28*QVAPOR)))*np.exp(p1*p2) #K
 
-    # Density temp
-    # TRHO = TEMPERATURE*((1 + QVAPOR/0.622)/(1 + QTOTAL+QVAPOR))
-    
-    # RH (formula is used in Thompson scheme for supersaturation)
-    C0 = 0.611583699e3
-    C1 = 0.444606896e2
-    C2 = 0.143177157e1
-    C3 = 0.264224321e-1
-    C4 = 0.299291081e-3
-    C5 = 0.203154182e-5
-    C6 = 0.702620698e-8
-    C7 = 0.379534310e-11
-    C8 = -0.321582393e-13
+    # # RH (formula is used in Thompson scheme for supersaturation)
+    # C0 = 0.611583699e3
+    # C1 = 0.444606896e2
+    # C2 = 0.143177157e1
+    # C3 = 0.264224321e-1
+    # C4 = 0.299291081e-3
+    # C5 = 0.203154182e-5
+    # C6 = 0.702620698e-8
+    # C7 = 0.379534310e-11
+    # C8 = -0.321582393e-13
     # X = TEMPERATURE - 273.16
     # X = X.where(X > -80)
     # X = X.fillna(-80) #setting values less than -80C to -80C 
     # ESL = C0 + X*(C1 + X*(C2 + X*(C3 + X*(C4 + X*(C5 + X*(C6 + X*(C7 + X*C8))))))) #saturation vapor pressure
-    # QVS = 0.622*ESL/(PRESSURE - ESL) #saturation vapor mixing ratio
-    # RH = 1e2*QVAPOR/QVS # %
-    #SS = RH - 100 #supersaturation in %
+    # QVS = 0.622 * ESL / (PRESSURE - ESL) #saturation vapor mixing ratio
+    # RH = 1e2 * QVAPOR / QVS # %
+    # #SS = RH - 100 #supersaturation in %
 
+    # # Emanuel theta-e formular 
+    # # constants:
+    # cpd = 1006 # J/kg K
+    # # g = 9.8 # m/s2
+    # # cpv = 1870 #J/kg K
+    # # E = 0.622
+    # lv0 = 2501000
+    # Rv = 461.5
+    # Rd = 287.04
+    # # cw = 4190   # heat capacity of water
+    # # cc = 2320
+    # cl = 4200
+    # # cvv = 1410
+    # # cvd = 719
+    # # Qliq = total liquid condensate mixing ratio [kg/kg]
+    # # TEMPERATURE = dry temp [K]
+    # # PRESSURE = Pressure [Pa]  
+    # # RH/100 = relative humidity fraction (from 0->1)
+    
+    # # alv = lv0 - cc * (TEMPERATURE - 273.15) # J/kg
+    # # Tv = TEMPERATURE * (1+0.608 * QVAPOR) # K
+    # # thetav = Tv * (100000. / PRESSURE)**0.286 # K
+    # teA = TEMPERATURE * (100000. / PRESSURE)**(Rd / (cpd + cl * Qliq))
+    # teB = np.exp((lv0 * QVAPOR) / ((cpd + Qliq * cl) * TEMPERATURE))
+    # teC = (RH/100)**((-QVAPOR * Rv) / (cpd + cl * Qliq))
+    # THETAE = teA * teB * teC
+
+    # Density temp
+    # TRHO = TEMPERATURE*((1 + QVAPOR/0.622)/(1 + QTOTAL+QVAPOR))
+    
     # Calculate moist air density using virtual temperature
     R_dry = 287.058   # J kg−1 K−1
     # RHO_DRY = PRESSURE / (R_dry * TEMPERATURE)  # kg m-3
-    RHO_MOIST = 100 * PRESSURE / (R_dry * TV)  # kg m-3
+    RHO_MOIST = PRESSURE / (R_dry * TV)  # kg m-3
 
     # Calculate mass flux (kg m-2 s-1)
     MassFlux = (RHO_MOIST * WA).squeeze()
+
+    # import pdb; pdb.set_trace()
 
     out_dict2d = None
     out_dict3d = None
@@ -337,12 +472,12 @@ def calc_cellstats_singlefile(
         # cell_CoreMeanQV_up = np.full(dims3d, np.NaN, dtype=np.float32)
         # cell_CoreMeanQV_prm = np.full(dims3d, np.NaN, dtype=np.float32)
 
-        cell_nCore_down = np.full(dims2d, np.NaN, dtype=np.float32)
-        cell_MassFlux_down = np.full(dims2d, np.NaN, dtype=np.float32)
-        cell_CoreMassFlux_down = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreArea_down = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMinW_down = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMeanW_down = np.full(dims3d, np.NaN, dtype=np.float32)
+        # cell_nCore_down = np.full(dims2d, np.NaN, dtype=np.float32)
+        # cell_MassFlux_down = np.full(dims2d, np.NaN, dtype=np.float32)
+        # cell_CoreMassFlux_down = np.full(dims3d, np.NaN, dtype=np.float32)
+        # cell_CoreArea_down = np.full(dims3d, np.NaN, dtype=np.float32)
+        # cell_CoreMinW_down = np.full(dims3d, np.NaN, dtype=np.float32)
+        # cell_CoreMeanW_down = np.full(dims3d, np.NaN, dtype=np.float32)
         # cell_CoreMinQ_down = np.full(dims3d, np.NaN, dtype=np.float32)
         # cell_CoreMeanQ_down = np.full(dims3d, np.NaN, dtype=np.float32)
        
@@ -354,11 +489,19 @@ def calc_cellstats_singlefile(
         cell_ThtvMax_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_ThtvMean_prm = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_BuoyThtv_up = np.full(dims3d, np.NaN, dtype=np.float32)
+        cell_RhMean_prm = np.full(dims3d, np.NaN, dtype=np.float32)
         # cell_TrhoMax_up = np.full(dims3d, np.NaN, dtype=np.float32)
         # cell_TrhoMean_prm = np.full(dims3d, np.NaN, dtype=np.float32)
         # cell_BuoyTrho_up = np.full(dims3d, np.NaN, dtype=np.float32)
         # cell_PGF_up = np.full(dims3d, np.NaN, dtype=np.float32)
-    
+
+        # Make a 2D cloudy updraft mask and combine with the cell mask
+        # The combined mask will include any updrafts that overlap with the cell mask, even if they are outside of the mask
+        # This is useful IF the cell mask does not include any expansion, hence updrafts can exist outside of the cell mask
+        # Refer to Enoch Jo's version on the implementation
+
+        # Make a dilation structure
+        struc = make_dilation_structure(core_shell_buffer_radius, DX, DY)
 
         # Loop over each match tracked cell
         for icell in range(nmatchcell):
@@ -369,39 +512,49 @@ def calc_cellstats_singlefile(
             icellmask = tracknumbermap == itracknum
             inpix_cloud = np.count_nonzero(icellmask)
 
+            # Expand the cell mask so that the updraft perimeter expansion is contained within the subset domain
+            icellmask_expand = binary_dilation(icellmask, struc)
+            # Convert to DataArray
+            icellmask_expand = xr.DataArray(icellmask_expand, coords=icellmask.coords, dims=icellmask.dims)
+            # import pdb; pdb.set_trace()
+
             # Proceed if the number matching cloud pixel > 0
             if inpix_cloud > 0:
 
                 # Subset 3D variables to the current cell mask
-                # icellmask = tracknumbermap == itracknum
-                iW = WA.where(icellmask, drop=True).squeeze().data
-                iMassFlux = MassFlux.where(icellmask, drop=True).squeeze().data
-                # iRho = RHO_DRY.where(icellmask, drop=True).squeeze().data
-                # iP = PRESSURE.where(icellmask, drop=True).squeeze().data
-                # iT = TEMPERATURE.where(icellmask, drop=True).squeeze().data
-                iQcld = Qcld.where(icellmask, drop=True).squeeze().data
-                iQv = QVAPOR.where(icellmask, drop=True).squeeze().data
-                iTheta = THETA.where(icellmask, drop=True).squeeze().data
-                # iThetae = THETAE.where(icellmask, drop=True).squeeze().data
-                iThte = THETAE.where(icellmask, drop=True).squeeze().data
-                # iTv = TV.where(icellmask, drop=True).squeeze().data
-                # iTrho = TRHO.where(icellmask, drop=True).squeeze().data
-                # iRH = RH.where(icellmask, drop=True).squeeze().data
-                # iQc = QCLOUD.where(icellmask, drop=True).squeeze().data
-                # iQr = QRAIN.where(icellmask, drop=True).squeeze().data
-                # iQi = QICE.where(icellmask, drop=True).squeeze().data
-                # iQs = QSNOW.where(icellmask, drop=True).squeeze().data
-                # iQg = QGRAUPEL.where(icellmask, drop=True).squeeze().data
-                # iQt = QTOTAL.where(icellmask, drop=True).squeeze().data
-                # iNc = NCLOUD.where(icellmask, drop=True).squeeze().data
-                # iNr = NRAIN.where(icellmask, drop=True).squeeze().data
-                # iNi = NICE.where(icellmask, drop=True).squeeze().data
-                # iNwa = NWA.where(icellmask, drop=True).squeeze().data
-                # iNia = NIA.where(icellmask, drop=True).squeeze().data
-                # iHd = HD.where(icellmask, drop=True).squeeze().data
+                iW = WA.where(icellmask_expand, drop=True).squeeze().data
+                iMassFlux = MassFlux.where(icellmask_expand, drop=True).squeeze().data
+                # iRho = RHO_DRY.where(icellmask_expand, drop=True).squeeze().data
+                iP = PRESSURE.where(icellmask_expand, drop=True).squeeze().data
+                iT = TEMPERATURE.where(icellmask_expand, drop=True).squeeze().data
+                iQcld = Qcld.where(icellmask_expand, drop=True).squeeze().data
+                iQliq = Qliq.where(icellmask_expand, drop=True).squeeze().data
+                iQv = QVAPOR.where(icellmask_expand, drop=True).squeeze().data
+                iTheta = THETA.where(icellmask_expand, drop=True).squeeze().data
+                # iThetae = THETAE.where(icellmask_expand, drop=True).squeeze().data
+                # iThte = THETAE.where(icellmask_expand, drop=True).squeeze().data
+                # iTv = TV.where(icellmask_expand, drop=True).squeeze().data
+                # iTrho = TRHO.where(icellmask_expand, drop=True).squeeze().data
+                # iRH = RH.where(icellmask_expand, drop=True).squeeze().data
+                # iQc = QCLOUD.where(icellmask_expand, drop=True).squeeze().data
+                # iQr = QRAIN.where(icellmask_expand, drop=True).squeeze().data
+                # iQi = QICE.where(icellmask_expand, drop=True).squeeze().data
+                # iQs = QSNOW.where(icellmask_expand, drop=True).squeeze().data
+                # iQg = QGRAUPEL.where(icellmask_expand, drop=True).squeeze().data
+                # iQt = QTOTAL.where(icellmask_expand, drop=True).squeeze().data
+                # iNc = NCLOUD.where(icellmask_expand, drop=True).squeeze().data
+                # iNr = NRAIN.where(icellmask_expand, drop=True).squeeze().data
+                # iNi = NICE.where(icellmask_expand, drop=True).squeeze().data
+                # iNwa = NWA.where(icellmask_expand, drop=True).squeeze().data
+                # iNia = NIA.where(icellmask_expand, drop=True).squeeze().data
+                # iHd = HD.where(icellmask_expand, drop=True).squeeze().data
 
                 # Virtual Potential Temperature
                 iThtv = iTheta * (iQv + 0.622)/(0.622 * (1 + iQv))
+                # Thopmson RH
+                iRH = calc_rh_thompson(iT, iP, iQv)
+                # Emnauel ThetaE
+                iThte = calc_theta_e(iT, iP, iQv, iQliq, iRH)
 
                 # Calculate new statistics of the cell
                 with warnings.catch_warnings():
@@ -421,7 +574,7 @@ def calc_cellstats_singlefile(
                         zThte = iThte[z,:,:]
                         # zTv = iTv[z,:,:]
                         # zTrho = iTrho[z,:,:]
-                        # zRH = iRH[z,:,:]
+                        zRH = iRH[z,:,:]
                         # zQc = iQc[z,:,:]
                         # zQr = iQr[z,:,:]
                         # zQi = iQi[z,:,:]
@@ -446,30 +599,12 @@ def calc_cellstats_singlefile(
                             core_numbers_up = dict_up['core_numbers']
                             core_label_up = dict_up['core_label']
 
-                            # # Dilate core labels by the equivalent diameter of each core
-                            # # This is more physical b/c larger cores would mix air in a wider region than narrower cores
-                            # # But the for loop will make it much slower to run
-                            # core_label_up_prm = np.zeros_like(core_label_up)
-                            # for ii in range(ncores_up):
-                            #     # Isolate current core
-                            #     cell = np.zeros_like(core_label_up)
-                            #     cell[core_label_up == core_numbers_up[ii]] = 1
-                            #     # Expand core by its equivalent diameter (in grid unit)
-                            #     expand = round(np.sqrt(core_npix_up[ii]/np.pi))
-                            #     dil = expand_labels(cell, distance = expand)
-                            #     # Get core perimeter mask
-                            #     core_label_up_prm[(dil - cell) == 1] = core_numbers_up[ii]
-
                             # Get the min number of cores to save
                             ncores_save_up = min([ncores_up, ncores_min])
 
                             # Total number of cores
                             cell_nCore_up[icell, z] = ncores_all_up
-            
-                            # Dilate cores to get perimeter
-                            # This dilates all cores by the same distance, thus is much faster to run but less physical
-                            core_label_up_prm = expand_labels(core_label_up, distance=core_expand_dist) - core_label_up
-                            
+                                       
                             # Calculate core statistics
                             MaFlx_core_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
                             W_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
@@ -481,6 +616,30 @@ def calc_cellstats_singlefile(
                             Thtv_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
                             Thtv_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32)
                             Buoy_Thtv_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
+                            Rh_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32)
+
+                            # # Dilate cores to get perimeter
+                            # # This dilates all cores by the same distance, thus is much faster to run but less physical
+                            # core_label_up_prm = expand_labels(core_label_up, distance=core_expand_dist) - core_label_up
+
+                            # Dilate core labels by the equivalent diameter of each core
+                            # This is more physical b/c larger cores would mix air in a wider region than narrower cores
+                            # But the for loop will make it much slower to run
+                            core_label_up_prm = np.zeros_like(core_label_up)
+                            for ii in range(ncores_save_up):
+                                # Isolate current core
+                                cell = np.zeros_like(core_label_up)
+                                cell[core_label_up == core_numbers_up[ii]] = 1
+                                # Expand core by its equivalent diameter (in grid unit)
+                                expand = round(np.sqrt(core_npix_up[ii]/np.pi))
+                                dil = expand_labels(cell, distance = expand)
+                                # Get core perimeter mask
+                                core_label_up_prm[(dil - cell) == 1] = core_numbers_up[ii]
+                            
+                            # if (ncores_save_up > 1):
+                            #     if (np.nanmax(core_npix_up) > 10):                                    
+                            #         import matplotlib.pyplot as plt
+                            #         import pdb; pdb.set_trace()
 
                             # Loop over each core
                             for ii in range(ncores_save_up):
@@ -497,6 +656,7 @@ def calc_cellstats_singlefile(
                                 Thte_mean_prm[ii] = np.nanmean(zThte[iperimask])
                                 Thtv_max_up[ii] = np.nanmax(zThtv[icoremask])
                                 Thtv_mean_prm[ii] = np.nanmean(zThtv[iperimask])
+                                Rh_mean_prm[ii] = np.nanmean(zRH[iperimask])
                                 Buoy_Thtv_up[ii] = 9.81*(Thtv_max_up[ii] - Thtv_mean_prm[ii]) / Thtv_mean_prm[ii]
 
                             # Calculate total mass flux for all labeled cores
@@ -520,51 +680,54 @@ def calc_cellstats_singlefile(
                             cell_ThtvMax_up[icell , z, 0:ncores_save_up] = Thtv_max_up[0:ncores_save_up]
                             cell_ThtvMean_prm[icell , z, 0:ncores_save_up] = Thtv_mean_prm[0:ncores_save_up]
                             cell_BuoyThtv_up[icell , z, 0:ncores_save_up] = Buoy_Thtv_up[0:ncores_save_up]
+                            cell_RhMean_prm[icell , z, 0:ncores_save_up] = Rh_mean_prm[0:ncores_save_up]
                         # if np.nanmax(zW) > W_up_thresh:
                         
 
-                        # Proceed if min(W) < threshold
-                        if np.nanmin(zW) < W_down_thresh:
-                            # Label downdraft cores
-                            dict_down = label_cores(zW, W_down_thresh, zQcld, Q_down_thresh, zMassFlux, ncores_min, min_core_npix, method='<')
-                            ncores_all_down = dict_down['ncores_all']
-                            ncores_down = dict_down['ncores_save']
-                            core_npix_down = dict_down['core_npix']
-                            core_numbers_down = dict_down['core_numbers']
-                            core_label_down = dict_down['core_label']
+                        # # Proceed if min(W) < threshold
+                        # if np.nanmin(zW) < W_down_thresh:
+                        #     # Label downdraft cores
+                        #     dict_down = label_cores(zW, W_down_thresh, zQcld, Q_down_thresh, zMassFlux, ncores_min, min_core_npix, method='<')
+                        #     ncores_all_down = dict_down['ncores_all']
+                        #     ncores_down = dict_down['ncores_save']
+                        #     core_npix_down = dict_down['core_npix']
+                        #     core_numbers_down = dict_down['core_numbers']
+                        #     core_label_down = dict_down['core_label']
 
-                            # Get the min number of cores to save
-                            ncores_save_down = min([ncores_down, ncores_min])
+                        #     # Get the min number of cores to save
+                        #     ncores_save_down = min([ncores_down, ncores_min])
 
-                            # Total number of cores
-                            cell_nCore_down[icell, z] = ncores_all_down
+                        #     # Total number of cores
+                        #     cell_nCore_down[icell, z] = ncores_all_down
                             
-                            MaFlx_core_down = np.full(ncores_save_down, np.NaN, dtype=np.float32)
-                            W_min_down = np.full(ncores_save_down, np.NaN, dtype=np.float32)
-                            W_mean_down = np.full(ncores_save_down, np.NaN, dtype=np.float32)
-                            for ii in range(ncores_save_down):
-                                # Get the masks for core and perimeter
-                                icoremask = core_label_down == core_numbers_down[ii]
-                                # iperimask = core_label_down_prm == core_numbers_down[ii]
+                        #     MaFlx_core_down = np.full(ncores_save_down, np.NaN, dtype=np.float32)
+                        #     W_min_down = np.full(ncores_save_down, np.NaN, dtype=np.float32)
+                        #     W_mean_down = np.full(ncores_save_down, np.NaN, dtype=np.float32)
+                        #     for ii in range(ncores_save_down):
+                        #         # Get the masks for core and perimeter
+                        #         icoremask = core_label_down == core_numbers_down[ii]
+                        #         # iperimask = core_label_down_prm == core_numbers_down[ii]
 
-                                MaFlx_core_down[ii] = np.nansum(zMassFlux[icoremask])
-                                W_min_down[ii] = np.nanmin(zW[icoremask])
-                                W_mean_down[ii] = np.nanmean(zW[icoremask])
-                            # Calculate total mass flux for all labeled cores
-                            if ncores_all_down > 0:
-                                MaFlx_sum_down = np.nansum(zMassFlux[core_label_down > 0])
-                            else:
-                                MaFlx_sum_down = np.NaN
+                        #         MaFlx_core_down[ii] = np.nansum(zMassFlux[icoremask])
+                        #         W_min_down[ii] = np.nanmin(zW[icoremask])
+                        #         W_mean_down[ii] = np.nanmean(zW[icoremask])
+                        #     # Calculate total mass flux for all labeled cores
+                        #     if ncores_all_down > 0:
+                        #         MaFlx_sum_down = np.nansum(zMassFlux[core_label_down > 0])
+                        #     else:
+                        #         MaFlx_sum_down = np.NaN
                             
-                            # Save data to output arrays
-                            cell_MassFlux_down[icell, z] = MaFlx_sum_down * DX * DY
-                            cell_CoreMassFlux_down[icell, z, 0:ncores_save_down] = MaFlx_core_down[0:ncores_save_down] * DX * DY
-                            cell_CoreArea_down[icell, z, 0:ncores_save_down] = core_npix_down[0:ncores_save_down] * grid_area
-                            cell_CoreMinW_down[icell, z, 0:ncores_save_down] = W_min_down[0:ncores_save_down]
-                            cell_CoreMeanW_down[icell, z, 0:ncores_save_down] = W_mean_down[0:ncores_save_down]
+                        #     # Save data to output arrays
+                        #     cell_MassFlux_down[icell, z] = MaFlx_sum_down * DX * DY
+                        #     cell_CoreMassFlux_down[icell, z, 0:ncores_save_down] = MaFlx_core_down[0:ncores_save_down] * DX * DY
+                        #     cell_CoreArea_down[icell, z, 0:ncores_save_down] = core_npix_down[0:ncores_save_down] * grid_area
+                        #     cell_CoreMinW_down[icell, z, 0:ncores_save_down] = W_min_down[0:ncores_save_down]
+                        #     cell_CoreMeanW_down[icell, z, 0:ncores_save_down] = W_mean_down[0:ncores_save_down]
                         # if np.nanmin(zW) < W_down_thresh:
 
                     # for z in range(0, nz):
+                    # if ncores_save_up > 0:
+                    #     import pdb; pdb.set_trace()
 
                     
             else:
@@ -583,22 +746,23 @@ def calc_cellstats_singlefile(
             'CoreThtvMax_up': cell_ThtvMax_up,
             'CoreThtvMean_prm': cell_ThtvMean_prm,
             'CoreBuoyThtv_up': cell_BuoyThtv_up,
+            'CoreRhMean_prm': cell_RhMean_prm,
             # 'CoreTrhoMax_up': cell_TrhoMax_up,
             # 'CoreTrhoMean_prm': cell_TrhoMean_prm,
             # 'CoreBuoyTrho_up': cell_BuoyTrho_up,
             # 'CorePGF_up': cell_PGF_up,
 
-            'CoreArea_down': cell_CoreArea_down,
-            'CoreMinW_down': cell_CoreMinW_down,
-            'CoreMeanW_down': cell_CoreMeanW_down,
-            'CoreMassFlux_down': cell_CoreMassFlux_down,
+            # 'CoreArea_down': cell_CoreArea_down,
+            # 'CoreMinW_down': cell_CoreMinW_down,
+            # 'CoreMeanW_down': cell_CoreMeanW_down,
+            # 'CoreMassFlux_down': cell_CoreMassFlux_down,
         }
         out_dict2d = {
             'nCore_up': cell_nCore_up,
             'MassFlux_up': cell_MassFlux_up,
 
-            'nCore_down': cell_nCore_down,
-            'MassFlux_down': cell_MassFlux_down,
+            # 'nCore_down': cell_nCore_down,
+            # 'MassFlux_down': cell_MassFlux_down,
         }
         out_dict_attrs = {
             # Updraft
@@ -650,31 +814,35 @@ def calc_cellstats_singlefile(
                 'long_name': 'Updraft core Buoyancy based on Theta v',
                 'units': 'm s^-2',
             },
-            # Downdraft
-            'nCore_down': {
-                'long_name': 'Number of downdraft cores',
-                'units': 'count',
+            'CoreRhMean_prm':{
+                'long_name': 'Updraft perim mean RH',
+                'units': '%',
             },
-            'CoreArea_down': {
-                'long_name': 'Downdraft core area',
-                'units': 'km^2',
-            },
-            'CoreMinW_down': {
-                'long_name': 'Downdraft core minimum W',
-                'units': 'm/s',
-            },
-            'CoreMeanW_down': {
-                'long_name': 'Downdraft core mean W',
-                'units': 'm/s',
-            },
-            'CoreMassFlux_down': {
-                'long_name': 'Downdraft core mass flux',
-                'units': 'kg s^-1',
-            },
-            'MassFlux_down': {
-                'long_name': 'Total downdraft mass flux',
-                'units': 'kg s^-1',
-            },
+            # # Downdraft
+            # 'nCore_down': {
+            #     'long_name': 'Number of downdraft cores',
+            #     'units': 'count',
+            # },
+            # 'CoreArea_down': {
+            #     'long_name': 'Downdraft core area',
+            #     'units': 'km^2',
+            # },
+            # 'CoreMinW_down': {
+            #     'long_name': 'Downdraft core minimum W',
+            #     'units': 'm/s',
+            # },
+            # 'CoreMeanW_down': {
+            #     'long_name': 'Downdraft core mean W',
+            #     'units': 'm/s',
+            # },
+            # 'CoreMassFlux_down': {
+            #     'long_name': 'Downdraft core mass flux',
+            #     'units': 'kg s^-1',
+            # },
+            # 'MassFlux_down': {
+            #     'long_name': 'Total downdraft mass flux',
+            #     'units': 'kg s^-1',
+            # },
         }
         # import pdb; pdb.set_trace()
     return out_dict3d, out_dict2d, out_dict_attrs
