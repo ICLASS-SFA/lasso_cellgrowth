@@ -193,6 +193,78 @@ def label_cores(W, W_thresh, Q, Q_thresh, VMF, ncores_min, min_core_npix, method
     return out_dict
 
 #-----------------------------------------------------------------------
+def calc_rh_thompson(TEMPERATURE, PRESSURE, QVAPOR):
+    """
+    Calculate relative humidity following the Thompson scheme for supersaturation
+
+    Args:
+        TEMPERATURE: array-like
+            Dry air temp [K]
+        PRESSURE: array-like
+            Air pressure [Pa]
+        QVAPOR: array-like
+            Water vapor mixing ratio [kg/kg]
+   
+    Returns:
+        RH: array-like
+            Relative humidity [%]
+    """
+    # RH (formula is used in Thompson scheme for supersaturation)
+    C0 = 0.611583699e3
+    C1 = 0.444606896e2
+    C2 = 0.143177157e1
+    C3 = 0.264224321e-1
+    C4 = 0.299291081e-3
+    C5 = 0.203154182e-5
+    C6 = 0.702620698e-8
+    C7 = 0.379534310e-11
+    C8 = -0.321582393e-13
+    X = TEMPERATURE - 273.16
+    X[X < -80] = -80  #setting values less than -80C to -80C
+    # X = X.where(X > -80, -80)
+    # X = X.where(X > -80)
+    # X = X.fillna(-80) #setting values less than -80C to -80C 
+    ESL = C0 + X*(C1 + X*(C2 + X*(C3 + X*(C4 + X*(C5 + X*(C6 + X*(C7 + X*C8))))))) #saturation vapor pressure
+    QVS = 0.622 * ESL / (PRESSURE - ESL) #saturation vapor mixing ratio
+    RH = 1e2 * QVAPOR / QVS # %
+    #SS = RH - 100 #supersaturation in %
+    return RH
+    
+#-----------------------------------------------------------------------
+def calc_theta_e(TEMPERATURE, PRESSURE, QVAPOR, Qliq, RH):
+    """
+    Calculate equivalent potential temperature following the Emanuel formular
+
+    Args:
+        TEMPERATURE: array-like
+            Dry air temp [K]
+        PRESSURE: array-like
+            Air pressure [Pa]
+        QVAPOR: array-like
+            Water vapor mixing ratio [kg/kg]
+        Qliq: array-like
+            Total liquid condensate mixing ratio [kg/kg]
+        RH: array-like
+            Relative humidity [%]
+    
+    Returns:
+        THETAE: array-like
+            Equivalent potential temperature.
+    """
+    # constants:
+    cpd = 1006 # J/kg K
+    lv0 = 2501000
+    Rv = 461.5
+    Rd = 287.04
+    cl = 4200
+
+    teA = TEMPERATURE * (100000. / PRESSURE)**(Rd / (cpd + cl * Qliq))
+    teB = np.exp((lv0 * QVAPOR) / ((cpd + Qliq * cl) * TEMPERATURE))
+    teC = (RH/100)**((-QVAPOR * Rv) / (cpd + cl * Qliq))
+    THETAE = teA * teB * teC
+    return THETAE
+
+#-----------------------------------------------------------------------
 def calc_cellstats_singlefile(
     pixel_filename, 
     met_filename,
@@ -255,8 +327,8 @@ def calc_cellstats_singlefile(
     EntrDetr = dse['entr_detr']
 
     # Separate the net entrainment file to entrainment and detrainment (EJ)
-    Entr = EntrDetr.where(EntrDetr > 0)
-    Detr = EntrDetr.where(EntrDetr < 0)
+#     Entr = EntrDetr.where(EntrDetr > 0)
+#     Detr = EntrDetr.where(EntrDetr < 0)
 
     # Read pixel-level track file
     ds = xr.open_dataset(pixel_filename, decode_times=False, mask_and_scale=False)
@@ -286,7 +358,7 @@ def calc_cellstats_singlefile(
         # Subset 
         XLONG = dsm['XLONG'][ymin:ymax+1, xmin:xmax+1]
         XLAT = dsm['XLAT'][ymin:ymax+1, xmin:xmax+1]
-        PRESSURE = dsm['PRESSURE'][:, :, ymin:ymax+1, xmin:xmax+1]
+        PRESSURE = dsm['PRESSURE'][:, :, ymin:ymax+1, xmin:xmax+1]*100
         TV = dsm['tv'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
         WA = dsm['WA'][:, :, ymin:ymax+1, xmin:xmax+1]
         #qc = dsm['QCLOUD'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
@@ -295,10 +367,10 @@ def calc_cellstats_singlefile(
         qv = dsm['QVAPOR'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
         #qr = dsm['QRAIN'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
         #qg = dsm['QGRAUP'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
-        Thte = dsm['THETA_E'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
+        #Thte = dsm['THETA_E'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
         TH = dsm['THETA'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
-        QR = dsm['QRAIN'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
-        QC = dsm['QCLOUD'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
+        #QR = dsm['QRAIN'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
+        #QC = dsm['QCLOUD'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
         QT = dsm['QT'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
         QA = dsm['QT'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
         dBZ = dsm['REFL_10CM'][:, :, ymin:ymax+1, xmin:xmax+1] # EJ
@@ -308,7 +380,7 @@ def calc_cellstats_singlefile(
     else:
         XLONG = dsm['XLONG']
         XLAT = dsm['XLAT']
-        PRESSURE = dsm['PRESSURE'] 
+        PRESSURE = dsm['PRESSURE']*100
         TV = dsm['tv'] # EJ
         WA = dsm['WA']
         dBZ = dsm['REFL_10CM'] # EJ
@@ -318,10 +390,10 @@ def calc_cellstats_singlefile(
         qv = dsm['QVAPOR'] # EJ
         #qr = dsm['QRAIN'] # EJ
         #qg = dsm['QGRAUP'] # EJ
-        Thte = dsm['THETA_E'] # EJ
+        #Thte = dsm['THETA_E'] # EJ
         TH = dsm['THETA'] # EJ
-        QR = dsm['QRAIN'] # EJ
-        QC = dsm['QCLOUD'] # EJ
+        #QR = dsm['QRAIN'] # EJ
+        #QC = dsm['QCLOUD'] # EJ
         QT = dsm['QT'] # EJ QT is QTOT + QV
         QA = dsm['QA'] # EJ QA is QC + QI + QS
 
@@ -338,8 +410,8 @@ def calc_cellstats_singlefile(
 #     tracknumbermap = ds['conv_core_label'].squeeze() # EJ now using stringent criteria as we are including updrafts that overlap with boundary
 
     # Calculate moist air density using virtual temperature
-    R_dry = 287.058   # J kg−1 K−1
-    Mrho = 100 * PRESSURE / (R_dry * TV)  # kg m-3
+    # R_dry = 287.058   # J kg−1 K−1
+#     Mrho = 100 * PRESSURE / (R_dry * TV)  # kg m-3
     
     # QA = QC + QR
     
@@ -351,29 +423,80 @@ def calc_cellstats_singlefile(
     # vpgf = - 1/Mrho * dpdz
     
     # Calculate Inflow of qv
-    Vapr = EntrDetr.where( (EntrDetr > 0) ) * qv
+#     Vapr = EntrDetr.where( (EntrDetr > 0) ) * qv
     
     # Calculate Virtual Potential Temperature # EJ
-    Thtv = TH * (qv + 0.622)/(0.622 * (1 + qv))
+    # Thtv = TH * (qv + 0.622)/(0.622 * (1 + qv))
     
     # Calculate Temperature (AMS)
-    Temp = TH*(PRESSURE/1000)**(2/7) # Remember that PRESSURE is in hPa
-    tc = Temp - 273.15
+    # Temp = TH*(PRESSURE/1000)**(2/7) # Remember that PRESSURE is in hPa
+#     tc = Temp - 273.15
     
-    # Calculate Saturated Vapor Pressure (NWS)
-    es = 6.11*10**((7.5*tc)/(237.3+tc))
+    # Calculate RH (Thompson Scheme)
+#     C0 = 0.611583699e3
+#     C1 = 0.444606896e2
+#     C2 = 0.143177157e1
+#     C3 = 0.264224321e-1
+#     C4 = 0.299291081e-3
+#     C5 = 0.203154182e-5
+#     C6 = 0.702620698e-8
+#     C7 = 0.379534310e-11
+#     C8 = -0.321582393e-13
     
-    # Calculate Saturated Mixing Ratio (NWS)
-    ws = 0.62197*(es/(PRESSURE-es))
+    # Method 1
+    # X = tc.where(tc > -80)
+    # X = X.fillna(-80) #setting values less than -80C to -80C
     
-    RH = qv/ws*100
+    # Method 2
+    # X[X<-80] = -80
+    # X = X.where(X > -80, -80)
+    
+    # Expand out this equation?
+#     ESL = C0 + tc*(C1 + tc*(C2 + tc*(C3 + tc*(C4 + tc*(C5 + tc*(C6 + tc*(C7 + tc*C8))))))) #saturation vapor pressure
+#     QVS = 0.622*ESL/(PRESSURE - ESL) #saturation vapor mixing ratio
+#     RH = 1e2*qv/QVS # %
+    
+#     # Calculate Saturated Vapor Pressure (NWS)
+#     es = 6.11*10**((7.5*tc)/(237.3+tc))
+#     
+#     # Calculate Saturated Mixing Ratio (NWS)
+#     ws = 0.62197*(es/(PRESSURE-es))
+#     
+#     RH = qv/ws*100
     
     # Calculate Density Temperature (Eqn. 4.3.6 of some Emanuel textbook)
     # "Note that Tv is a special case of Trho, since when condensed water is absent rT = r."
-    Trho = Temp*(1 + qv/0.622)/(1 + QT)
+#     Trho = Temp*(1 + qv/0.622)/(1 + QT)
+    
+    # import pdb; pdb.set_trace()
+    # Calculate Theta E using the Emmanuel Textbook
+#     cpd = 1006
+#     g = 9.81
+#     cpv = 1870
+#     E = 0.622
+#     lv0 = 2501000
+#     Rv = 461.5
+#     Rd = 287.04
+#     cw = 4190
+#     cc = 2320
+#     ccl = 4200
+#     cvv = 1410
+#     cvd = 719
+#     
+#     alv = lv0 - cc*tc
+#     
+#     Tv = Temp*(1+0.608*qv)
+#     Thtv = Tv*(1000/PRESSURE)**0.286
+#     
+#     teA = Temp*(1000/PRESSURE)**(Rd/(cpd + ccl*QT))
+#     teB = np.exp( (lv0*qv)/((cpd + QT*ccl)*Temp))
+#     teC = (RH/100)**( (-1*qv*Rv) / (cpd + ccl*QT) )
+#     Thte = teA * teB * teC
+
+
 
     # Calculate mass flux (kg m-2 s-1)
-    MassFlux = (Mrho * WA).squeeze()
+    # MassFlux = (Mrho * WA).squeeze()
 
     out_dict2d = None
     out_dict3d = None
@@ -393,11 +516,11 @@ def calc_cellstats_singlefile(
         cell_CoreArea_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_CoreMaxW_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_CoreMeanW_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMaxQC_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
-        cell_CoreMeanQC_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
-        cell_CoreMeanQC_prm = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
-        cell_CoreMaxQR_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
-        cell_CoreMeanQR_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
+#         cell_CoreMaxQC_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
+#         cell_CoreMeanQC_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
+#         cell_CoreMeanQC_prm = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
+#         cell_CoreMaxQR_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
+#         cell_CoreMeanQR_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
         cell_CoreMeanQV_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
         cell_CoreMeanQV_prm = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
         
@@ -478,24 +601,56 @@ def calc_cellstats_singlefile(
                 # Subset 3D variables to the current cell mask
                 iW = WA.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 iQ = QA.where(tracknumbermap_final == 1, drop=True).squeeze().data
-                iQC = QC.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
-                iQR = QR.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
+                #iQC = QC.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
+                #iQR = QR.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
                 iQV = qv.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
-                iMassFlux = MassFlux.where(tracknumbermap_final == 1, drop=True).squeeze().data  
+                iQT = QT.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
+                #iMassFlux = MassFlux.where(tracknumbermap_final == 1, drop=True).squeeze().data  
                 idBZ = dBZ.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ 
-                iThte = Thte.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ 
-                iThtv = Thtv.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ 
-                iVapr = Vapr.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ 
-                iEntr = Entr.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
-                iDetr = Detr.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
-                iTrho = Trho.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
+                iTheta = TH.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ 
+                #iThte = Thte.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ 
+                #iThtv = Thtv.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ 
+                #iVapr = Vapr.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ 
+                #iEntr = Entr.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
+                #iDetr = Detr.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
+                iEntrDetr = EntrDetr.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                #iTrho = Trho.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
                 iPres = PRESSURE.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
-                iMrho = Mrho.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
+                #iMrho = Mrho.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
                 iRH = RH.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
                 zTnum = tracknumbermap.where(tracknumbermap_final == 1, drop=True).squeeze().data
 #                 iTnum = np.repeat(zTnum[np.newaxis,:,:],100,axis=0)
                 # This array is going to be populated with the "z" loop
 #                 iCor1 = np.zeros_like(iW)
+                
+                import pdb; pdb.set_trace()
+                
+                # Temperature
+                iTk = iTheta*(iPres/100000)**(2/7) # Remember that PRESSURE is in Pa
+                iTc = iTk - 273.15
+                
+                # Virtual Potential Temperature
+                iThtv = iTheta * (iQV + 0.622)/(0.622 * (1 + iQV))
+                
+                # Calculate moist air density using virtual temperature
+                iMrho = iPres / (287.058 * iThtv)  # kg m-3
+                
+                # Mass Flux
+                iMassFlux = (iMrho * iW).squeeze()
+                # Density Temperature
+                iTrho = iTk*(1 + iQV/0.622)/(1 + iQT)
+                
+                # Thopmson RH
+                iRH = calc_rh_thompson(iTk, iPres, iQV)
+                # Emnauel ThetaE
+                iThte = calc_theta_e(iTk, iPres, iQV, iQT, iRH)
+                
+                
+                # Separate the net entrainment file to entrainment and detrainment (EJ)
+                iEntr = iEntrDetr[iEntrDetr > 0]
+                iDetr = iEntrDetr[iEntrDetr < 0]
+                # Calculate Inflow of qv
+                iVapr = iEntr * iQV
 
                 # Calculate new statistics of the cell
                 with warnings.catch_warnings():
@@ -553,8 +708,8 @@ def calc_cellstats_singlefile(
 
                         zW = iW[z,:,:]
                         zQ = iQ[z,:,:] #EJ
-                        zQC = iQC[z,:,:] #EJ
-                        zQR = iQR[z,:,:] #EJ
+#                         zQC = iQC[z,:,:] #EJ
+#                         zQR = iQR[z,:,:] #EJ
                         zQV = iQV[z,:,:] #EJ
                         zMassFlux = iMassFlux[z,:,:]
                         zdBZ = idBZ[z,:,:] #EJ
@@ -687,11 +842,11 @@ def calc_cellstats_singlefile(
                         MaFlx_core_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
                         W_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
                         W_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
-                        QC_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
-                        QC_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
-                        QC_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
-                        QR_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
-                        QR_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+#                         QC_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+#                         QC_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+#                         QC_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+#                         QR_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+#                         QR_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
                         QV_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
                         QV_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
                         Entr_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
@@ -731,11 +886,11 @@ def calc_cellstats_singlefile(
                             MaFlx_core_up[ii] = np.nansum(zMassFlux[core_label_up == core_numbers_up[ii]])
                             W_max_up[ii] = np.nanmax(zW[core_label_up == core_numbers_up[ii]])
                             W_mean_up[ii] = np.nanmean(zW[core_label_up == core_numbers_up[ii]])
-                            QC_max_up[ii] = np.nanmax(zQC[core_label_up == core_numbers_up[ii]]) # EJ
-                            QC_mean_up[ii] = np.nanmean(zQC[core_label_up == core_numbers_up[ii]]) # EJ
-                            QC_mean_prm[ii] = np.nanmean(zQC[core_label_up_prm == core_numbers_up[ii]]) # EJ
-                            QR_max_up[ii] = np.nanmax(zQR[core_label_up == core_numbers_up[ii]]) # EJ
-                            QR_mean_up[ii] = np.nanmean(zQR[core_label_up == core_numbers_up[ii]]) # EJ
+#                             QC_max_up[ii] = np.nanmax(zQC[core_label_up == core_numbers_up[ii]]) # EJ
+#                             QC_mean_up[ii] = np.nanmean(zQC[core_label_up == core_numbers_up[ii]]) # EJ
+#                             QC_mean_prm[ii] = np.nanmean(zQC[core_label_up_prm == core_numbers_up[ii]]) # EJ
+#                             QR_max_up[ii] = np.nanmax(zQR[core_label_up == core_numbers_up[ii]]) # EJ
+#                             QR_mean_up[ii] = np.nanmean(zQR[core_label_up == core_numbers_up[ii]]) # EJ
                             QV_mean_up[ii] = np.nanmean(zQV[core_label_up == core_numbers_up[ii]]) # EJ
                             QV_mean_prm[ii] = np.nanmean(zQV[core_label_up_prm == core_numbers_up[ii]]) # EJ
                             Entr_up[ii] = np.nansum(zEntr[core_label_up_dil == core_numbers_up[ii]]) # EJ
@@ -775,11 +930,11 @@ def calc_cellstats_singlefile(
                         cell_CoreMaxW_up[icell, z, 0:ncores_save_up] = W_max_up[0:ncores_save_up]
                         cell_CoreMeanW_up[icell, z, 0:ncores_save_up] = W_mean_up[0:ncores_save_up]
                         
-                        cell_CoreMaxQC_up[icell, z, 0:ncores_save_up] = QC_max_up[0:ncores_save_up] # EJ
-                        cell_CoreMeanQC_up[icell, z, 0:ncores_save_up] = QC_mean_up[0:ncores_save_up] # EJ
-                        cell_CoreMeanQC_prm[icell, z, 0:ncores_save_up] = QC_mean_prm[0:ncores_save_up] # EJ
-                        cell_CoreMaxQR_up[icell, z, 0:ncores_save_up] = QR_max_up[0:ncores_save_up] # EJ
-                        cell_CoreMeanQR_up[icell, z, 0:ncores_save_up] = QR_mean_up[0:ncores_save_up] # EJ
+#                         cell_CoreMaxQC_up[icell, z, 0:ncores_save_up] = QC_max_up[0:ncores_save_up] # EJ
+#                         cell_CoreMeanQC_up[icell, z, 0:ncores_save_up] = QC_mean_up[0:ncores_save_up] # EJ
+#                         cell_CoreMeanQC_prm[icell, z, 0:ncores_save_up] = QC_mean_prm[0:ncores_save_up] # EJ
+#                         cell_CoreMaxQR_up[icell, z, 0:ncores_save_up] = QR_max_up[0:ncores_save_up] # EJ
+#                         cell_CoreMeanQR_up[icell, z, 0:ncores_save_up] = QR_mean_up[0:ncores_save_up] # EJ
                         cell_CoreMeanQV_up[icell, z, 0:ncores_save_up] = QV_mean_up[0:ncores_save_up] # EJ
                         cell_CoreMeanQV_prm[icell, z, 0:ncores_save_up] = QV_mean_prm[0:ncores_save_up] # EJ
                         cell_Entr_up[icell, z, 0:ncores_save_up] = Entr_up[0:ncores_save_up] # EJ
@@ -810,11 +965,11 @@ def calc_cellstats_singlefile(
             'CoreArea_up': cell_CoreArea_up,
             'CoreMaxW_up': cell_CoreMaxW_up,
             'CoreMeanW_up': cell_CoreMeanW_up,
-            'CoreMaxQC_up': cell_CoreMaxQC_up,
-            'CoreMeanQC_up': cell_CoreMeanQC_up,
-            'CoreMeanQC_prm': cell_CoreMeanQC_prm,
-            'CoreMaxQR_up': cell_CoreMaxQR_up,
-            'CoreMeanQR_up': cell_CoreMeanQR_up,
+#             'CoreMaxQC_up': cell_CoreMaxQC_up,
+#             'CoreMeanQC_up': cell_CoreMeanQC_up,
+#             'CoreMeanQC_prm': cell_CoreMeanQC_prm,
+#             'CoreMaxQR_up': cell_CoreMaxQR_up,
+#             'CoreMeanQR_up': cell_CoreMeanQR_up,
             'CoreMeanQV_up': cell_CoreMeanQV_up,
             'CoreMeanQV_prm': cell_CoreMeanQV_prm,
             'CoreMassFlux_up': cell_CoreMassFlux_up,
@@ -860,26 +1015,26 @@ def calc_cellstats_singlefile(
                 'long_name': 'Updraft core mean W',
                 'units': 'm/s',
             },
-            'CoreMaxQC_up': {
-                'long_name': 'Updraft core mean QC',
-                'units': 'kg/kg',
-            },
-            'CoreMeanQC_up': {
-                'long_name': 'Updraft core mean QC',
-                'units': 'kg/kg',
-            },
-            'CoreMeanQC_prm': {
-                'long_name': 'Updraft perim mean QC',
-                'units': 'kg/kg',
-            },
-            'CoreMaxQR_up': {
-                'long_name': 'Updraft core mean QR',
-                'units': 'kg/kg',
-            },
-            'CoreMeanQR_up': {
-                'long_name': 'Updraft core mean QR',
-                'units': 'kg/kg',
-            },
+#             'CoreMaxQC_up': {
+#                 'long_name': 'Updraft core mean QC',
+#                 'units': 'kg/kg',
+#             },
+#             'CoreMeanQC_up': {
+#                 'long_name': 'Updraft core mean QC',
+#                 'units': 'kg/kg',
+#             },
+#             'CoreMeanQC_prm': {
+#                 'long_name': 'Updraft perim mean QC',
+#                 'units': 'kg/kg',
+#             },
+#             'CoreMaxQR_up': {
+#                 'long_name': 'Updraft core mean QR',
+#                 'units': 'kg/kg',
+#             },
+#             'CoreMeanQR_up': {
+#                 'long_name': 'Updraft core mean QR',
+#                 'units': 'kg/kg',
+#             },
             'CoreMeanQV_up': {
                 'long_name': 'Updraft core mean QV',
                 'units': 'kg/kg',
