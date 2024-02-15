@@ -326,18 +326,11 @@ def calc_cellstats_singlefile(
     dse = dse.assign_coords(Time=dsm.coords['Time'].data) 
     EntrDetr = dse['entr_detr']
 
-    # Separate the net entrainment file to entrainment and detrainment (EJ)
-#     Entr = EntrDetr.where(EntrDetr > 0)
-#     Detr = EntrDetr.where(EntrDetr < 0)
-
     # Read pixel-level track file
     ds = xr.open_dataset(pixel_filename, decode_times=False, mask_and_scale=False)
     time_pixel = ds['time']
     ny_p = ds.dims['lat']
     nx_p = ds.dims['lon']
-    
-#     import pdb
-#     pdb.set_trace()
 
     # Check dimensions between MET and pixel files
     # (EJ) will skip this step for now, as 'XLAT','XLONG' does not exist in ENT files.
@@ -408,95 +401,6 @@ def calc_cellstats_singlefile(
     ds = ds.drop_vars(['lon', 'lat']).assign_coords({'XLONG':XLONG, 'XLAT':XLAT})
     tracknumbermap = ds['tracknumber_expand'].squeeze() # EJ Going back to slightly fattened cell mask
 #     tracknumbermap = ds['conv_core_label'].squeeze() # EJ now using stringent criteria as we are including updrafts that overlap with boundary
-
-    # Calculate moist air density using virtual temperature
-    # R_dry = 287.058   # J kg−1 K−1
-#     Mrho = 100 * PRESSURE / (R_dry * TV)  # kg m-3
-    
-    # QA = QC + QR
-    
-    # import pdb; pdb.set_trace()
-    
-    # Calculate vertical pressure gradient
-    # dpdz = np.zeros_like(PRESSURE)
-    # dpdz[0,2:-2,:,:] = ( PRESSURE[0,2:,:,:]-PRESSURE[0,:-2,:,:] ) / 200 # EJ hard-coded 2*dz as attribute does not exist
-    # vpgf = - 1/Mrho * dpdz
-    
-    # Calculate Inflow of qv
-#     Vapr = EntrDetr.where( (EntrDetr > 0) ) * qv
-    
-    # Calculate Virtual Potential Temperature # EJ
-    # Thtv = TH * (qv + 0.622)/(0.622 * (1 + qv))
-    
-    # Calculate Temperature (AMS)
-    # Temp = TH*(PRESSURE/1000)**(2/7) # Remember that PRESSURE is in hPa
-#     tc = Temp - 273.15
-    
-    # Calculate RH (Thompson Scheme)
-#     C0 = 0.611583699e3
-#     C1 = 0.444606896e2
-#     C2 = 0.143177157e1
-#     C3 = 0.264224321e-1
-#     C4 = 0.299291081e-3
-#     C5 = 0.203154182e-5
-#     C6 = 0.702620698e-8
-#     C7 = 0.379534310e-11
-#     C8 = -0.321582393e-13
-    
-    # Method 1
-    # X = tc.where(tc > -80)
-    # X = X.fillna(-80) #setting values less than -80C to -80C
-    
-    # Method 2
-    # X[X<-80] = -80
-    # X = X.where(X > -80, -80)
-    
-    # Expand out this equation?
-#     ESL = C0 + tc*(C1 + tc*(C2 + tc*(C3 + tc*(C4 + tc*(C5 + tc*(C6 + tc*(C7 + tc*C8))))))) #saturation vapor pressure
-#     QVS = 0.622*ESL/(PRESSURE - ESL) #saturation vapor mixing ratio
-#     RH = 1e2*qv/QVS # %
-    
-#     # Calculate Saturated Vapor Pressure (NWS)
-#     es = 6.11*10**((7.5*tc)/(237.3+tc))
-#     
-#     # Calculate Saturated Mixing Ratio (NWS)
-#     ws = 0.62197*(es/(PRESSURE-es))
-#     
-#     RH = qv/ws*100
-    
-    # Calculate Density Temperature (Eqn. 4.3.6 of some Emanuel textbook)
-    # "Note that Tv is a special case of Trho, since when condensed water is absent rT = r."
-#     Trho = Temp*(1 + qv/0.622)/(1 + QT)
-    
-    # import pdb; pdb.set_trace()
-    # Calculate Theta E using the Emmanuel Textbook
-#     cpd = 1006
-#     g = 9.81
-#     cpv = 1870
-#     E = 0.622
-#     lv0 = 2501000
-#     Rv = 461.5
-#     Rd = 287.04
-#     cw = 4190
-#     cc = 2320
-#     ccl = 4200
-#     cvv = 1410
-#     cvd = 719
-#     
-#     alv = lv0 - cc*tc
-#     
-#     Tv = Temp*(1+0.608*qv)
-#     Thtv = Tv*(1000/PRESSURE)**0.286
-#     
-#     teA = Temp*(1000/PRESSURE)**(Rd/(cpd + ccl*QT))
-#     teB = np.exp( (lv0*qv)/((cpd + QT*ccl)*Temp))
-#     teC = (RH/100)**( (-1*qv*Rv) / (cpd + ccl*QT) )
-#     Thte = teA * teB * teC
-
-
-
-    # Calculate mass flux (kg m-2 s-1)
-    # MassFlux = (Mrho * WA).squeeze()
 
     out_dict2d = None
     out_dict3d = None
@@ -617,17 +521,13 @@ def calc_cellstats_singlefile(
                 #iTrho = Trho.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
                 iPres = PRESSURE.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
                 #iMrho = Mrho.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
-                iRH = RH.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
+                #iRH = RH.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
                 zTnum = tracknumbermap.where(tracknumbermap_final == 1, drop=True).squeeze().data
-#                 iTnum = np.repeat(zTnum[np.newaxis,:,:],100,axis=0)
-                # This array is going to be populated with the "z" loop
-#                 iCor1 = np.zeros_like(iW)
                 
-                import pdb; pdb.set_trace()
+                # import pdb; pdb.set_trace()
                 
                 # Temperature
                 iTk = iTheta*(iPres/100000)**(2/7) # Remember that PRESSURE is in Pa
-                iTc = iTk - 273.15
                 
                 # Virtual Potential Temperature
                 iThtv = iTheta * (iQV + 0.622)/(0.622 * (1 + iQV))
@@ -636,72 +536,31 @@ def calc_cellstats_singlefile(
                 iMrho = iPres / (287.058 * iThtv)  # kg m-3
                 
                 # Mass Flux
-                iMassFlux = (iMrho * iW).squeeze()
+                iMassFlux = iMrho * iW
+                
                 # Density Temperature
                 iTrho = iTk*(1 + iQV/0.622)/(1 + iQT)
                 
                 # Thopmson RH
                 iRH = calc_rh_thompson(iTk, iPres, iQV)
-                # Emnauel ThetaE
+                
+                # Emmanuel ThetaE
                 iThte = calc_theta_e(iTk, iPres, iQV, iQT, iRH)
                 
-                
                 # Separate the net entrainment file to entrainment and detrainment (EJ)
-                iEntr = iEntrDetr[iEntrDetr > 0]
-                iDetr = iEntrDetr[iEntrDetr < 0]
+                inde = iEntrDetr > 0
+                iEntr = np.zeros_like(iEntrDetr)
+                iEntr[inde] = iEntrDetr[inde]
+                indd = iEntrDetr < 0
+                iDetr = np.zeros_like(iEntrDetr)
+                iDetr[indd] = iEntrDetr[indd]
+
                 # Calculate Inflow of qv
                 iVapr = iEntr * iQV
 
                 # Calculate new statistics of the cell
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore", category=RuntimeWarning)
-                    
-#                     cell_cloudy = np.full(iW.shape, 0, dtype=np.float32)     # Create zero array
-#                     icloud = (iW > W_up_thresh) & (iQ > Q_up_thresh)         # Find cloudy region
-#                     cell_cloudy[icloud] = 1
-#                     tracknumbermap_mod = (cell_cloudy + iTnum)               # Merge the cloudy regions with tmap
-#                     tracknumbermap_mod[tracknumbermap_mod > 0] = 1           # binarize and re-label        
-#                     tmap_label = label(tracknumbermap_mod)
-#                     
-#                     # This section ensures that we are only analyzing regions that correspond to our current reflectivity track
-#                     # ... and not some neighboring track that has encroached on our territory.
-#                     iW_mask = np.zeros_like(iW)
-#                     ind = np.where(iTnum == itracknum)
-#                     ind_conv = tmap_label[ind[0][0],ind[1][0]]
-#                     ind = tmap_label == ind_conv
-#                     iW_mask[ind] = 1
-#                     
-#                     # Z Loop to obtain vertically-aligned updrafts.
-#                     for z in range(0, nz):
-#                         dict_up = label_cores(iW[z,:,:]*iW_mask[z,:,:], W_up_thresh, iQ[z,:,:], Q_up_thresh, iMassFlux[z,:,:], ncores_min, min_core_npix, method='>')
-#                         iCor1[z,:,:] = dict_up['core_label'] # EJ
-#                         
-#                     # You should have a fully populated 3D (x,y,z) iCor1 variable here
-#                     # Then do the 3d labelling here.
-#                     
-#                     ibiry = np.zeros_like(iCor1).astype(int)
-#                     ibiry[iCor1>0] = 1 # Converting the sort-of-3D core array to binary
-#                     labels_out = cc3d.connected_components(ibiry,connectivity=6) # Find core array in 3D
-#                     core_idx,core_sze = np.unique(labels_out, return_counts=True) # unique labels
-#                     core_idx = np.delete(core_idx,0) # Remove the values corresponding to 0
-#                     core_sze = np.delete(core_sze,0)                    
-#                     sort_idx = core_sze.argsort()[::-1] # Ordering based on size of updraft (could change to VMF later if necessary)
-#                     
-#                     # This loop re-labels the 3D cores according to size of updraft
-#                     iCore = np.zeros_like(iCor1)
-#                     cc = 1
-#                     for i in range(0,len(core_idx)):
-#                         ind = np.where(labels_out == core_idx[sort_idx][i])
-#                         iCore[ind] = cc
-#                         cc = cc+1
-                    
-#                     from matplotlib import pyplot as plt
-#                     plt.clf
-#                     f1 = plt.figure(figsize=(5, 5))
-#                     pm = plt.pcolormesh(iCore[25,:,:])
-#                     pm = plt.pcolormesh(iCor1[25,:,:])
-#                     plt.colorbar(pm)
-#                     plt.savefig('/ccsopen/home/enochjo/test.png')
                       
                     # Loop over vertical levels
                     for z in range(0, nz):
@@ -721,7 +580,6 @@ def calc_cellstats_singlefile(
                         zTrho = iTrho[z,:,:] #EJ
                         zMrho = iMrho[z,:,:] #EJ
                         zRH = iRH[z,:,:] #EJ
-#                         zCore = iCore[z,:,:]
                         
                         zz = z
                         if (z < 1): zz = 1

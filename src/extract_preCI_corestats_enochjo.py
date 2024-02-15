@@ -233,6 +233,78 @@ def pad_array(in_array, lat_idx, lon_idx, ny, nx, ny_d, nx_d, crad, sub_y=1, sub
     return out_array
 
 #-----------------------------------------------------------------------
+def calc_rh_thompson(TEMPERATURE, PRESSURE, QVAPOR):
+    """
+    Calculate relative humidity following the Thompson scheme for supersaturation
+
+    Args:
+        TEMPERATURE: array-like
+            Dry air temp [K]
+        PRESSURE: array-like
+            Air pressure [Pa]
+        QVAPOR: array-like
+            Water vapor mixing ratio [kg/kg]
+   
+    Returns:
+        RH: array-like
+            Relative humidity [%]
+    """
+    # RH (formula is used in Thompson scheme for supersaturation)
+    C0 = 0.611583699e3
+    C1 = 0.444606896e2
+    C2 = 0.143177157e1
+    C3 = 0.264224321e-1
+    C4 = 0.299291081e-3
+    C5 = 0.203154182e-5
+    C6 = 0.702620698e-8
+    C7 = 0.379534310e-11
+    C8 = -0.321582393e-13
+    X = TEMPERATURE - 273.16
+    X[X < -80] = -80  #setting values less than -80C to -80C
+    # X = X.where(X > -80, -80)
+    # X = X.where(X > -80)
+    # X = X.fillna(-80) #setting values less than -80C to -80C 
+    ESL = C0 + X*(C1 + X*(C2 + X*(C3 + X*(C4 + X*(C5 + X*(C6 + X*(C7 + X*C8))))))) #saturation vapor pressure
+    QVS = 0.622 * ESL / (PRESSURE - ESL) #saturation vapor mixing ratio
+    RH = 1e2 * QVAPOR / QVS # %
+    #SS = RH - 100 #supersaturation in %
+    return RH
+    
+#-----------------------------------------------------------------------
+def calc_theta_e(TEMPERATURE, PRESSURE, QVAPOR, Qliq, RH):
+    """
+    Calculate equivalent potential temperature following the Emanuel formular
+
+    Args:
+        TEMPERATURE: array-like
+            Dry air temp [K]
+        PRESSURE: array-like
+            Air pressure [Pa]
+        QVAPOR: array-like
+            Water vapor mixing ratio [kg/kg]
+        Qliq: array-like
+            Total liquid condensate mixing ratio [kg/kg]
+        RH: array-like
+            Relative humidity [%]
+    
+    Returns:
+        THETAE: array-like
+            Equivalent potential temperature.
+    """
+    # constants:
+    cpd = 1006 # J/kg K
+    lv0 = 2501000
+    Rv = 461.5
+    Rd = 287.04
+    cl = 4200
+
+    teA = TEMPERATURE * (100000. / PRESSURE)**(Rd / (cpd + cl * Qliq))
+    teB = np.exp((lv0 * QVAPOR) / ((cpd + Qliq * cl) * TEMPERATURE))
+    teC = (RH/100)**((-QVAPOR * Rv) / (cpd + cl * Qliq))
+    THETAE = teA * teB * teC
+    return THETAE
+
+#-----------------------------------------------------------------------
 def extract_env_prof(
     fname_pixel, 
     # fname_wrfout,
@@ -321,7 +393,7 @@ def extract_env_prof(
         
         XLONG = dsm['XLONG']
         XLAT = dsm['XLAT']
-        PRESSURE = dsm['PRESSURE'] 
+        PRESSURE = dsm['PRESSURE']*100
         TV = dsm['tv'] # EJ
         WA = dsm['WA']
         dBZ = dsm['REFL_10CM'] # EJ
@@ -337,74 +409,6 @@ def extract_env_prof(
         QT = dsm['QT'] # EJ
         #QR = dsm['QRAIN'] # EJ
         
-        # QA = QC + QR
-        
-        # Calculate moist air density using virtual temperature
-        R_dry = 287.058   # J kg−1 K−1
-        Mrho = 100 * PRESSURE / (R_dry * TV)  # kg m-3
-
-        # Calculate Virtual Potential Temperature # EJ
-        # Thtv = TH * (qv + 0.622)/(0.622 * (1 + qv))
-
-        # Calculate Temperature (AMS)
-        Temp = TH*(PRESSURE/1000)**(2/7) # Remember that PRESSURE is in hPa
-        tc = Temp - 273.15
-        
-        # Calculate RH (Thompson Scheme)
-#         C0 = 0.611583699e3
-#         C1 = 0.444606896e2
-#         C2 = 0.143177157e1
-#         C3 = 0.264224321e-1
-#         C4 = 0.299291081e-3
-#         C5 = 0.203154182e-5
-#         C6 = 0.702620698e-8
-#         C7 = 0.379534310e-11
-#         C8 = -0.321582393e-13
-#         X = tc.where(tc > -80)
-#         X = X.fillna(-80) #setting values less than -80C to -80C 
-#         ESL = C0 + X*(C1 + X*(C2 + X*(C3 + X*(C4 + X*(C5 + X*(C6 + X*(C7 + X*C8))))))) #saturation vapor pressure
-#         QVS = 0.622*ESL/(PRESSURE - ESL) #saturation vapor mixing ratio
-#         RH = 1e2*qv/QVS # %
-        
-        # Calculate Saturated Vapor Pressure (NWS)
-        es = 6.11*10**((7.5*tc)/(237.3+tc))
-
-        # Calculate Saturated Mixing Ratio (NWS)
-        ws = 0.62197*(es/(PRESSURE-es))
-        
-        RH = qv/ws*100
-
-        # Calculate Density Temperature (Eqn. 4.3.6 of some Emanuel textbook)
-        # "Note that Tv is a special case of Trho, since when condensed water is absent rT = r."
-        Trho = Temp*(1 + qv/0.622)/(1 + QT)
-        
-        # Calculate Theta E using the Emmanuel Textbook
-        cpd = 1006
-        g = 9.81
-        cpv = 1870
-        E = 0.622
-        lv0 = 2501000
-        Rv = 461.5
-        Rd = 287.04
-        cw = 4190
-        cc = 2320
-        ccl = 4200
-        cvv = 1410
-        cvd = 719
-    
-        alv = lv0 - cc*tc
-    
-        Tv = Temp*(1+0.608*QT)
-        Thtv = Tv*(1000/PRESSURE)**0.286
-    
-        teA = Temp*(1000/PRESSURE)**(Rd/(cpd + ccl*QT))
-        teB = np.exp( (lv0*QT)/((cpd + QT*ccl)*Temp))
-        teC = (RH/100)**( (-1*QT*Rv) / (cpd + ccl*QT) )
-        Thte = teA * teB * teC
-
-        # Calculate mass flux (kg m-2 s-1)
-        MassFlux = (Mrho * WA).squeeze()
-        
     if ent_exist:
         # print(fname_ent)
         # Read ENT file (EJ)
@@ -414,13 +418,6 @@ def extract_env_prof(
         dse = dse.drop('time')
         dse = dse.assign_coords(Time=dsm.coords['Time'].data) 
         EntrDetr = dse['entr_detr']
-
-        # Separate the net entrainment file to entrainment and detrainment (EJ)
-        Entr = EntrDetr.where(EntrDetr > 0)
-        Detr = EntrDetr.where(EntrDetr < 0)
-        
-        # Calculate Inflow of qv
-        Vapr = EntrDetr.where( (EntrDetr > 0) ) * qv
         
     if pixel_exist & met_exist:
         # print(fname_pixel)
@@ -621,54 +618,60 @@ def extract_env_prof(
                 tracknumbermap_evo[ipos[0].min():ipos[0].max(),ipos[1].min():ipos[1].max()] = 1
                 tracknumbermap_final = xr.DataArray(tracknumbermap_evo,coords=tracknumbermap.coords, dims=tracknumbermap.dims )
                 
-#                 import pdb; pdb.set_trace()
-#                 # For testing the overlapping updrafts 
-#                 tmp = np.zeros_like(tracknumbermap_label.data)
-#                 ind = np.where(tracknumbermap_label == correct)
-#                 tmp[ind] = 1
-#                 
-#                 plt.clf
-#                 f1 = plt.figure(figsize=(5, 5))
-#                 pm = plt.pcolormesh(tmp[900:1100,400:600])
-#                 pm = plt.pcolormesh(cookiecutter[900:1100,400:600])
-#                 pm = plt.pcolormesh(tracknumbermap[900:1100,400:600])
-#                 plt.colorbar(pm)
-#                 plt.savefig('/ccsopen/home/enochjo/test1.png')
-
-                
-#                 if opct > 0: # For testing opct
-#                     import pdb; pdb.set_trace()
-#                     
-#                     from matplotlib import pyplot as plt
-#                     f1 = plt.figure(figsize=(5, 5))
-#                     pm = plt.pcolormesh(tmap_new)
-#                     pm = plt.pcolormesh(tracknumbermap)
-#                     pm = plt.pcolormesh(cookiecutter)
-#                     plt.colorbar(pm)
-#                     plt.savefig('/ccsopen/home/enochjo/test1.png')
-                                
-                
                 
                 iW = WA.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 iQ = QA.where(tracknumbermap_final == 1, drop=True).squeeze().data
-#                 iQC = QC.where(tracknumbermap_final == 1, drop=True).squeeze().data
-#                 iQR = QR.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                #iQC = QC.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                #iQR = QR.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 iQV = qv.where(tracknumbermap_final == 1, drop=True).squeeze().data
-                iMassFlux = MassFlux.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iQT = QT.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                #iMassFlux = MassFlux.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 idBZ = dBZ.where(tracknumbermap_final == 1, drop=True).squeeze().data
-                iThte = Thte.where(tracknumbermap_final == 1, drop=True).squeeze().data
-                iThtv = Thtv.where(tracknumbermap_final == 1, drop=True).squeeze().data
-                iVapr = Vapr.where(tracknumbermap_final == 1, drop=True).squeeze().data
-                iEntr = Entr.where(tracknumbermap_final == 1, drop=True).squeeze().data
-                iDetr = Detr.where(tracknumbermap_final == 1, drop=True).squeeze().data
-                iTrho = Trho.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iTheta = TH.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                #iThte = Thte.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                #iThtv = Thtv.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                #iVapr = Vapr.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                #iEntr = Entr.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                #iDetr = Detr.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                iEntrDetr = EntrDetr.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                #iTrho = Trho.where(tracknumbermap_final == 1, drop=True).squeeze().data
                 iPres = PRESSURE.where(tracknumbermap_final == 1, drop=True).squeeze().data
-                iMrho = Mrho.where(tracknumbermap_final == 1, drop=True).squeeze().data
-                iRH = RH.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
+                #iMrho = Mrho.where(tracknumbermap_final == 1, drop=True).squeeze().data
+                #iRH = RH.where(tracknumbermap_final == 1, drop=True).squeeze().data # EJ
                 zTnum = da_cc.where(tracknumbermap_final == 1, drop=True).squeeze().data
-#                 iTnum = np.repeat(zTnum[np.newaxis,:,:],100,axis=0)
-                # This array is going to be populated with the "z" loop
-#                 iCor1 = np.zeros_like(iW)
+                
+                # Temperature
+                iTk = iTheta*(iPres/100000)**(2/7) # Remember that PRESSURE is in Pa
+                
+                # Virtual Potential Temperature
+                iThtv = iTheta * (iQV + 0.622)/(0.622 * (1 + iQV))
+                
+                # Calculate moist air density using virtual temperature
+                iMrho = iPres / (287.058 * iThtv)  # kg m-3
+                
+                # Mass Flux
+                iMassFlux = iMrho * iW
+                
+                # Density Temperature
+                iTrho = iTk*(1 + iQV/0.622)/(1 + iQT)
+                
+                # Thopmson RH
+                iRH = calc_rh_thompson(iTk, iPres, iQV)
+                
+                # Emmanuel ThetaE
+                iThte = calc_theta_e(iTk, iPres, iQV, iQT, iRH)
+                
+                # Separate the net entrainment file to entrainment and detrainment (EJ)
+                inde = iEntrDetr > 0
+                iEntr = np.zeros_like(iEntrDetr)
+                iEntr[inde] = iEntrDetr[inde]
+                indd = iEntrDetr < 0
+                iDetr = np.zeros_like(iEntrDetr)
+                iDetr[indd] = iEntrDetr[indd]
+
+                # Calculate Inflow of qv
+                iVapr = iEntr * iQV
+                
                                 
                 # Calculate new statistics of the cell
                 with warnings.catch_warnings():
