@@ -1,5 +1,5 @@
 """
-Calculates environmental variables at cell center and saves to a netCDF file.
+Calculates environmental variables averaged around the cell center and saves to a netCDF file.
 """
 __author__ = "Zhe.Feng@pnnl.gov"
 
@@ -19,7 +19,7 @@ def remove_dictionary_entry(dictionary, key):
     dictionary.pop(key, None)  # None is default if key does not exist
     return dictionary
 
-def calc_envs_track(file_env3d, file_env2d, file_env2d_jim, tracknumber, config):
+def calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config):
 
     print(f'track: {tracknumber}')
     nx_center = config['nx_center']
@@ -28,9 +28,14 @@ def calc_envs_track(file_env3d, file_env2d, file_env2d_jim, tracknumber, config)
     # Specify vertical level to interpolate to (HAMSL)
     z_lev_interp = np.arange(0, 20000.1, 200)
 
-    # Read 3D environment
-    # Subset track and center box
-    ds3d = xr.open_dataset(file_env3d).sel(
+    # Read 3D environment to get full coordinates
+    ds3d = xr.open_dataset(file_env3d)
+    times_coord = ds3d['times']
+    tracks_coord = ds3d['tracks']
+    xcoord = ds3d['x']
+    ycoord = ds3d['y']
+    # Subset track and space
+    ds3d = ds3d.sel(
         tracks=tracknumber,
         y=slice(-ny_center, ny_center), 
         x=slice(-nx_center, nx_center),
@@ -57,17 +62,17 @@ def calc_envs_track(file_env3d, file_env2d, file_env2d_jim, tracknumber, config)
     _u = interplevel(u, height, z_lev_interp)
     _v = interplevel(v, height, z_lev_interp)
     _w = interplevel(w, height, z_lev_interp)
-    # Subset to the center point
-    _tk = _tk.sel(y=0, x=0)
-    _qv = _qv.sel(y=0, x=0)
-    _rh = _rh.sel(y=0, x=0)
-    _p = _p.sel(y=0, x=0)
-    _u = _u.sel(y=0, x=0)
-    _v = _v.sel(y=0, x=0)
-    _w = _w.sel(y=0, x=0)
-    # Get the center point & lowest level height to approximate surface elevation
+    # Average over space
+    _tk = _tk.mean(dim=('y','x'), keep_attrs=True)
+    _qv = _qv.mean(dim=('y','x'), keep_attrs=True)
+    _rh = _rh.mean(dim=('y','x'), keep_attrs=True)
+    _p = _p.mean(dim=('y','x'), keep_attrs=True)
+    _u = _u.mean(dim=('y','x'), keep_attrs=True)
+    _v = _v.mean(dim=('y','x'), keep_attrs=True)
+    _w = _w.mean(dim=('y','x'), keep_attrs=True)
+    # Get lowest level height to approximate surface elevation
     # This approximate may be off from actual terrain height by 10s of meters
-    _z_sfc = height.sel(y=0, x=0, z=0)
+    _z_sfc = height.mean(dim=('y','x'))
     # Remove 'vert_units' in the variable attribute dictionary
     _tk_attrs = remove_dictionary_entry(_tk.attrs, 'vert_units')
     _qv_attrs = remove_dictionary_entry(_qv.attrs, 'vert_units')
@@ -98,40 +103,43 @@ def calc_envs_track(file_env3d, file_env2d, file_env2d_jim, tracknumber, config)
         'w': _w_attrs,
     }
 
-    # Read 2D environment
-    ds2d = xr.open_dataset(file_env2d)
-    xcoord = ds2d['x']
-    ycoord = ds2d['y']
-    times_coord = ds2d['times']
-    tracks_coord = ds2d['tracks']
-    ds2d = ds2d.sel(
-        tracks=tracknumber,
-        y=slice(0, 0), 
-        x=slice(0, 0),
-        # y=slice(-ny_center, ny_center), 
-        # x=slice(-nx_center, nx_center),
-    ).squeeze()
+    # # Read 2D environment
+    # ds2d = xr.open_dataset(file_env2d)
+    # xcoord = ds2d['x']
+    # ycoord = ds2d['y']
+    # times_coord = ds2d['times']
+    # tracks_coord = ds2d['tracks']
+    # ds2d = ds2d.sel(
+    #     tracks=tracknumber,
+    #     y=slice(0, 0), 
+    #     x=slice(0, 0),
+    #     # y=slice(-ny_center, ny_center), 
+    #     # x=slice(-nx_center, nx_center),
+    # ).squeeze()
 
     # Add 2D variables to the dictionary
     var2d_dict = {}
     var2d_attrs = {}
-    for var_name, values in ds2d.items():
-        var2d_dict[var_name] = values
-        var2d_attrs[var_name] = values.attrs
+    # for var_name, values in ds2d.items():
+    #     var2d_dict[var_name] = values
+    #     var2d_attrs[var_name] = values.attrs
 
     # Add 2D variables from Jim's environment data to the dictionary
     dsj2d = xr.open_dataset(file_env2d_jim)
     # Rename dimensions to match the original dimensions
-    dsj2d = dsj2d.rename({'cell':'tracks','t':'times'})
+    dsj2d = dsj2d.rename({'cell':'tracks', 't':'times'})
     # Assign coordinates
     dsj2d = dsj2d.assign_coords({'tracks':tracks_coord, 'times':times_coord, 'y':ycoord, 'x':xcoord})
     # Subset track & space
     dsj2d = dsj2d.sel(
         tracks=tracknumber,
-        y=slice(0, 0), 
-        x=slice(0, 0),
+        y=slice(-ny_center, ny_center), 
+        x=slice(-nx_center, nx_center),
     ).squeeze()
-    # import pdb; pdb.set_trace()
+
+    # Average over space
+    dsj2d = dsj2d.mean(dim=('y', 'x'), keep_attrs=True)
+
     # Add 2D variables to the dictionary
     for var_name, values in dsj2d.items():
         var2d_dict[var_name] = values
@@ -143,11 +151,10 @@ def calc_envs_track(file_env3d, file_env2d, file_env2d_jim, tracknumber, config)
         'long_name': 'Surface elevation AMSL',
         'units': 'm',
     }
-
     # import pdb; pdb.set_trace()
     return var3d_dict, var2d_dict, var3d_attrs, var2d_attrs, z_lev_interp
 
-def work_for_tracks(file_env3d, file_env2d, file_env2d_jim, output_filename, config):
+def work_for_tracks(file_env3d, file_env2d_jim, output_filename, config):
 
     # Read config parameters
     run_parallel = config['run_parallel']
@@ -167,13 +174,13 @@ def work_for_tracks(file_env3d, file_env2d, file_env2d_jim, output_filename, con
         for itrack in range(0, ntracks):
         # for itrack in range(0, 5):
             tracknumber = tracks.data[itrack]
-            result = calc_envs_track(file_env3d, file_env2d, file_env2d_jim, tracknumber, config)
+            result = calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config)
             final_result.append(result)
     # Parallel
     elif run_parallel >= 1:
         pool = Pool(n_workers)
         final_result = pool.starmap(
-            calc_envs_track, zip(repeat(file_env3d), repeat(file_env2d), repeat(file_env2d_jim), tracks.data, repeat(config))
+            calc_envs_track, zip(repeat(file_env3d), repeat(file_env2d_jim), tracks.data, repeat(config))
             )
         pool.close()
 
@@ -264,7 +271,7 @@ def work_for_tracks(file_env3d, file_env2d, file_env2d_jim, output_filename, con
     }
     gattr_dict = {
         'Title': 'Center environment data for cell tracks',
-        'Institution': 'Pacific Northwest National Laboratoy',
+        'Institution': 'Pacific Northwest National Laboratory',
         'Contact': 'zhe.feng@pnnl.gov',
         'Created_on': time.ctime(time.time()),
     }
@@ -292,15 +299,18 @@ if __name__ == "__main__":
 
     startdate = config['startdate']
     enddate = config['enddate']
-    # stats_path = config['stats_path']
     input_path = config['output_path']
     output_path = config['output_path']
     env_path = config['env_path']
+    nx_center = config['nx_center']
+    ny_center = config['ny_center']
+    nx_grid = 2 * int(nx_center) + 1
+    ny_grid = 2 * int(ny_center) + 1
 
     # 3D environment filename
     file_env3d = f'{input_path}stats_3d_env_{startdate}_{enddate}.nc'
     # 2D environment filename
-    file_env2d = f'{input_path}stats_2d_env_{startdate}_{enddate}.nc'
+    # file_env2d = f'{input_path}stats_2d_env_{startdate}_{enddate}.nc'
     # Jim's 2D environment filename
     sdate = startdate[:8]
     ensmember = config['ensmember']
@@ -309,20 +319,22 @@ if __name__ == "__main__":
     domain = input_path.split(os.path.sep)[-3]
     file_env2d_jim = f'{env_path}EnvMetrics_{sdate}_{ensmember}_{run_config}_{domain}.nc'
     print(f'Input: {file_env3d}')
-    print(f'Input: {file_env2d}')
+    # print(f'Input: {file_env2d}')
     print(f'Env file: {file_env2d_jim}')
     # import pdb; pdb.set_trace()
 
     # Output filename
-    output_filename = f'{output_path}stats_1d_env_{startdate}_{enddate}.nc'
+    output_filename = f'{output_path}stats_avg1d_env{nx_grid}x{ny_grid}_{startdate}_{enddate}.nc'
     os.makedirs(output_path, exist_ok=True)
+
 
     # Check input file
     fc_3d = os.path.isfile(file_env3d)
-    fc_2d = os.path.isfile(file_env2d)
+    fc_2d = os.path.isfile(file_env2d_jim)
     if (fc_3d == True) & (fc_2d == True):
         # Call function to calculate
-        result = work_for_tracks(file_env3d, file_env2d, file_env2d_jim, output_filename, config)
+        result = work_for_tracks(file_env3d, file_env2d_jim, output_filename, config)
     else:
-        print(f'No input file: {file_env3d}')
+        if (fc_3d == False): print(f'No input file: {file_env3d}')
+        if (fc_2d == False): print(f'No input file: {file_env2d_jim}')
 

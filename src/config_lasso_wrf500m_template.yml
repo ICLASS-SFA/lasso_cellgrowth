@@ -2,7 +2,8 @@
 # Run in parallel
 run_parallel: 1
 # Number of workers for Dask
-n_workers: 12
+n_workers: 12  # For 3D calculations
+# n_workers: 64  # For cell center env
 # Threads per worker
 threads_per_worker: 1
 dask_tmp_dir: '/tmp'
@@ -19,17 +20,21 @@ resolution: 'les'
 time_window: 30  # [second]
 # Input/output file locations
 # Track stats directory
-stats_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3/stats/'
+stats_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3/stats/'
 # Track pixel file directory
-pixelfile_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3/celltracking/'
+pixelfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3/celltracking/'
 # 3D Met file directory
-metfile_path: '/gpfs/wolf/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
-cldfile_path: '/gpfs/wolf/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
+metfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
+cldfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
+metfile_path_2: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
+cldfile_path_2: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
 # Raw WRF output file directory
-# wrfout_path: '/gpfs/wolf/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/out_d3/'
-# wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/les/'
+# wrfout_path: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/out_d3/'
+# wrfout_path2: '/gpfs/wolf2/arm/cli120/proj-shared/d3m088/cacti/production/les/'
 # Output file directory
-output_path: '/gpfs/wolf/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3/stats/'
+output_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3/stats/'
+# env_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/cell_envs/'
+env_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/cell_envs3d/'
 # File base names
 pixel_filebase: 'celltracks_'
 # wrfout_filebase: 'wrfout_d01_'
@@ -47,26 +52,35 @@ Q_down_thresh: 0.00005 # 0.05/1000  # [kg/kg]
 min_core_npix: 2
 # Number of pixel to expand a core to get perimeter
 core_expand_dist: 1
+# Buffer radius to expand the cell mask to get the core shell / perimeter
+core_shell_buffer_radius: 10  # [km]
 # Number of cores to save per cell
 ncores_min: 10
-# Number of hours prior to initiation to extract environment
+# Number of hours prior to initiation to extract 1D environment
 nhours: 1
+# Minutes prior to initiation to extract 3D environment before CI
+minutes_prior: 30
+# Frequency of times to extract 3D environment data before CI
+freq_prior: 15    # [min]
 # Set domain size to extract environment
 # Number of grid point in lon/lat dimension [center-nx, center+nx], [center-ny, center+ny]
 # nx: 60
 # ny: 60
-nx: 10
-ny: 10
+nx: 20
+ny: 20
 nz: 149
 # Sub-sample spatial grid (2: sample every 2 grids)
 sub_x: 2
 sub_y: 2
+# Fixed location for ARM site to extract environment
+lat_site: -32.126410
+lon_site: -64.728370
 # Spatial resolution
 DX: 500
 DY: 500
 # Number of grid point to compute center environment profile [-nx_center, +nx_center], [-ny_center,+ny_center]
-nx_center: 1
-ny_center: 1
+nx_center: 5
+ny_center: 5
 # Subset boundary [lon_min, lon_max, lat_min, lat_max]
 geolimits: [-33.3, -65.9, -30.8, -63.4]
 # List of 2D variables to pass through from the 3D file

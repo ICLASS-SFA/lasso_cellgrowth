@@ -1,9 +1,9 @@
 ---
 # Run in parallel
-run_parallel: 1
+run_parallel: 0
 # Number of workers for Dask
-n_workers: 24  # For 3D calculations
-# n_workers: 32  # For cell center env
+# n_workers: 24  # For 3D calculations
+n_workers: 32
 # Threads per worker
 threads_per_worker: 1
 dask_tmp_dir: '/tmp'
@@ -20,25 +20,23 @@ resolution: 'meso'
 time_window: 30  # [second]
 # Input/output file locations
 # Track stats directory
-stats_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/CONFIG/d2/stats/'
+stats_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/CONFIG/d2_15min/stats/'
 # Track pixel file directory
-pixelfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/CONFIG/d2/celltracking/'
+pixelfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/CONFIG/d2_15min/celltracking/'
 # 3D Met file directory
-# metfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/d2/run/'
-# regfile_path: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
-metfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
-cldfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
-metfile_path_2: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
-cldfile_path_2: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
-# metfile_path1: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
-# metfile_path2: '/gpfs/wolf/cli120/world-shared/d3m088/cacti/staged_runs_2/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
+# regfile_path: '/gpfs/wolf2/arm/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
+# metfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
+# cldfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
+# metfile_path_2: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
+# cldfile_path_2: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
+metfile_path: '/gpfs/wolf2/arm/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
+metfile_path_2: '/gpfs/wolf2/arm/cli120/world-shared/d3m088/cacti/staged_runs_2/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/'
 # Raw WRF output file directory
-# wrfout_path1: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/meso/'
-# wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/meso/'
+# wrfout_path1: '/gpfs/wolf2/arm/cli120/proj-shared/d3m088/cacti/production/meso/'
+# wrfout_path2: '/gpfs/wolf2/arm/cli120/proj-shared/d3m088/cacti/production/meso/'
 # Output file directory
-output_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/CONFIG/d2/stats/'
-# env_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/cell_envs/'
-env_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/cell_envs3d/'
+output_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/meso/STARTDATE/ENSMEMBER/CONFIG/d2_15min/stats/'
+env_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/cell_envs/'
 # File base names
 pixel_filebase: 'celltracks_'
 methamsl_filebase: 'corlasso_methamsl_STARTDATE00ENSMEMBERd2_CONFIG_M1.m1.'
@@ -60,12 +58,8 @@ ncores_min: 10
 core_expand_dist: 1
 # Buffer radius to expand the cell mask to get the core shell / perimeter
 core_shell_buffer_radius: 20  # [km]
-# Number of hours prior to initiation to extract 1D environment
+# Number of hours prior to initiation to extract environment
 nhours: 1
-# Minutes prior to initiation to extract 3D environment before CI
-minutes_prior: 30
-# Frequency of times to extract 3D environment data before CI
-freq_prior: 15    # [min]
 # Set domain size to extract environment
 # Number of grid point in lon/lat dimension [center-nx, center+nx], [center-ny, center+ny]
 # nx: 12
@@ -83,8 +77,8 @@ lon_site: -64.728370
 DX: 2500
 DY: 2500
 # Number of grid point to compute center environment profile [-nx_center, +nx_center], [-ny_center,+ny_center]
-nx_center: 2
-ny_center: 2
+nx_center: 1
+ny_center: 1
 # Subset boundary [lon_min, lon_max, lat_min, lat_max]
 # geolimits: [-65.9, -63.4, -33.1, -31.0]
 geolimits: [-33.3, -65.9, -30.8, -63.4]

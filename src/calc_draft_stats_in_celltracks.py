@@ -272,6 +272,9 @@ def calc_cellstats_singlefile(
         out_dict_attrs: dictionary
             Dictionary containing the attributes of track statistics data
     """
+    # Constants
+    R_dry = 287.058   # J kg−1 K−1
+
     print(met_filename)
 
     # Get thresholds from config
@@ -289,9 +292,9 @@ def calc_cellstats_singlefile(
     dsm = xr.open_dataset(met_filename)
     # Rename dimenensions
     dsm = dsm.rename_dims({'south_north':'lat', 'west_east':'lon'})
-    nz = dsm.dims['HAMSL']
-    ny = dsm.dims['lat']
-    nx = dsm.dims['lon']
+    nz = dsm.sizes['HAMSL']
+    ny = dsm.sizes['lat']
+    nx = dsm.sizes['lon']
     height = dsm['HAMSL'].data
     DX = dsm.attrs['DX']
     DY = dsm.attrs['DY']
@@ -305,8 +308,8 @@ def calc_cellstats_singlefile(
     # Read pixel-level track file
     ds = xr.open_dataset(pixel_filename, decode_times=False)
     time_pixel = ds['time']
-    ny_p = ds.dims['lat']
-    nx_p = ds.dims['lon']
+    ny_p = ds.sizes['lat']
+    nx_p = ds.sizes['lon']
 
     # Check dimensions between MET and pixel files
     if (ny_p < ny) | (nx_p < nx):
@@ -357,8 +360,6 @@ def calc_cellstats_singlefile(
         QSNOW = dsc['QSNOW']
         # QGRAUP = dsc['QGRAUP']
 
-    # import pdb; pdb.set_trace()
-
     # Check dimensions again after subset
     if (ny_p != ny) | (nx_p != nx):
         print(f'ERROR: Inconsistent number of grids between pixel-level and MET files.')
@@ -371,13 +372,13 @@ def calc_cellstats_singlefile(
     # Cell mask
     tracknumbermap = ds['tracknumber'].squeeze()
 
-    # Total cloud condensates
-    Qcld = QCLOUD + QICE + QSNOW
-    # Total liquid condensates
-    Qliq = QVAPOR + QCLOUD + QRAIN
+    # # Total cloud condensates
+    # Qcld = QCLOUD + QICE + QSNOW
+    # # Total liquid condensates
+    # Qliq = QVAPOR + QCLOUD + QRAIN
 
-    # Calculate virtual temperature
-    TV = TEMPERATURE * (1 + QVAPOR / 0.622) / (1 + QVAPOR)
+    # # Calculate virtual temperature
+    # TV = TEMPERATURE * (1 + QVAPOR / 0.622) / (1 + QVAPOR)
 
     # # theta-e following Bolton (1980); error of < 0.3 K between -35 and 35C; from Thompson scheme
     # # more accurate formula from Emanuel could be implemented; ice effects also excluded
@@ -436,13 +437,13 @@ def calc_cellstats_singlefile(
     # Density temp
     # TRHO = TEMPERATURE*((1 + QVAPOR/0.622)/(1 + QTOTAL+QVAPOR))
     
-    # Calculate moist air density using virtual temperature
-    R_dry = 287.058   # J kg−1 K−1
-    # RHO_DRY = PRESSURE / (R_dry * TEMPERATURE)  # kg m-3
-    RHO_MOIST = PRESSURE / (R_dry * TV)  # kg m-3
+    # # Calculate moist air density using virtual temperature
+    # R_dry = 287.058   # J kg−1 K−1
+    # # RHO_DRY = PRESSURE / (R_dry * TEMPERATURE)  # kg m-3
+    # RHO_MOIST = PRESSURE / (R_dry * TV)  # kg m-3
 
-    # Calculate mass flux (kg m-2 s-1)
-    MassFlux = (RHO_MOIST * WA).squeeze()
+    # # Calculate mass flux (kg m-2 s-1)
+    # MassFlux = (RHO_MOIST * WA).squeeze()
 
     # import pdb; pdb.set_trace()
 
@@ -508,6 +509,12 @@ def calc_cellstats_singlefile(
             # Track number needs to add 1
             itracknum = idx_track[icell] + 1
 
+            # Get the current time
+            current_time = datetime.now().time()
+            # Format and print the current time
+            formatted_time = current_time.strftime("%H:%M:%S")
+            print(f'Tracknumber: {itracknum}, current time: {formatted_time}')
+
             # Count the number of pixels for the original cell mask
             icellmask = tracknumbermap == itracknum
             inpix_cloud = np.count_nonzero(icellmask)
@@ -523,14 +530,19 @@ def calc_cellstats_singlefile(
 
                 # Subset 3D variables to the current cell mask
                 iW = WA.where(icellmask_expand, drop=True).squeeze().data
-                iMassFlux = MassFlux.where(icellmask_expand, drop=True).squeeze().data
+                # iMassFlux = MassFlux.where(icellmask_expand, drop=True).squeeze().data
                 # iRho = RHO_DRY.where(icellmask_expand, drop=True).squeeze().data
                 iP = PRESSURE.where(icellmask_expand, drop=True).squeeze().data
                 iT = TEMPERATURE.where(icellmask_expand, drop=True).squeeze().data
-                iQcld = Qcld.where(icellmask_expand, drop=True).squeeze().data
-                iQliq = Qliq.where(icellmask_expand, drop=True).squeeze().data
-                iQv = QVAPOR.where(icellmask_expand, drop=True).squeeze().data
+                iQVAPOR = QVAPOR.where(icellmask_expand, drop=True).squeeze().data
                 iTheta = THETA.where(icellmask_expand, drop=True).squeeze().data
+
+                # iQcld = Qcld.where(icellmask_expand, drop=True).squeeze().data
+                # iQliq = Qliq.where(icellmask_expand, drop=True).squeeze().data
+                iQCLOUD = QCLOUD.where(icellmask_expand, drop=True).squeeze().data
+                iQRAIN = QRAIN.where(icellmask_expand, drop=True).squeeze().data
+                iQICE = QICE.where(icellmask_expand, drop=True).squeeze().data
+                iQSNOW = QSNOW.where(icellmask_expand, drop=True).squeeze().data
                 # iThetae = THETAE.where(icellmask_expand, drop=True).squeeze().data
                 # iThte = THETAE.where(icellmask_expand, drop=True).squeeze().data
                 # iTv = TV.where(icellmask_expand, drop=True).squeeze().data
@@ -549,12 +561,29 @@ def calc_cellstats_singlefile(
                 # iNia = NIA.where(icellmask_expand, drop=True).squeeze().data
                 # iHd = HD.where(icellmask_expand, drop=True).squeeze().data
 
+                # Total cloud condensates
+                iQcld = iQCLOUD + iQICE + iQSNOW
+                # Total liquid condensates
+                iQliq = iQVAPOR + iQCLOUD + iQRAIN
+                # import pdb; pdb.set_trace()
+
+                # Calculate virtual temperature
+                # TV = TEMPERATURE * (1 + QVAPOR / 0.622) / (1 + QVAPOR)
+                iTV = iT * (1 + iQVAPOR / 0.622) / (1 + iQVAPOR)
+                # Calculate moist air density using virtual temperature
+                # RHO_MOIST = PRESSURE / (R_dry * TV)  # kg m-3
+                iRHO_MOIST = iP / (R_dry * iTV)  # kg m-3
+                # Calculate mass flux (kg m-2 s-1)
+                # MassFlux = (RHO_MOIST * WA).squeeze()
+                iMassFlux = (iRHO_MOIST * iW)
+
                 # Virtual Potential Temperature
-                iThtv = iTheta * (iQv + 0.622)/(0.622 * (1 + iQv))
-                # Thopmson RH
-                iRH = calc_rh_thompson(iT, iP, iQv)
-                # Emnauel ThetaE
-                iThte = calc_theta_e(iT, iP, iQv, iQliq, iRH)
+                iThtv = iTheta * (iQVAPOR + 0.622)/(0.622 * (1 + iQVAPOR))
+                # # Thopmson RH
+                iRH = calc_rh_thompson(iT, iP, iQVAPOR)
+                # # Emanuel ThetaE
+                iThte = calc_theta_e(iT, iP, iQVAPOR, iQliq, iRH)
+                # import pdb; pdb.set_trace()
 
                 # Calculate new statistics of the cell
                 with warnings.catch_warnings():
@@ -568,7 +597,7 @@ def calc_cellstats_singlefile(
                         # zRho = iRho[z,:,:]
                         # zP = iP[z,:,:]
                         # zT = iT[z,:,:]
-                        # zQv = iQv[z,:,:]
+                        # zQv = iQVAPOR[z,:,:]
                         zQcld = iQcld[z,:,:]
                         zThtv = iThtv[z,:,:]
                         zThte = iThte[z,:,:]
@@ -926,8 +955,8 @@ if __name__ == '__main__':
     # Read track statistics file
     print(trackstats_file)
     dsstats = xr.open_dataset(trackstats_file, decode_times=False)
-    ntracks = dsstats.dims[tracks_dimname]
-    ntimes = dsstats.dims[times_dimname]
+    ntracks = dsstats.sizes[tracks_dimname]
+    ntimes = dsstats.sizes[times_dimname]
     stats_basetime = dsstats['base_time'].data
     stats_basetime_attrs = dsstats['base_time'].attrs
     # cell_area = dsstats['cell_area']
@@ -938,7 +967,7 @@ if __name__ == '__main__':
 
     # Read a MET file to get vertical coordinates
     dsm = xr.open_dataset(match_metfilelist[0])
-    nz = dsm.dims['HAMSL']
+    nz = dsm.sizes['HAMSL']
     height = dsm['HAMSL']
     dsm.close()
 

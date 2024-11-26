@@ -1,6 +1,5 @@
 """
-Extracts 3D data from raw WRF files for tracked convective cells.
-This version separates tracks by chunks.
+Extracts environment profile data at CI and fixed location from WRF files for tracked convective cells.
 """
 from genericpath import isfile
 import numpy as np
@@ -12,43 +11,6 @@ import pandas as pd
 import warnings
 import dask
 from dask.distributed import Client, LocalCluster, wait
-
-#-----------------------------------------------------------------------
-def ensmemb_short_to_long(ensmemb):
-    """
-    Convert the more modern short naming convention for ensemble members
-    to the longer way used when starting LASSO-CACTI, e.g., eda05->eda_en05
-    """
-    if ensmemb[0:3] == "fnl":
-        ensmemb_long = "fnl"
-    elif ensmemb[0:4] == "era5":
-        ensmemb_long = "era5"
-    elif ensmemb[0:3] == "eda":
-        ensmemb_long = f"eda_en{ensmemb[-2:]}"
-    elif ensmemb[0:4] == "gefs":
-        ensmemb_long = f"gefs_en{ensmemb[-2:]}"
-    #end if
-    return ensmemb_long
-
-#-----------------------------------------------------------------------
-def indentify_domain_number(dx):
-    '''
-    Use the grid spacing to determine which domain was run
-    within the LASSO-CACTI nest setup.
-
-    :param dx: Grid spacing (m)
-    :return: domain number
-    '''
-    if dx == 7500:
-        dom = 1
-    elif dx == 2500:
-        dom = 2
-    elif dx == 500:
-        dom = 3
-    elif dx == 100:
-        dom = 4
-    # end if
-    return dom
 
 #-----------------------------------------------------------------------
 def location_to_idx(lat, lon, center):
@@ -74,74 +36,73 @@ def location_to_idx(lat, lon, center):
     lat_idx, lon_idx = np.unravel_index(diff.argmin(), diff.shape)
     return lat_idx, lon_idx
 
-#--------------------------------------------------------------------------
-def pad_array(in_array, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y=1, sub_x=1, fillval=np.NaN):
-    """
-    Pad 2D or 3D array to ny, nx dimensions center at lat_idx, lon_idx.
+# #--------------------------------------------------------------------------
+# def pad_array(in_array, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y=1, sub_x=1, fillval=np.NaN):
+#     """
+#     Pad 2D or 3D array to ny, nx dimensions center at lat_idx, lon_idx.
     
-    Args:
-        in_array: np.array
-            Input 2D (y, x) or 3D array (z, y, x)
-        lat_idx: int
-            Center index on latitude (y) dimension
-        lon_idx: int
-            Center index on longitude (x) dimension
-        ny: int
-            Number of 1/2 grids to extract data in y dimension
-        nx: int
-            Number of 1/2 grids to extract data in x dimension
-        ny_d: int
-            Number of grids in the domain in y dimension
-        nx_d: int
-            Number of grids in the domain in x dimension
-        sub_y: int, optional, default=1
-            Number of grids to sub-sample in y dimension
-        sub_x: int, optional, default=1
-            Number of grids to sub-sample in x dimension
-        fillval: optional, default=np.NaN
-            Default fill value to pad the array.
+#     Args:
+#         in_array: np.array
+#             Input 2D (y, x) or 3D array (z, y, x)
+#         lat_idx: int
+#             Center index on latitude (y) dimension
+#         lon_idx: int
+#             Center index on longitude (x) dimension
+#         ny: int
+#             Number of 1/2 grids to extract data in y dimension
+#         nx: int
+#             Number of 1/2 grids to extract data in x dimension
+#         ny_d: int
+#             Number of grids in the domain in y dimension
+#         nx_d: int
+#             Number of grids in the domain in x dimension
+#         sub_y: int, optional, default=1
+#             Number of grids to sub-sample in y dimension
+#         sub_x: int, optional, default=1
+#             Number of grids to sub-sample in x dimension
+#         fillval: optional, default=np.NaN
+#             Default fill value to pad the array.
 
-    Returns:
-        out_array: np.array
-            Padded output array (z, y, x)
-    """
-    # Constrain lat/lon indices within domain boundary
-    iy_min = 0 if (lat_idx-ny < 0) else lat_idx-ny
-    iy_max = ny_d if (lat_idx+ny+1 > ny_d) else lat_idx+ny+1
-    ix_min = 0 if (lon_idx-nx < 0) else lon_idx-nx
-    ix_max = nx_d if (lon_idx+nx+1 > nx_d) else lon_idx+nx+1
-    # Number of grids on left, right, bottom, top
-    nx_l = lon_idx - ix_min
-    nx_r = ix_max - lon_idx - 1
-    ny_b = lat_idx - iy_min
-    ny_t = iy_max - lat_idx - 1
-    # Number of grids to pad on each side
-    pnx_l = nx - nx_l
-    pnx_r = nx - nx_r
-    pny_b = ny - ny_b
-    pny_t = ny - ny_t
-    # Check array dimensions
-    ndim = in_array.ndim
-    if ndim == 3:
-        # Subset array within the domain
-        in_array = in_array[:, iy_min:iy_max, ix_min:ix_max]
-        # Pad array on y & x dimensions
-        out_array = np.pad(in_array, ((0,0), (pny_b,pny_t), (pnx_l,pnx_r)), 'constant', constant_values=fillval)
-        # Sub-sample array
-        out_array = out_array[:, ::sub_y, ::sub_x]
-    if ndim == 2:
-        # Subset array within the domain
-        in_array = in_array[iy_min:iy_max, ix_min:ix_max]
-        # Pad array on y & x dimensions
-        out_array = np.pad(in_array, ((pny_b,pny_t), (pnx_l,pnx_r)), 'constant', constant_values=fillval)
-        # Sub-sample array
-        out_array = out_array[::sub_y, ::sub_x]
-    return out_array
+#     Returns:
+#         out_array: np.array
+#             Padded output array (z, y, x)
+#     """
+#     # Constrain lat/lon indices within domain boundary
+#     iy_min = 0 if (lat_idx-ny < 0) else lat_idx-ny
+#     iy_max = ny_d if (lat_idx+ny+1 > ny_d) else lat_idx+ny+1
+#     ix_min = 0 if (lon_idx-nx < 0) else lon_idx-nx
+#     ix_max = nx_d if (lon_idx+nx+1 > nx_d) else lon_idx+nx+1
+#     # Number of grids on left, right, bottom, top
+#     nx_l = lon_idx - ix_min
+#     nx_r = ix_max - lon_idx - 1
+#     ny_b = lat_idx - iy_min
+#     ny_t = iy_max - lat_idx - 1
+#     # Number of grids to pad on each side
+#     pnx_l = nx - nx_l
+#     pnx_r = nx - nx_r
+#     pny_b = ny - ny_b
+#     pny_t = ny - ny_t
+#     # Check array dimensions
+#     ndim = in_array.ndim
+#     if ndim == 3:
+#         # Subset array within the domain
+#         in_array = in_array[:, iy_min:iy_max, ix_min:ix_max]
+#         # Pad array on y & x dimensions
+#         out_array = np.pad(in_array, ((0,0), (pny_b,pny_t), (pnx_l,pnx_r)), 'constant', constant_values=fillval)
+#         # Sub-sample array
+#         out_array = out_array[:, ::sub_y, ::sub_x]
+#     if ndim == 2:
+#         # Subset array within the domain
+#         in_array = in_array[iy_min:iy_max, ix_min:ix_max]
+#         # Pad array on y & x dimensions
+#         out_array = np.pad(in_array, ((pny_b,pny_t), (pnx_l,pnx_r)), 'constant', constant_values=fillval)
+#         # Sub-sample array
+#         out_array = out_array[::sub_y, ::sub_x]
+#     return out_array
 
 #-----------------------------------------------------------------------
 def extract_env_prof(
     fname_pixel, 
-    # fname_wrfout,
     fname_met,
     fname_cld,
     idx_track, 
@@ -181,19 +142,20 @@ def extract_env_prof(
             Dictionary containing the coordinates of track statistics data
     """
     # Get values from config
-    nx = config['nx']
-    ny = config['ny']
+    # nx = config['nx']
+    # ny = config['ny']
     nz = config.get('nz', 149)
-    sub_x = config.get('sub_x', 1)
-    sub_y = config.get('sub_y', 1)
+    # sub_x = config.get('sub_x', 1)
+    # sub_y = config.get('sub_y', 1)
     DX = config.get('DX')
     DY = config.get('DY')
-
-    # Max difference in closest lat/lon point to the cell center [degree]
-    dlat_max, dlon_max = 0.04, 0.04
+    lat_site = config.get('lat_site')
+    lon_site = config.get('lon_site')
+    xdimname = 'west_east'
+    ydimname = 'south_north'
+    zdimname = 'bottom_top'
 
     # Check file existance
-    # wrfout_exist = os.path.isfile(fname_wrfout)
     met_exist = os.path.isfile(fname_met)
     cld_exist = os.path.isfile(fname_cld)
     pixel_exist = os.path.isfile(fname_pixel)
@@ -281,9 +243,9 @@ def extract_env_prof(
         # Read Met file
         print(fname_met)
         dsm = xr.open_dataset(fname_met)
-        nx_d = dsm.sizes['west_east']
-        ny_d = dsm.sizes['south_north']
-        nz = dsm.sizes['bottom_top']
+        nx_d = dsm.sizes[xdimname]
+        ny_d = dsm.sizes[ydimname]
+        nz = dsm.sizes[zdimname]
         # 3D Variables
         height = dsm['HAMSL'].squeeze()
         pressure = dsm['PRESSURE'].squeeze()
@@ -406,63 +368,67 @@ def extract_env_prof(
     out_ntracks = len(idx_track)
     # out_ny = 2*ny+1
     # out_nx = 2*nx+1
-    out_ny = np.round((2 * ny) / sub_y + 1).astype(int)
-    out_nx = np.round((2 * nx) / sub_x + 1).astype(int)
-    out_dims = (nz, out_ny, out_nx)
-    DX_sub = DX * sub_x
-    DY_sub = DY * sub_y
+    # out_ny = np.round((2 * ny) / sub_y + 1).astype(int)
+    # out_nx = np.round((2 * nx) / sub_x + 1).astype(int)
+    # out_dims = (nz, out_ny, out_nx)
+    out_nx = 2
+    out_dims = (nz, out_nx)
+    # DX_sub = DX * sub_x
+    # DY_sub = DY * sub_y
     # Spatial coordinates
-    xcoords = np.arange(-((out_nx-1)/2).astype(int), ((out_nx+1)/2).astype(int), 1)
-    ycoords = np.arange(-((out_ny-1)/2).astype(int), ((out_ny+1)/2).astype(int), 1)
+    xcoords = np.array([0, 1])
+    # xcoords = np.arange(-((out_nx-1)/2).astype(int), ((out_nx+1)/2).astype(int), 1)
+    # ycoords = np.arange(-((out_ny-1)/2).astype(int), ((out_ny+1)/2).astype(int), 1)
     zcoords = np.arange(0, nz)
-    xcoords_attrs = {'long_name':'X-distance from cell center', 'units':f'{DX_sub:.0f}m'}
-    ycoords_attrs = {'long_name':'Y-distance from cell center', 'units':f'{DY_sub:.0f}m'}
+    xcoords_attrs = {'long_name':'Location of points', 'comments':'0:fixed site, 1:CI location'}
+    # xcoords_attrs = {'long_name':'X-distance from cell center', 'units':f'{DX_sub:.0f}m'}
+    # ycoords_attrs = {'long_name':'Y-distance from cell center', 'units':f'{DY_sub:.0f}m'}
     zcoords_attrs = {'long_name':'Vertical level'}
     out_coords = {
         'dims': out_dims,
         'xcoords': xcoords,
-        'ycoords': ycoords,
+        # 'ycoords': ycoords,
         'zcoords': zcoords,
         'xcoords_attrs': xcoords_attrs,
-        'ycoords_attrs': ycoords_attrs,
+        # 'ycoords_attrs': ycoords_attrs,
         'zcoords_attrs': zcoords_attrs,
-        'DX': DX_sub,
-        'DY': DY_sub,
+        # 'DX': DX_sub,
+        # 'DY': DY_sub,
     }
     # 3D variables
-    out_Z = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_P = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_T = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_QV = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_RH = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_U = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_V = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_W = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_Z = np.full((out_ntracks, nz, out_nx), np.NaN, dtype=float)
+    out_P = np.full((out_ntracks, nz, out_nx), np.NaN, dtype=float)
+    out_T = np.full((out_ntracks, nz, out_nx), np.NaN, dtype=float)
+    out_QV = np.full((out_ntracks, nz, out_nx), np.NaN, dtype=float)
+    out_RH = np.full((out_ntracks, nz, out_nx), np.NaN, dtype=float)
+    out_U = np.full((out_ntracks, nz, out_nx), np.NaN, dtype=float)
+    out_V = np.full((out_ntracks, nz, out_nx), np.NaN, dtype=float)
+    out_W = np.full((out_ntracks, nz, out_nx), np.NaN, dtype=float)
 
     # 2D variables
-    # out_LCL = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_LFC = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_LPL = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_LNB = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_MUCAPE = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_MUCIN = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_LWP = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_IWP = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_PWV = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_T2 = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_Q2 = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_PSFC = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_U10 = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_V10 = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_PBLH = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_RAINNC = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_HGT = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_LCL = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    # out_LFC = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    # out_LPL = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    # out_LNB = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    # out_MUCAPE = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    # out_MUCIN = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    out_LWP = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    out_IWP = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    out_PWV = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    out_T2 = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    out_Q2 = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    out_PSFC = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    out_U10 = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    out_V10 = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    # out_PBLH = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    out_RAINNC = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    out_HGT = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
     # 2D cell variables
-    out_convcore = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_convmask = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_tnmask = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_refl = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_eth10 = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_convcore = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    out_convmask = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    out_tnmask = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    out_refl = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
+    out_eth10 = np.full((out_ntracks, out_nx), np.NaN, dtype=float)
 
     out_dict3d = None
     out_dict2d = None
@@ -476,118 +442,103 @@ def extract_env_prof(
         for itrack in range(0, out_ntracks):
             # track center location (lat, lon)
             center = (_lat[itrack], _lon[itrack])
+            # fixed location
+            fixed_site = (lat_site, lon_site)
 
             # Tracking pixel file
             if (pixel_exist == True) & (met_exist == True):
-                lat_idx, lon_idx = location_to_idx(dsp['latitude'].squeeze().data, dsp['longitude'].squeeze().data, center)
+                # Find closest lat/lon index to fixed location
+                fixlat_idx, fixlon_idx = location_to_idx(dsp['latitude'], dsp['longitude'], fixed_site)
+                # Find closet lat/lon index to track center location
+                lat_idx, lon_idx = location_to_idx(dsp['latitude'], dsp['longitude'], center)
                 # lat_idx, lon_idx = location_to_idx(XLAT.data, XLONG.data, center)
-                _convcore = pad_array(dsp['conv_core'].astype('float32').squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
-                _convmask = pad_array(dsp['conv_mask'].astype('float32').squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
-                _tnmask = pad_array(dsp['tracknumber'].astype('float32').squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
-                _refl = pad_array(dsp['dbz_comp'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
-                _eth10 = pad_array(dsp['echotop10'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_p, nx_p, sub_y, sub_x)
 
-                iny, inx = _refl.shape
-                if (iny == out_ny) & (inx == out_nx):
-                    out_convcore[itrack, :, :] = _convcore
-                    out_convmask[itrack, :, :] = _convmask
-                    out_tnmask[itrack, :, :] = _tnmask
-                    out_refl[itrack, :, :] = _refl
-                    out_eth10[itrack, :, :] = _eth10
+                # Extract value at fixed site location
+                if (fixlat_idx <= ny_p) & (fixlon_idx <= nx_p):
+                    out_convcore[itrack, 0] = dsp['conv_core'].astype('float32').squeeze().data[fixlat_idx, fixlon_idx]
+                    out_convmask[itrack, 0] = dsp['conv_mask'].astype('float32').squeeze().data[fixlat_idx, fixlon_idx]
+                    out_tnmask[itrack, 0] = dsp['tracknumber'].astype('float32').squeeze().data[fixlat_idx, fixlon_idx]
+                    out_refl[itrack, 0] = dsp['dbz_comp'].astype('float32').squeeze().data[fixlat_idx, fixlon_idx]
+                    out_eth10[itrack, 0] = dsp['echotop10'].astype('float32').squeeze().data[fixlat_idx, fixlon_idx]
 
-            # # Met file
-            # if met_exist:
-            #     lat_idx, lon_idx = location_to_idx(dsm['XLAT'], dsm['XLONG'], center)
-            #     _LCL = pad_array(dsm['LCL'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
-            #     _LFC = pad_array(dsm['LFC'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
-            #     _LPL = pad_array(dsm['LPL'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
-            #     _LNB = pad_array(dsm['LNB'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
-            #     _MUCAPE = pad_array(dsm['MUCAPE'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
-            #     _MUCIN = pad_array(dsm['MUCIN'].squeeze().data, lat_idx, lon_idx, ny, nx, ny_m, nx_m, sub_y, sub_x)
+                # Extract value at track center location
+                if (lat_idx <= ny_p) & (lon_idx <= nx_p):
+                    out_convcore[itrack, 1] = dsp['conv_core'].astype('float32').squeeze().data[lat_idx, lon_idx]
+                    out_convmask[itrack, 1] = dsp['conv_mask'].astype('float32').squeeze().data[lat_idx, lon_idx]
+                    out_tnmask[itrack, 1] = dsp['tracknumber'].astype('float32').squeeze().data[lat_idx, lon_idx]
+                    out_refl[itrack, 1] = dsp['dbz_comp'].astype('float32').squeeze().data[lat_idx, lon_idx]
+                    out_eth10[itrack, 1] = dsp['echotop10'].astype('float32').squeeze().data[lat_idx, lon_idx]
 
-            #     iny, inx = _LCL.shape
-            #     if (iny == out_ny) & (inx == out_nx):
-            #         out_LCL[itrack, :, :] = _LCL
-            #         out_LFC[itrack, :, :] = _LFC
-            #         out_LPL[itrack, :, :] = _LPL
-            #         out_LNB[itrack, :, :] = _LNB
-            #         out_MUCAPE[itrack, :, :] = _MUCAPE
-            #         out_MUCIN[itrack, :, :] = _MUCIN
 
             # Cloud file
             if cld_exist:
-                lat_idx, lon_idx = location_to_idx(dsc['XLAT'].squeeze().data, dsc['XLONG'].squeeze().data, center)
-                # Double check closest lat/lon distance
-                closest_lat = dsc['XLAT'].squeeze().data[lat_idx, lon_idx]
-                closest_lon = dsc['XLONG'].squeeze().data[lat_idx, lon_idx]
-                if (np.abs(closest_lat - center[0]) > dlat_max) | (np.abs(closest_lon - center[1]) > dlon_max):
-                    print(f'ERROR (cloud file): closest lat ({closest_lat:.2f} to {center[0]:.2f}) > {dlat_max} or '+\
-                          f'closest lon ({closest_lon:.2f} to {center[1]:.2f}) > {dlon_max}')
-                    sys.exit(f'Code exits now.')
-                _LWP = pad_array(LWP.data, lat_idx, lon_idx, ny, nx, ny_c, nx_c, sub_y, sub_x)
-                _IWP = pad_array(IWP.data, lat_idx, lon_idx, ny, nx, ny_c, nx_c, sub_y, sub_x)
-                _PWV = pad_array(PWV.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                # Find closest lat/lon index to fixed location
+                fixlat_idx, fixlon_idx = location_to_idx(dsc['XLAT'].data, dsc['XLONG'].data, fixed_site)
+                # Find closet lat/lon index to track center location
+                lat_idx, lon_idx = location_to_idx(dsc['XLAT'].data, dsc['XLONG'].data, center)
 
-                iny, inx = _LWP.shape
-                if (iny == out_ny) & (inx == out_nx):
-                    out_LWP[itrack, :, :] = _LWP
-                    out_IWP[itrack, :, :] = _IWP
-                    out_PWV[itrack, :, :] = _PWV
+                # Extract value at fixed site location
+                if (fixlat_idx <= ny_c) & (fixlon_idx <= nx_c):
+                    out_LWP[itrack, 0] = LWP.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+                    out_IWP[itrack, 0] = IWP.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+                    out_PWV[itrack, 0] = PWV.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
 
-            # WRF out file
-            # if wrfout_exist:
+                # Extract value at track center location
+                if (lat_idx <= ny_c) & (lon_idx <= nx_c):
+                    out_LWP[itrack, 1] = LWP.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    out_IWP[itrack, 1] = IWP.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    out_PWV[itrack, 1] = PWV.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                
+
+            # MET file
             if met_exist:
-                # Find closet lat/lon index to track center location                
+                # Find closest lat/lon index to fixed location
+                fixlat_idx, fixlon_idx = location_to_idx(XLAT.data, XLONG.data, fixed_site)
+                # Find closet lat/lon index to track center location
                 lat_idx, lon_idx = location_to_idx(XLAT.data, XLONG.data, center)
-                # Double check closest lat/lon distance
-                closest_lat = XLAT.squeeze().data[lat_idx, lon_idx]
-                closest_lon = XLONG.squeeze().data[lat_idx, lon_idx]
-                if (np.abs(closest_lat - center[0]) > dlat_max) | (np.abs(closest_lon - center[1]) > dlon_max):
-                    print(f'ERROR (met file): closest lat ({closest_lat:.2f} to {center[0]:.2f}) > {dlat_max} or '+\
-                          f'closest lon ({closest_lon:.2f} to {center[1]:.2f}) > {dlon_max}')
-                    sys.exit(f'Code exits now.')
 
-                # Extract and pad 3D variables
-                _tk = pad_array(tk.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _Z = pad_array(height.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _pressure = pad_array(pressure.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _qv = pad_array(qv.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _rh = pad_array(rh.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _u = pad_array(umet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _v = pad_array(vmet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _w = pad_array(wa.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                # Extract and pad 2D variables
-                # _PWV = pad_array(pwv.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _T2 = pad_array(T2.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _Q2 = pad_array(Q2.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _PSFC = pad_array(PSFC.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _U10 = pad_array(U10.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _V10 = pad_array(V10.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                # _PBLH = pad_array(PBLH.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _RAINNC = pad_array(RAINNC.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-                _HGT = pad_array(HGT.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
-
-                inz, iny, inx = _Z.shape
-                if (iny == out_ny) & (inx == out_nx):
+                # Extract value at fixed site location
+                if (fixlat_idx <= ny_d) & (fixlon_idx <= nx_d):
                     # 3D
-                    out_T[itrack, :, :, :] = _tk
-                    out_Z[itrack, :, :, :] = _Z
-                    out_P[itrack, :, :, :] = _pressure
-                    out_QV[itrack, :, :, :] = _qv
-                    out_RH[itrack, :, :, :] = _rh
-                    out_U[itrack, :, :, :] = _u
-                    out_V[itrack, :, :, :] = _v
-                    out_W[itrack, :, :, :] = _w
+                    # out_T[itrack, :, 0] = tk.data[:, fixlat_idx, fixlon_idx]
+                    out_T[itrack, :, 0] = tk.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+                    out_Z[itrack, :, 0] = height.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+                    out_P[itrack, :, 0] = pressure.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+                    out_QV[itrack, :, 0] = qv.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+                    out_RH[itrack, :, 0] = rh.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+                    out_U[itrack, :, 0] = umet.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+                    out_V[itrack, :, 0] = vmet.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+                    out_W[itrack, :, 0] = wa.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
                     # 2D
-                    # out_PWV[itrack, :, :] = _pwv
-                    out_T2[itrack, :, :] = _T2
-                    out_Q2[itrack, :, :] = _Q2
-                    out_PSFC[itrack, :, :] = _PSFC
-                    out_U10[itrack, :, :] = _U10
-                    out_V10[itrack, :, :] = _V10
-                    # out_PBLH[itrack, :, :] = _PBLH
-                    out_RAINNC[itrack, :, :] = _RAINNC
-                    out_HGT[itrack, :, :] = _HGT
+                    out_T2[itrack, 0] = T2.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+                    out_Q2[itrack, 0] = Q2.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+                    out_PSFC[itrack, 0] = PSFC.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+                    out_U10[itrack, 0] = U10.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+                    out_V10[itrack, 0] = V10.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+                    out_RAINNC[itrack, 0] = RAINNC.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+                    out_HGT[itrack, 0] = HGT.isel({ydimname:fixlat_idx, xdimname:fixlon_idx}).data
+
+                # Extract value at track center location
+                if (lat_idx <= ny_d) & (lon_idx <= nx_d):
+                    # 3D
+                    out_T[itrack, :, 1] = tk.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    out_Z[itrack, :, 1] = height.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    out_P[itrack, :, 1] = pressure.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    out_QV[itrack, :, 1] = qv.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    out_RH[itrack, :, 1] = rh.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    out_U[itrack, :, 1] = umet.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    out_V[itrack, :, 1] = vmet.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    out_W[itrack, :, 1] = wa.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    # 2D
+                    out_T2[itrack, 1] = T2.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    out_Q2[itrack, 1] = Q2.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    out_PSFC[itrack, 1] = PSFC.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    out_U10[itrack, 1] = U10.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    out_V10[itrack, 1] = V10.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    out_RAINNC[itrack, 1] = RAINNC.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                    out_HGT[itrack, 1] = HGT.isel({ydimname:lat_idx, xdimname:lon_idx}).data
+                # import pdb; pdb.set_trace()
+
 
         # Put output variables to a dictionary for easier acceess
         out_dict3d = {
@@ -651,6 +602,7 @@ def extract_env_prof(
         # new_attrs = {**pixel_attrs, **met_attrs}
         new_attrs = {**pixel_attrs, **cld_attrs}
         out_dict_attrs = {**out_dict_attrs, **new_attrs}
+        # import pdb; pdb.set_trace()
 
     return out_dict3d, out_dict2d, out_dict_attrs, out_coords
 
@@ -660,9 +612,7 @@ if __name__ == '__main__':
 
     # Get configuration file name from input
     config_file = sys.argv[1]
-    # track_start = int(sys.argv[2])
-    # track_end = int(sys.argv[3])
-    # digits = int(sys.argv[4])
+
     # Read configuration from yaml file
     stream = open(config_file, 'r')
     config = yaml.full_load(stream)
@@ -681,16 +631,10 @@ if __name__ == '__main__':
     metfile_path_2 = config['metfile_path_2']
     cldfile_path_2 = config['cldfile_path_2']
     output_path = config['output_path']
-    # wrfout_filebase = config.get('wrfout_filebase', None)
     met_filebase = config.get('met_filebase', None)
     cld_filebase = config.get('cld_filebase', None)
     pixel_filebase = config['pixel_filebase']
-    # wrfout_path1 = config['wrfout_path1']
-    # wrfout_path2 = config['wrfout_path2']
-    # nhours = config['nhours']
-    minutes_prior = config['minutes_prior']
-    freq_prior = config['freq_prior']
-    # ntimes_max = config['ntimes_max']
+    nhours = config['nhours']
     ensmember = config['ensmember']
     domain = config['domain']
     nx = config['nx']
@@ -709,9 +653,7 @@ if __name__ == '__main__':
     pixelfile_path = f'{pixelfile_path}{startdate}_{enddate}/'
 
     # Output statistics filename
-    # track_start_str = str(track_start).zfill(digits)
-    # output_filename = f'{output_path}stats_3d_env_{startdate}_{enddate}_t{track_start_str}.nc'
-    output_filename = f'{output_path}stats_3d_env_{startdate}_{enddate}.nc'
+    output_filename = f'{output_path}stats_env1d_2location_{startdate}_{enddate}.nc'
     os.makedirs(output_path, exist_ok=True)
 
     # Track statistics file dimension names
@@ -729,20 +671,12 @@ if __name__ == '__main__':
     print(trackstats_file)
     dsstats = xr.open_dataset(trackstats_file, decode_times=True)
     # Subset stats times to reduce array size
-    # dsstats = dsstats.isel(times=slice(0, ntimes_max))
-    # ntracks = dsstats.sizes[tracks_dimname]
     ntracks = dsstats.sizes[tracks_dimname]
     ntimes = dsstats.sizes[times_dimname]
     coord_tracks = dsstats['tracks']
     stats_basetime = dsstats['base_time']
     stats_lon = dsstats['meanlon']
     stats_lat = dsstats['meanlat']
-    # ntimes = dsstats.sizes[times_dimname]
-    # coord_tracks = dsstats['tracks'].sel(tracks=slice(track_start, track_end))
-    # stats_basetime = dsstats['base_time'].sel(tracks=slice(track_start, track_end))
-    # stats_lon = dsstats['meanlon'].sel(tracks=slice(track_start, track_end))
-    # stats_lat = dsstats['meanlat'].sel(tracks=slice(track_start, track_end))
-    # ntracks = len(coord_tracks)
     time_res_hour = dsstats.attrs['time_resolution_hour']
     dsstats.close()
 
@@ -759,9 +693,7 @@ if __name__ == '__main__':
     stats_lat0 = stats_lat.isel(times=0).data
 
     # Make an array to store the full time series
-    ntimes_prior = np.round(minutes_prior / freq_prior).astype(int)
-    # ntimes_prior = np.round(nhours / time_res_hour).astype(int)
-    # ntimes_full = np.ceil(ntimes_prior + ntimes_max).astype(int)
+    ntimes_prior = np.round(nhours / time_res_hour).astype(int)
     ntimes_full = np.round(ntimes_prior + 1).astype(int)
     # 
     full_times = np.ndarray((ntracks, ntimes_full), dtype='datetime64[ns]')
@@ -776,20 +708,20 @@ if __name__ == '__main__':
     stats_lons = stats_lon.data
     stats_lats = stats_lat.data
 
-    # Loop over each track
+    # Loop over each track to make pre-initiation times and locations
     for itrack in range(0, ntracks):
         # Calculate start/end times prior to initiation
-        time0_start = stats_min0[itrack] - pd.offsets.Minute(minutes_prior)
-        # time0_end = stats_min0[itrack] - pd.offsets.Minute(time_res_min)
-        time0_end = pd.to_datetime(stats_mins[itrack,0])
-        # Generate hourly time series leading up to initiation
-        # prior_times = np.array(pd.date_range(time0_start, time0_end, freq=f'{time_res_min:.0f}min'))
-        prior_times = np.array(pd.date_range(time0_start, time0_end, freq=f'{freq_prior:.0f}min'))
+        # time0_start = stats_hour0[itrack] - pd.offsets.Hour(nhours-1)
+        # time0_end = stats_hour0[itrack] - pd.offsets.Hour(1)
+        time0_start = stats_min0[itrack] - pd.offsets.Hour(nhours)
+        time0_end = stats_min0[itrack] - pd.offsets.Minute(time_res_min)
+        # Generate time series leading up to initiation
+        prior_times = np.array(pd.date_range(time0_start, time0_end, freq=f'{time_res_min:.0f}min'))
 
         # Save full history of times
-        full_times[itrack,:] = prior_times
-        # full_times[itrack,0:ntimes_prior] = prior_times
-        # full_times[itrack,ntimes_prior] = stats_mins[itrack,0]
+        full_times[itrack,0:ntimes_prior] = prior_times
+        full_times[itrack,ntimes_prior] = stats_mins[itrack,0]
+        # full_times[itrack,ntimes_prior:] = stats_mins[itrack,:]
 
         # Convert full times to Epoch time
         itimes = full_times[itrack,:]
@@ -798,7 +730,7 @@ if __name__ == '__main__':
         # full_basetimes[itrack, idx] = np.array([tt.tolist()/1e9 for tt in itimes[idx]])
         full_basetimes[itrack, idx] = itimes[idx].astype('datetime64[s]').astype(np.float64)
 
-        # Repeat initiation lat/lon by X hours (i.e., stay at the initiation location)
+        # Repeat initiation lat/lon by ntimes_prior (i.e., stay at the initiation location)
         ilon0 = np.repeat(stats_lon0[itrack], ntimes_prior)
         ilat0 = np.repeat(stats_lat0[itrack], ntimes_prior)
         # Save full history of lat/lon
@@ -834,6 +766,7 @@ if __name__ == '__main__':
     # Convert unique times to basetime
     uniq_basetimes = uniq_times.astype('datetime64[s]').astype(np.float64)
     # uniq_basetimes = np.array([tt.tolist()/1e9 for tt in uniq_times])
+    # import pdb; pdb.set_trace()
 
 
     ##############################################################
@@ -851,8 +784,8 @@ if __name__ == '__main__':
 
     # Loop over each pixel-file and call function to calculate
     for ifile in range(nfiles):
-    # for ifile in range(0, 12):
-        # Convert time string to match different files
+    # for ifile in range(0, 2):
+        # Convert time string to match different input files
         itime = uniq_times[ifile]
         itime_pixel = pd.to_datetime(str(itime)).strftime('%Y%m%d_%H%M%S')
         itime_wrfout = pd.to_datetime(str(itime)).strftime('%Y-%m-%d_%H_%M_%S')
@@ -874,24 +807,23 @@ if __name__ == '__main__':
             fname_cld = fname_wrfout
         # import pdb; pdb.set_trace()
 
-        # Get all MCS tracks/times indices in the same time (file)
-        # idx_track, idx_time = np.where(full_basetimes == uniq_basetimes[ifile])
+        # Find all tracks/times indices at the same time (file), within a min dt threshold
+        # These tracks/times all read from the same input files
         idx_track, idx_time = np.where(np.abs(full_basetimes - uniq_basetimes[ifile]) < dt_thresh)
         if len(idx_track) > 0:
             # Save matchindices for the current pixel file to the overall list
             trackindices_all.append(idx_track)
             timeindices_all.append(idx_time)
-            # import pdb; pdb.set_trace()
 
             # Get the track lat/lon/time values
             _lat = full_lats[idx_track, idx_time]
             _lon = full_lons[idx_track, idx_time]
+            # import pdb; pdb.set_trace()
 
             # Serial
             if run_parallel == 0:
                 result = extract_env_prof(
                     fname_pixel, 
-                    # fname_wrfout,
                     fname_met,
                     fname_cld,
                     idx_track, 
@@ -904,7 +836,6 @@ if __name__ == '__main__':
             elif run_parallel >= 1:
                 result = dask.delayed(extract_env_prof)(
                     fname_pixel, 
-                    # fname_wrfout,
                     fname_met,
                     fname_cld,
                     idx_track, 
@@ -947,22 +878,22 @@ if __name__ == '__main__':
     out_dict = {}
     out_dict_attrs = {}
     # Spatial coordinates
-    out_nz, out_ny, out_nx = var_coords['dims']
+    out_nz, out_nx = var_coords['dims']
     xcoords = var_coords['xcoords']
-    ycoords = var_coords['ycoords']
+    # ycoords = var_coords['ycoords']
     zcoords = var_coords['zcoords']
     xcoords_attrs = var_coords['xcoords_attrs']
-    ycoords_attrs = var_coords['ycoords_attrs']
+    # ycoords_attrs = var_coords['ycoords_attrs']
     zcoords_attrs = var_coords['zcoords_attrs']
 
     var_names = var_names3d + var_names2d
     # 3D variables 
     for ivar in var_names3d:
-        out_dict[ivar] = np.full((ntracks, out_ntimes, out_nz, out_ny, out_nx), np.nan, dtype=np.float32)
+        out_dict[ivar] = np.full((ntracks, out_ntimes, out_nz, out_nx), np.nan, dtype=np.float32)
         out_dict_attrs[ivar] = var_attrs[ivar]
     # 2D variables
     for ivar in var_names2d:
-        out_dict[ivar] = np.full((ntracks, out_ntimes, out_ny, out_nx), np.nan, dtype=np.float32)
+        out_dict[ivar] = np.full((ntracks, out_ntimes, out_nx), np.nan, dtype=np.float32)
         out_dict_attrs[ivar] = var_attrs[ivar]
 
     # Put the results to output track stats variables
@@ -970,7 +901,7 @@ if __name__ == '__main__':
     # for ifile in range(nfiles):
     # Loop over each returned results
     for ifile in range(len(final_results)):
-    # for ifile in range(0, 12):
+    # for ifile in range(0, 2):
         # Get the return results for this pixel file
         if final_results[ifile] is not None:
             iVAR3d = final_results[ifile][0]
@@ -980,28 +911,29 @@ if __name__ == '__main__':
                 timeindices = timeindices_all[ifile]
                 # Loop over each variable and assign values to output dictionary
                 for ivar in var_names3d:
-                    if iVAR3d[ivar].ndim == 4:
-                        out_dict[ivar][trackindices,timeindices,:,:,:] = iVAR3d[ivar]
+                    if iVAR3d[ivar].ndim == 3:
+                        out_dict[ivar][trackindices,timeindices,:,:] = iVAR3d[ivar]
             if iVAR2d is not None:
                 trackindices = trackindices_all[ifile]
                 timeindices = timeindices_all[ifile]
                 # Loop over each variable and assign values to output dictionary
                 for ivar in var_names2d:
-                    if iVAR2d[ivar].ndim == 3:
-                        out_dict[ivar][trackindices,timeindices,:,:] = iVAR2d[ivar]
+                    if iVAR2d[ivar].ndim == 2:
+                        out_dict[ivar][trackindices,timeindices,:] = iVAR2d[ivar]
+    # import pdb; pdb.set_trace()
 
     # Define a dataset containing all PF variables
     var_dict = {}
     print(f'Saving data to output arrays ...')
     # Define output variable dictionary
     for key, value in out_dict.items():
+        if value.ndim == 3:
+            var_dict[key] = (
+                [tracks_dimname, times_dimname, x_dimname], value, out_dict_attrs[key],
+            )
         if value.ndim == 4:
             var_dict[key] = (
-                [tracks_dimname, times_dimname, y_dimname, x_dimname], value, out_dict_attrs[key],
-            )
-        if value.ndim == 5:
-            var_dict[key] = (
-                [tracks_dimname, times_dimname, z_dimname, y_dimname, x_dimname], value, out_dict_attrs[key],
+                [tracks_dimname, times_dimname, z_dimname, x_dimname], value, out_dict_attrs[key],
             )
     # Add base_time to output dictionary
     var_dict['base_time'] = ([tracks_dimname, times_dimname], full_basetimes, full_basetimes_attrs)
@@ -1011,12 +943,12 @@ if __name__ == '__main__':
         tracks_dimname: ([tracks_dimname], coord_tracks.data, coord_tracks.attrs),
         times_dimname: ([times_dimname], coord_relativetimes, coord_relativetimes_attrs),
         z_dimname: ([z_dimname], zcoords, zcoords_attrs),
-        y_dimname: ([y_dimname], ycoords, ycoords_attrs),
+        # y_dimname: ([y_dimname], ycoords, ycoords_attrs),
         x_dimname: ([x_dimname], xcoords, xcoords_attrs),
     }
     gattr_dict = {
-        'Title': 'Extracted 3D environments for cell tracks',
-        'Institution': 'Pacific Northwest National Laboratory',
+        'Title': 'Extracted environment profiles at 2 locations for cell tracks',
+        'Institution': 'Pacific Northwest National Laboratoy',
         'Contact': 'zhe.feng@pnnl.gov',
         'Created_on': time.ctime(time.time()),
     }

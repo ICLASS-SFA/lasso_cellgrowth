@@ -1,19 +1,28 @@
 #!/bin/bash
 # Create LASSO cell statistics config and slurm scripts
 
-submit_job="yes"
+submit_job="no"
 
 # Specify configuration: 'base' or 'morr'
 configuration="base"
 
 config_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
 slurm_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
-# D2 (2.5km)
+# D2 (2.5km) 5min tracking
 config_template=${config_dir}"config_lasso_wrf2.5km_template.yml"
+# D2 (2.5km) 15min trcking
+# config_template=${config_dir}"config_lasso_wrf2.5km_15min_template.yml"
 # Slurm template (shared for all configs)
 slurm_template=${slurm_dir}"slurm_lasso_template.sh"
-config_basename="config_lasso_"
-slurm_basename="slurm_lasso_"
+# config_basename="config_lasso_"
+# slurm_basename="slurm_lasso_"
+# Extract the filename using the basename command
+config_fn="${config_template##*/}"
+# Separate the string by "_" and get the first three parts
+IFS="_" read -r part1 part2 part3 part4 rest <<< "$config_fn"
+# Make basenames for config & slurm files
+config_basename="config_${part2}_${part3}_"
+slurm_basename="slurm_${part2}_${part3}_"
 
 # Base runs
 if [ ${configuration} == "base" ]
