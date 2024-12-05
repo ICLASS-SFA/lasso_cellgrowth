@@ -79,8 +79,10 @@ lon_site: -64.728370
 DX: 500
 DY: 500
 # Number of grid point to compute center environment profile [-nx_center, +nx_center], [-ny_center,+ny_center]
-nx_center: 5
-ny_center: 5
+# nx_center: 5
+# ny_center: 5
+nx_center: 10
+ny_center: 10
 # Subset boundary [lon_min, lon_max, lat_min, lat_max]
 geolimits: [-33.3, -65.9, -30.8, -63.4]
 # List of 2D variables to pass through from the 3D file

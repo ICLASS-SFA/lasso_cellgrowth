@@ -1,7 +1,7 @@
 #!/bin/bash
 # Create LASSO cell statistics config and slurm scripts
 
-submit_job="no"
+submit_job="yes"
 
 # Specify configuration: 'base' or 'morr'
 configuration="base"

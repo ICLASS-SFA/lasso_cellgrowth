@@ -4,7 +4,7 @@
 #SBATCH --time=00:10:00
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=128
-#SBATCH -p batch_short
+#SBATCH -p batch_all
 ##SBATCH -p batch_high_memory
 #SBATCH --exclusive
 #SBATCH --output=log_CONFIG_NAME.log

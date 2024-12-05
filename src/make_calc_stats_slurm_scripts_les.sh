@@ -2,7 +2,7 @@
 # Create LASSO cell statistics config and slurm scripts
 
 # Flag to submit slurm jobs
-submit_job="no"
+submit_job="yes"
 
 # Flag to make new config & slurm scripts (typically "yes")
 make_config="yes"
@@ -14,9 +14,9 @@ configuration="base"
 config_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
 slurm_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
 # D4 (100m) 5min tracking
-config_template=${config_dir}"config_lasso_wrf100m_template.yml"
+# config_template=${config_dir}"config_lasso_wrf100m_template.yml"
 # D3 (500m) 5min tracking
-# config_template=${config_dir}"config_lasso_wrf500m_template.yml"
+config_template=${config_dir}"config_lasso_wrf500m_template.yml"
 # D4 (100m) 15min tracking
 # config_template=${config_dir}"config_lasso_wrf100m_15min_template.yml"
 # D3 (500m) 15min tracking

@@ -83,8 +83,10 @@ lon_site: -64.728370
 DX: 2500
 DY: 2500
 # Number of grid point to compute center environment profile [-nx_center, +nx_center], [-ny_center,+ny_center]
-nx_center: 2
-ny_center: 2
+# nx_center: 2
+# ny_center: 2
+nx_center: 4
+ny_center: 4
 # Subset boundary [lon_min, lon_max, lat_min, lat_max]
 # geolimits: [-65.9, -63.4, -33.1, -31.0]
 geolimits: [-33.3, -65.9, -30.8, -63.4]

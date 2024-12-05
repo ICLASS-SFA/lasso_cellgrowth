@@ -162,9 +162,9 @@ def work_for_tracks(file_env3d, file_env2d_jim, output_filename, config):
 
     # Get coordinates info
     ds3d = xr.open_dataset(file_env3d)
-    ntracks = ds3d.dims['tracks']
+    ntracks = ds3d.sizes['tracks']
     tracks = ds3d['tracks']
-    ntimes = ds3d.dims['times']
+    ntimes = ds3d.sizes['times']
     ds3d.close()
 
     results = []

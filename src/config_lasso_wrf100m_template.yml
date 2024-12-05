@@ -85,8 +85,10 @@ lon_site: -64.728370
 DX: 100
 DY: 100
 # Number of grid point to compute center environment profile [-nx_center, +nx_center], [-ny_center,+ny_center]
-nx_center: 5
-ny_center: 5
+# nx_center: 5
+# ny_center: 5
+nx_center: 10
+ny_center: 10
 # List of 2D variables to pass through from the 3D file
 list_var_pass:
   - 'conv_core'
