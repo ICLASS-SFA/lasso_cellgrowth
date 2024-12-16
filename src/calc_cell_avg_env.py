@@ -8,6 +8,7 @@ import time
 import numpy as np
 import xarray as xr
 import yaml
+import copy
 from wrf import interplevel
 from itertools import repeat
 from multiprocessing import Pool
@@ -18,6 +19,24 @@ def remove_dictionary_entry(dictionary, key):
     # Remove the entry with key and ignore the return value
     dictionary.pop(key, None)  # None is default if key does not exist
     return dictionary
+
+def calc_thetas(temp, pres, qv):
+    # Compute Theta
+    Theta = temp * (1e5 / pres)**0.286
+    # Compute ThetaE
+    ThetaE = theta_e_bolton(temp, qv, pres)
+    return (Theta, ThetaE)
+
+def theta_e_bolton(TEMPERATURE, QVAPOR, PRESSURE):
+    # theta-e following Bolton (1980); error of < 0.3 K between -35 and 35C; from Thompson scheme
+    # more accurate formula from Emanuel could be implemented; ice effects also excluded
+    es = PRESSURE*QVAPOR/(0.622*QVAPOR)
+    TDEW = (35.86*np.log(es) - 4947.2325)/(np.log(es) - 23.6837)
+    TLCL = 1/(1/(TDEW - 56) + np.log(TEMPERATURE/TDEW)/800) + 56
+    p1 = 3.376/TLCL - 0.00254
+    p2 = 1e3*QVAPOR*(1 + 0.81*QVAPOR)
+    THETAE_Bolton = (TEMPERATURE*(100000./PRESSURE)**(0.2854*(1 - 0.28*QVAPOR)))*np.exp(p1*p2) #K
+    return THETAE_Bolton
 
 def calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config):
 
@@ -54,6 +73,9 @@ def calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config):
     v = ds3d['v']
     w = ds3d['w']
 
+    # Compute Theta & ThetaE
+    Theta, ThetaE = calc_thetas(tk, pressure, qv)
+
     # Interpolate to fixed height
     _tk = interplevel(tk, height, z_lev_interp)
     _qv = interplevel(qv, height, z_lev_interp)
@@ -62,6 +84,15 @@ def calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config):
     _u = interplevel(u, height, z_lev_interp)
     _v = interplevel(v, height, z_lev_interp)
     _w = interplevel(w, height, z_lev_interp)
+    _theta = interplevel(Theta, height, z_lev_interp)
+    _thetaE = interplevel(ThetaE, height, z_lev_interp)
+
+    # Min over space
+    _qv_min = _qv.min(dim=('y','x'), keep_attrs=True)
+    _rh_min = _rh.min(dim=('y','x'), keep_attrs=True)
+    _theta_min = _theta.min(dim=('y','x'), keep_attrs=True)
+    _thetaE_min = _thetaE.min(dim=('y','x'), keep_attrs=True)
+
     # Average over space
     _tk = _tk.mean(dim=('y','x'), keep_attrs=True)
     _qv = _qv.mean(dim=('y','x'), keep_attrs=True)
@@ -70,9 +101,12 @@ def calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config):
     _u = _u.mean(dim=('y','x'), keep_attrs=True)
     _v = _v.mean(dim=('y','x'), keep_attrs=True)
     _w = _w.mean(dim=('y','x'), keep_attrs=True)
+    _theta = _theta.mean(dim=('y','x'), keep_attrs=True)
+    _thetaE = _thetaE.mean(dim=('y','x'), keep_attrs=True)
+
     # Get lowest level height to approximate surface elevation
     # This approximate may be off from actual terrain height by 10s of meters
-    _z_sfc = height.mean(dim=('y','x'))
+    _z_sfc = height.sel(z=0).mean(dim=('y','x'))
     # Remove 'vert_units' in the variable attribute dictionary
     _tk_attrs = remove_dictionary_entry(_tk.attrs, 'vert_units')
     _qv_attrs = remove_dictionary_entry(_qv.attrs, 'vert_units')
@@ -81,6 +115,21 @@ def calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config):
     _u_attrs = remove_dictionary_entry(_u.attrs, 'vert_units')
     _v_attrs = remove_dictionary_entry(_v.attrs, 'vert_units')
     _w_attrs = remove_dictionary_entry(_w.attrs, 'vert_units')
+    # Make new variable attributes
+    _theta_attrs = copy.deepcopy(_tk_attrs)
+    _theta_attrs['long_name'] = 'Average potential temperature'
+    _thetaE_attrs = copy.deepcopy(_tk_attrs)
+    _thetaE_attrs['long_name'] = 'Average equivalent potential temperature'
+
+    _theta_min_attrs = copy.deepcopy(_tk_attrs)
+    _theta_min_attrs['long_name'] = 'Minimum potential temperature'
+    _thetaE_min_attrs = copy.deepcopy(_tk_attrs)
+    _thetaE_min_attrs['long_name'] = 'Minimum equivalent potential temperature'
+
+    _qv_min_attrs = copy.deepcopy(_qv_attrs)
+    _qv_min_attrs['long_name'] = 'Minimum QVAPOR'
+    _rh_min_attrs = copy.deepcopy(_rh_attrs)
+    _rh_min_attrs['long_name'] = 'Minimum RH'
 
     # Put 3D variables to dictionary
     var3d_dict = {
@@ -92,6 +141,12 @@ def calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config):
         'u': _u,
         'v': _v,
         'w': _w,
+        'theta': _theta,
+        'thetaE': _thetaE,
+        'theta_min': _theta_min,
+        'thetaE_min': _thetaE_min,
+        'qv_min': _qv_min,
+        'rh_min': _rh_min,
     }
     var3d_attrs = {
         'temperature': _tk_attrs,
@@ -101,6 +156,12 @@ def calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config):
         'u': _u_attrs,
         'v': _v_attrs,
         'w': _w_attrs,
+        'theta': _theta_attrs,
+        'thetaE': _thetaE_attrs,
+        'theta_min': _theta_min_attrs,
+        'thetaE_min': _thetaE_min_attrs,
+        'qv_min': _qv_min_attrs,
+        'rh_min': _rh_min_attrs,
     }
 
     # # Read 2D environment
