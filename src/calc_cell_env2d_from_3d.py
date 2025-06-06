@@ -197,12 +197,31 @@ def calc_envs_track(in_filename, tracknumber, config):
     for itime in range(0, ntimes):
         # Proceed if this time has valid data (track exists)
         # if np.nanmax(z_sfc[itime, :, :]) > 0:
+        _rh = rh[itime, :, :, :]
+        _z = height[itime, :, :, :]
+        _pressure = pressure[itime, :, :, :]
+        
+        hamsl[itime,:,:] = _z[0,:,:]
+        
+        rh_pres = interplevel(_rh, _pressure/100, level_pres)
+        rh_925mb[itime, :, :] = rh_pres.sel(level=925)
+        rh_850mb[itime, :, :] = rh_pres.sel(level=850)
+        rh_700mb[itime, :, :] = rh_pres.sel(level=700)
+        rh_680mb[itime, :, :] = rh_pres.sel(level=680)
+        rh_660mb[itime, :, :] = rh_pres.sel(level=660)
+        rh_640mb[itime, :, :] = rh_pres.sel(level=640)
+        rh_620mb[itime, :, :] = rh_pres.sel(level=620)
+        rh_600mb[itime, :, :] = rh_pres.sel(level=600)
+        rh_580mb[itime, :, :] = rh_pres.sel(level=580)
+        rh_560mb[itime, :, :] = rh_pres.sel(level=560)
+        rh_540mb[itime, :, :] = rh_pres.sel(level=540)
+        rh_520mb[itime, :, :] = rh_pres.sel(level=520)
+        rh_500mb[itime, :, :] = rh_pres.sel(level=500)
+        
         if np.count_nonzero(~np.isnan(tk[itime, :, :, :])) > 0:
             _tk = tk[itime, :, :, :]
             _qv = qv[itime, :, :, :]
-            _rh = rh[itime, :, :, :]
-            _z = height[itime, :, :, :] 
-            _pressure = pressure[itime, :, :, :]
+            
             # _u = u[itime, :, :, :]
             # _v = v[itime, :, :, :]
             # _w = w[itime, :, :, :]
@@ -219,23 +238,6 @@ def calc_envs_track(in_filename, tracknumber, config):
             # qv_700mb[itime, :, :] = qv_pres.sel(level=700)
             # qv_600mb[itime, :, :] = qv_pres.sel(level=600)
             # qv_500mb[itime, :, :] = qv_pres.sel(level=500)
-
-            rh_pres = interplevel(_rh, _pressure/100, level_pres)
-            rh_925mb[itime, :, :] = rh_pres.sel(level=925)
-            rh_850mb[itime, :, :] = rh_pres.sel(level=850)
-            rh_700mb[itime, :, :] = rh_pres.sel(level=700)
-            rh_680mb[itime, :, :] = rh_pres.sel(level=680)
-            rh_660mb[itime, :, :] = rh_pres.sel(level=660)
-            rh_640mb[itime, :, :] = rh_pres.sel(level=640)
-            rh_620mb[itime, :, :] = rh_pres.sel(level=620)
-            rh_600mb[itime, :, :] = rh_pres.sel(level=600)
-            rh_580mb[itime, :, :] = rh_pres.sel(level=580)
-            rh_560mb[itime, :, :] = rh_pres.sel(level=560)
-            rh_540mb[itime, :, :] = rh_pres.sel(level=540)
-            rh_520mb[itime, :, :] = rh_pres.sel(level=520)
-            rh_500mb[itime, :, :] = rh_pres.sel(level=500)
-            
-            hamsl[itime,:,:] = _z[0,:,:]
 
             # Call AFWA diagnostics on data filtered below surface            
             ostat, _mucape, _mucin, _lcl, _lfc, _el, _lpl = afwa.diag_functions.diag_map(_tk, _rh, _pressure, _z, 1, 1)

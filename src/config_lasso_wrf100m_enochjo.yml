@@ -1,10 +1,10 @@
 ---
 # Run in parallel
-run_parallel: 1
+run_parallel: 0
 # Number of workers for Dask
 # n_workers: 8 # For hi-mem corestats
-# n_workers: 8 # For hi-mem env3d
-n_workers: 8 # For 3d environment output
+n_workers: 12 # For hi-mem env3d
+# n_workers: 6 # For 3d environment output
 # n_workers: 12 # For plotting
 # n_workers: 5
 # Threads per worker
@@ -20,27 +20,27 @@ time_window: 5  # [second]
 # Input/output file locations
 # Track stats directory
 
-startdate: '20181129.1300'
-enddate: '20181129.1800'
-ensmember: 'gefs09'
-stats_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/tracks/stats/' 
-pixelfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/tracks/celltracking/'
-metfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/subset_d4/'
-entfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/entrain/'
-wrfout_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/out_d4/'
-output_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181129/gefs09/base/les/tracks/stats/'
-pixel_filebase: 'regrid_celltracks_'
-met_filebase: 'corlasso.cldhamsl.2018112900gefs09d4.base.M1.m1.'
-ent_filebase: 'entdvdt.cldhamsl.2018112900gefs09d4.base.M1.m1.' 
+# startdate: '20181129.1300'
+# enddate: '20181129.1800'
+# ensmember: 'gefs09'
+# stats_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20181129/gefs09/base/les/tracks/stats/' 
+# pixelfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20181129/gefs09/base/les/tracks/celltracking/'
+# metfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20181129/gefs09/base/les/subset_d4/'
+# entfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20181129/gefs09/base/les/entrain/'
+# wrfout_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20181129/gefs09/base/les/out_d4/'
+# output_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20181129/gefs09/base/les/tracks/stats/'
+# pixel_filebase: 'regrid_celltracks_'
+# met_filebase: 'corlasso.cldhamsl.2018112900gefs09d4.base.M1.m1.'
+# ent_filebase: 'entdvdt.cldhamsl.2018112900gefs09d4.base.M1.m1.' 
 
 # startdate: '20181204.1500'
 # enddate: '20181204.1900'
 # ensmember: 'gefs18'
-# stats_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181204/gefs18/base/les/tracks/stats/' 
-# pixelfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181204/gefs18/base/les/tracks/celltracking/'
-# metfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181204/gefs18/base/les/subset_d4/'
-# entfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181204/gefs18/base/les/entrain/'
-# output_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20181204/gefs18/base/les/tracks/stats/'
+# stats_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20181204/gefs18/base/les/tracks/stats/' 
+# pixelfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20181204/gefs18/base/les/tracks/celltracking/'
+# metfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20181204/gefs18/base/les/subset_d4/'
+# entfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20181204/gefs18/base/les/entrain/'
+# output_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20181204/gefs18/base/les/tracks/stats/'
 # pixel_filebase: 'regrid_celltracks_'
 # met_filebase: 'corlasso.cldhamsl.2018120400gefs18d4.base.M1.m1.'
 # ent_filebase: 'entdvdt.cldhamsl.2018120400gefs18d4.base.M1.m1.' 
@@ -48,31 +48,31 @@ ent_filebase: 'entdvdt.cldhamsl.2018112900gefs09d4.base.M1.m1.'
 # startdate: '20190129.1500'
 # enddate: '20190129.1800'
 # ensmember: 'eda09'
-# stats_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/tracks/stats/'
-# pixelfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/tracks/celltracking/'
-# metfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/subset_d4/'
-# entfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/entrain/'
-# output_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190129/eda09/base/les/tracks/stats/'
+# stats_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20190129/eda09/base/les/tracks/stats/'
+# pixelfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20190129/eda09/base/les/tracks/celltracking/'
+# metfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20190129/eda09/base/les/subset_d4/'
+# entfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20190129/eda09/base/les/entrain/'
+# output_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20190129/eda09/base/les/tracks/stats/'
 # pixel_filebase: 'regrid_celltracks_'
 # met_filebase: 'corlasso.cldhamsl.2019012900eda09d4.base.M1.m1.'
 # ent_filebase: 'entdvdt.cldhamsl.2019012900eda09d4.base.M1.m1.' 
 
-# startdate: '20190123.1400'
-# enddate: '20190123.1800'
-# ensmember: 'gefs18'
-# stats_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190123/gefs18/base/les/tracks/stats/'
-# pixelfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190123/gefs18/base/les/tracks/celltracking/'
-# metfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190123/gefs18/base/les/subset_d4/'
-# entfile_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190123/gefs18/base/les/entrain/'
-# output_path: '/gpfs/wolf/atm131/proj-shared/enochjo/20190123/gefs18/base/les/tracks/stats/'
-# pixel_filebase: 'regrid_celltracks_'
-# met_filebase: 'corlasso.cldhamsl.2019012300gefs18d4.base.M1.m1.'
-# ent_filebase: 'entdvdt.cldhamsl.2019012300gefs18d4.base.M1.m1.' 
+startdate: '20190123.1400'
+enddate: '20190123.1800'
+ensmember: 'gefs18'
+stats_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20190123/gefs18/base/les/tracks/stats/'
+pixelfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20190123/gefs18/base/les/tracks/celltracking/'
+metfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20190123/gefs18/base/les/subset_d4/'
+entfile_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20190123/gefs18/base/les/entrain/'
+output_path: '/gpfs/wolf2/arm/atm131/proj-shared/enochjo/20190123/gefs18/base/les/tracks/stats/'
+pixel_filebase: 'regrid_celltracks_'
+met_filebase: 'corlasso.cldhamsl.2019012300gefs18d4.base.M1.m1.'
+ent_filebase: 'entdvdt.cldhamsl.2019012300gefs18d4.base.M1.m1.' 
 
 
 # Raw WRF output file directory
-wrfout_path1: '/gpfs/wolf/cli120/proj-shared/sey/cacti/wrf/prod/'
-wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/les/'
+wrfout_path1: '/gpfs/wolf2/arm/cli120/proj-shared/sey/cacti/wrf/prod/'
+wrfout_path2: '/gpfs/wolf2/arm/cli120/proj-shared/d3m088/cacti/production/les/'
 # Output file directory
 cld_filebase: 'corlasso.cldhamsl.STARTDATE00ENSMEMBERd4.base.M1.m1.'
 

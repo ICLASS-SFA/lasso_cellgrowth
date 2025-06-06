@@ -425,30 +425,36 @@ def calc_cellstats_singlefile(
 #         cell_CoreMeanQC_prm = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
 #         cell_CoreMaxQR_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
 #         cell_CoreMeanQR_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
-        cell_CoreMeanQV_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
-        cell_CoreMeanQV_prm = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
+#         cell_CoreMeanQV_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
+#         cell_CoreMeanQV_prm = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
         
         # (EJ) new 3d variables for entrainment
         cell_Entr_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_Detr_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_Vapr_up = np.full(dims3d, np.NaN, dtype=np.float32)
+#         cell_Vapr_up = np.full(dims3d, np.NaN, dtype=np.float32)
         
         # (EJ) new arrays for other things
         cell_dBZ_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_ThteMax_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_ThteMean_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_ThteMean_prm = np.full(dims3d, np.NaN, dtype=np.float32)
+        # cell_ThteMean_prm = np.full(dims3d, np.NaN, dtype=np.float32)
+        # cell_ThteMean_pr3 = np.full(dims3d, np.NaN, dtype=np.float32)
+        cell_ThteMean_pr6 = np.full(dims3d, np.NaN, dtype=np.float32)
+        # cell_ThteMean_pr9 = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_ThtvMax_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_ThtvMean_prm = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_BuoyThtv_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_TrhoMax_up = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_TrhoMean_prm = np.full(dims3d, np.NaN, dtype=np.float32)
         cell_BuoyTrho_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_PGF_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
-        cell_NS_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
-        cell_WE_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
+#         cell_PGF_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
+#         cell_NS_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
+#         cell_WE_up = np.full(dims3d, np.NaN, dtype=np.float32) # EJ
         cell_rhMean_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_rhMean_prm = np.full(dims3d, np.NaN, dtype=np.float32)
+        # cell_rhMean_prm = np.full(dims3d, np.NaN, dtype=np.float32)
+        # cell_rhMean_pr3 = np.full(dims3d, np.NaN, dtype=np.float32)
+        cell_rhMean_pr6 = np.full(dims3d, np.NaN, dtype=np.float32)
+        # cell_rhMean_pr9 = np.full(dims3d, np.NaN, dtype=np.float32)
         
         # This section of code used to determine how large the sub-domain needs to be
         cell_cloudy = np.full(QA.shape, 0, dtype=np.float32)     # Create zero array
@@ -538,9 +544,9 @@ def calc_cellstats_singlefile(
                 # Mass Flux
                 iMassFlux = iMrho * iW
                 
-                # Density Temperature
-                iTrho = iTk*(1 + iQV/0.622)/(1 + iQT)
-                
+                # Density Potential Temperature
+                iTrho = iTk*(1 + iQV/0.622)/(1 + iQT)*(100000/iPres)**(287/1005)
+
                 # Thopmson RH
                 iRH = calc_rh_thompson(iTk, iPres, iQV)
                 
@@ -556,7 +562,7 @@ def calc_cellstats_singlefile(
                 iDetr[indd] = iEntrDetr[indd]
 
                 # Calculate Inflow of qv
-                iVapr = iEntr * iQV
+                # iVapr = iEntr * iQV
 
                 # Calculate new statistics of the cell
                 with warnings.catch_warnings():
@@ -569,24 +575,24 @@ def calc_cellstats_singlefile(
                         zQ = iQ[z,:,:] #EJ
 #                         zQC = iQC[z,:,:] #EJ
 #                         zQR = iQR[z,:,:] #EJ
-                        zQV = iQV[z,:,:] #EJ
+#                         zQV = iQV[z,:,:] #EJ
                         zMassFlux = iMassFlux[z,:,:]
                         zdBZ = idBZ[z,:,:] #EJ
                         zThte = iThte[z,:,:] #EJ
                         zThtv = iThtv[z,:,:] #EJ
                         zEntr = iEntr[z,:,:] #EJ
                         zDetr = iDetr[z,:,:] #EJ
-                        zVapr = iVapr[z,:,:] #EJ
+#                         zVapr = iVapr[z,:,:] #EJ
                         zTrho = iTrho[z,:,:] #EJ
-                        zMrho = iMrho[z,:,:] #EJ
+#                         zMrho = iMrho[z,:,:] #EJ
                         zRH = iRH[z,:,:] #EJ
                         
-                        zz = z
-                        if (z < 1): zz = 1
-                        if (z > 98): zz = 98
-                        
-                        zPrs1 = iPres[zz-1,:,:] *100 #EJ
-                        zPrs2 = iPres[zz+1,:,:] *100 #EJ
+#                         zz = z
+#                         if (z < 1): zz = 1
+#                         if (z > 98): zz = 98
+#                         
+#                         zPrs1 = iPres[zz-1,:,:] *100 #EJ
+#                         zPrs2 = iPres[zz+1,:,:] *100 #EJ
                         
 #                         from matplotlib import pyplot as plt
 #                         import pdb; pdb.set_trace()
@@ -660,13 +666,23 @@ def calc_cellstats_singlefile(
                         # core_label_down = dict_down['core_label']
 
                         # Dilate core labels by a certain number of pixels
-                        core_label_up_prm = np.zeros_like(core_label_up)
+                        # core_label_up_prm = np.zeros_like(core_label_up)
+                        # core_label_up_pr3 = np.zeros_like(core_label_up)
+                        core_label_up_pr6 = np.zeros_like(core_label_up)
+                        # core_label_up_pr9 = np.zeros_like(core_label_up)
                         for ii in range(ncores_save_up):
                             cell = np.zeros_like(core_label_up)
                             cell[core_label_up == core_numbers_up[ii]] = 1
-                            expand = round(np.sqrt(core_npix_up[ii]/np.pi))
-                            dil = expand_labels(cell, distance = expand)
-                            core_label_up_prm[(dil - cell) == 1] = core_numbers_up[ii]
+                            # expand = round(np.sqrt(core_npix_up[ii]/np.pi))
+                            # dil = expand_labels(cell, distance = expand)
+                            # core_label_up_prm[(dil - cell) == 1] = core_numbers_up[ii]
+                            
+                            # dil3 = expand_labels(cell, distance = 3)
+                            dil6 = expand_labels(cell, distance = 6)
+                            # dil9 = expand_labels(cell, distance = 9)
+                            # core_label_up_pr3[(dil3 - cell) == 1] = core_numbers_up[ii]
+                            core_label_up_pr6[(dil6 - cell) == 1] = core_numbers_up[ii]
+                            # core_label_up_pr9[(dil9 - cell) == 1] = core_numbers_up[ii]
                         
                             
                         
@@ -705,29 +721,36 @@ def calc_cellstats_singlefile(
 #                         QC_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
 #                         QR_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
 #                         QR_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
-                        QV_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
-                        QV_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+#                         QV_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+#                         QV_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
                         Entr_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
                         Detr_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
-                        Vapr_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+#                         Vapr_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
                         dBZ_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
                         Thte_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
                         Thte_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
-                        Thte_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        # Thte_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        # Thte_mean_pr3 = np.full(ncores_save_up, np.NaN, dtype=np.float32)
+                        Thte_mean_pr6 = np.full(ncores_save_up, np.NaN, dtype=np.float32)
+                        # Thte_mean_pr9 = np.full(ncores_save_up, np.NaN, dtype=np.float32)
+                        
                         Thtv_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
                         Thtv_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
                         Buoy_Thtv_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
                         Trho_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
                         Trho_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
                         Buoy_Trho_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
-                        Pres_pert_top = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
-                        Pres_pert_bot = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
-                        Mrho_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
-                        PGF_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
-                        NS_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
-                        WE_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+#                         Pres_pert_top = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+#                         Pres_pert_bot = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+#                         Mrho_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+#                         PGF_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+#                         NS_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+#                         WE_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
                         RH_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
-                        RH_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        # RH_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32) # EJ
+                        # RH_mean_pr3 = np.full(ncores_save_up, np.NaN, dtype=np.float32)
+                        RH_mean_pr6 = np.full(ncores_save_up, np.NaN, dtype=np.float32)
+                        # RH_mean_pr9 = np.full(ncores_save_up, np.NaN, dtype=np.float32)
                         
                         
                         for ii in range(ncores_save_up): 
@@ -749,33 +772,41 @@ def calc_cellstats_singlefile(
 #                             QC_mean_prm[ii] = np.nanmean(zQC[core_label_up_prm == core_numbers_up[ii]]) # EJ
 #                             QR_max_up[ii] = np.nanmax(zQR[core_label_up == core_numbers_up[ii]]) # EJ
 #                             QR_mean_up[ii] = np.nanmean(zQR[core_label_up == core_numbers_up[ii]]) # EJ
-                            QV_mean_up[ii] = np.nanmean(zQV[core_label_up == core_numbers_up[ii]]) # EJ
-                            QV_mean_prm[ii] = np.nanmean(zQV[core_label_up_prm == core_numbers_up[ii]]) # EJ
+#                             QV_mean_up[ii] = np.nanmean(zQV[core_label_up == core_numbers_up[ii]]) # EJ
+#                             QV_mean_prm[ii] = np.nanmean(zQV[core_label_up_prm == core_numbers_up[ii]]) # EJ
                             Entr_up[ii] = np.nansum(zEntr[core_label_up_dil == core_numbers_up[ii]]) # EJ
                             Detr_up[ii] = np.nansum(zDetr[core_label_up_dil == core_numbers_up[ii]]) # EJ
-                            Vapr_up[ii] = np.nansum(zVapr[core_label_up == core_numbers_up[ii]]) # EJ
+#                             Vapr_up[ii] = np.nansum(zVapr[core_label_up == core_numbers_up[ii]]) # EJ
                             dBZ_up[ii] = np.nanmax(zdBZ[core_label_up == core_numbers_up[ii]]) # EJ
                             Thte_max_up[ii] = np.nanmax(zThte[core_label_up == core_numbers_up[ii]]) # EJ
                             Thte_mean_up[ii] = np.nanmean(zThte[core_label_up == core_numbers_up[ii]]) # EJ
-                            Thte_mean_prm[ii] = np.nanmean(zThte[core_label_up_prm == core_numbers_up[ii]]) # EJ
+                            # Thte_mean_prm[ii] = np.nanmean(zThte[core_label_up_prm == core_numbers_up[ii]]) # EJ
+                            # Thte_mean_pr3[ii] = np.nanmean(zThte[core_label_up_pr3 == core_numbers_up[ii]])
+                            Thte_mean_pr6[ii] = np.nanmean(zThte[core_label_up_pr6 == core_numbers_up[ii]])
+                            # Thte_mean_pr9[ii] = np.nanmean(zThte[core_label_up_pr9 == core_numbers_up[ii]])
+                            
+                            
                             Thtv_max_up[ii] = np.nanmax(zThtv[core_label_up == core_numbers_up[ii]]) # EJ
-                            Thtv_mean_prm[ii] = np.nanmean(zThtv[core_label_up_prm == core_numbers_up[ii]]) # EJ
+                            Thtv_mean_prm[ii] = np.nanmean(zThtv[core_label_up_pr6 == core_numbers_up[ii]]) # EJ
                             Buoy_Thtv_up[ii] = 9.81*(Thtv_max_up[ii]-Thtv_mean_prm[ii])/Thtv_mean_prm[ii] # EJ
                             Trho_max_up[ii] = np.nanmax(zTrho[core_label_up == core_numbers_up[ii]]) # EJ
-                            Trho_mean_prm[ii] = np.nanmean(zTrho[core_label_up_prm == core_numbers_up[ii]]) # EJ
+                            Trho_mean_prm[ii] = np.nanmean(zTrho[core_label_up_pr6 == core_numbers_up[ii]]) # EJ
                             Buoy_Trho_up[ii] = 9.81*(Trho_max_up[ii]-Trho_mean_prm[ii])/Trho_mean_prm[ii] # EJ
-                            NS_up[ii] = ipos[0].min()+cpoints[ii,0] # EJ
-                            WE_up[ii] = ipos[1].min()+cpoints[ii,1]
+#                             NS_up[ii] = ipos[0].min()+cpoints[ii,0] # EJ
+#                             WE_up[ii] = ipos[1].min()+cpoints[ii,1]
                             RH_mean_up[ii] = np.nanmean(zRH[core_label_up == core_numbers_up[ii]]) # EJ
-                            RH_mean_prm[ii] = np.nanmean(zRH[core_label_up_prm == core_numbers_up[ii]]) # EJ
+                            # RH_mean_prm[ii] = np.nanmean(zRH[core_label_up_prm == core_numbers_up[ii]]) # EJ
+                            # RH_mean_pr3[ii] = np.nanmean(zRH[core_label_up_pr3 == core_numbers_up[ii]])
+                            RH_mean_pr6[ii] = np.nanmean(zRH[core_label_up_pr6 == core_numbers_up[ii]])
+                            # RH_mean_pr9[ii] = np.nanmean(zRH[core_label_up_pr9 == core_numbers_up[ii]])
                             
-                            Pres_pert_top[ii] = np.nanmean(zPrs2[core_label_up_prm == core_numbers_up[ii]])\
-                                - np.nanmax(zPrs2[core_label_up == core_numbers_up[ii]])
-                            Pres_pert_bot[ii] = np.nanmean(zPrs1[core_label_up_prm == core_numbers_up[ii]])\
-                                - np.nanmax(zPrs1[core_label_up == core_numbers_up[ii]])
-                            Mrho_mean_up[ii] = np.nanmean(zMrho[core_label_up == core_numbers_up[ii]])
-                            PGF_up[ii] = - 1/Mrho_mean_up[ii]\
-                                * ( Pres_pert_top[ii] - Pres_pert_bot[ii] )/200
+#                             Pres_pert_top[ii] = np.nanmean(zPrs2[core_label_up_prm == core_numbers_up[ii]])\
+#                                 - np.nanmax(zPrs2[core_label_up == core_numbers_up[ii]])
+#                             Pres_pert_bot[ii] = np.nanmean(zPrs1[core_label_up_prm == core_numbers_up[ii]])\
+#                                 - np.nanmax(zPrs1[core_label_up == core_numbers_up[ii]])
+#                             Mrho_mean_up[ii] = np.nanmean(zMrho[core_label_up == core_numbers_up[ii]])
+#                             PGF_up[ii] = - 1/Mrho_mean_up[ii]\
+#                                 * ( Pres_pert_top[ii] - Pres_pert_bot[ii] )/200
                             
                         # Calculate total mass flux for all labeled cores
                         MaFlx_sum_up = np.nansum(zMassFlux[core_label_up > 0])
@@ -793,26 +824,33 @@ def calc_cellstats_singlefile(
 #                         cell_CoreMeanQC_prm[icell, z, 0:ncores_save_up] = QC_mean_prm[0:ncores_save_up] # EJ
 #                         cell_CoreMaxQR_up[icell, z, 0:ncores_save_up] = QR_max_up[0:ncores_save_up] # EJ
 #                         cell_CoreMeanQR_up[icell, z, 0:ncores_save_up] = QR_mean_up[0:ncores_save_up] # EJ
-                        cell_CoreMeanQV_up[icell, z, 0:ncores_save_up] = QV_mean_up[0:ncores_save_up] # EJ
-                        cell_CoreMeanQV_prm[icell, z, 0:ncores_save_up] = QV_mean_prm[0:ncores_save_up] # EJ
+#                         cell_CoreMeanQV_up[icell, z, 0:ncores_save_up] = QV_mean_up[0:ncores_save_up] # EJ
+#                         cell_CoreMeanQV_prm[icell, z, 0:ncores_save_up] = QV_mean_prm[0:ncores_save_up] # EJ
                         cell_Entr_up[icell, z, 0:ncores_save_up] = Entr_up[0:ncores_save_up] # EJ
                         cell_Detr_up[icell, z, 0:ncores_save_up] = Detr_up[0:ncores_save_up] # EJ
-                        cell_Vapr_up[icell, z, 0:ncores_save_up] = Vapr_up[0:ncores_save_up] # EJ
+#                         cell_Vapr_up[icell, z, 0:ncores_save_up] = Vapr_up[0:ncores_save_up] # EJ
                         cell_dBZ_up[icell, z, 0:ncores_save_up] = dBZ_up[0:ncores_save_up] # EJ
                         cell_ThteMax_up[icell , z, 0:ncores_save_up] = Thte_max_up[0:ncores_save_up] # EJ
                         cell_ThteMean_up[icell , z, 0:ncores_save_up] = Thte_mean_up[0:ncores_save_up] # EJ
-                        cell_ThteMean_prm[icell , z, 0:ncores_save_up] = Thte_mean_prm[0:ncores_save_up] # EJ
+                        # cell_ThteMean_prm[icell , z, 0:ncores_save_up] = Thte_mean_prm[0:ncores_save_up] # EJ
+                        # cell_ThteMean_pr3[icell , z, 0:ncores_save_up] = Thte_mean_pr3[0:ncores_save_up] # EJ
+                        cell_ThteMean_pr6[icell , z, 0:ncores_save_up] = Thte_mean_pr6[0:ncores_save_up] # EJ
+                        # cell_ThteMean_pr9[icell , z, 0:ncores_save_up] = Thte_mean_pr9[0:ncores_save_up] # EJ
+                        
                         cell_ThtvMax_up[icell , z, 0:ncores_save_up] = Thtv_max_up[0:ncores_save_up] # EJ
                         cell_ThtvMean_prm[icell , z, 0:ncores_save_up] = Thtv_mean_prm[0:ncores_save_up] # EJ
                         cell_BuoyThtv_up[icell , z, 0:ncores_save_up] = Buoy_Thtv_up[0:ncores_save_up] # EJ
                         cell_TrhoMax_up[icell , z, 0:ncores_save_up] = Trho_max_up[0:ncores_save_up] # EJ
                         cell_TrhoMean_prm[icell , z, 0:ncores_save_up] = Trho_mean_prm[0:ncores_save_up] # EJ
                         cell_BuoyTrho_up[icell , z, 0:ncores_save_up] = Buoy_Trho_up[0:ncores_save_up] # EJ
-                        cell_PGF_up[icell , z, 0:ncores_save_up] = PGF_up[0:ncores_save_up] # EJ
-                        cell_NS_up[icell , z, 0:ncores_save_up] = NS_up[0:ncores_save_up] # EJ
-                        cell_WE_up[icell , z, 0:ncores_save_up] = WE_up[0:ncores_save_up] # EJ
+#                         cell_PGF_up[icell , z, 0:ncores_save_up] = PGF_up[0:ncores_save_up] # EJ
+#                         cell_NS_up[icell , z, 0:ncores_save_up] = NS_up[0:ncores_save_up] # EJ
+#                         cell_WE_up[icell , z, 0:ncores_save_up] = WE_up[0:ncores_save_up] # EJ
                         cell_rhMean_up[icell , z, 0:ncores_save_up] = RH_mean_up[0:ncores_save_up] # EJ
-                        cell_rhMean_prm[icell , z, 0:ncores_save_up] = RH_mean_prm[0:ncores_save_up] # EJ 
+                        # cell_rhMean_prm[icell , z, 0:ncores_save_up] = RH_mean_prm[0:ncores_save_up] # EJ 
+                        # cell_rhMean_pr3[icell , z, 0:ncores_save_up] = RH_mean_pr3[0:ncores_save_up]
+                        cell_rhMean_pr6[icell , z, 0:ncores_save_up] = RH_mean_pr6[0:ncores_save_up]
+                        # cell_rhMean_pr9[icell , z, 0:ncores_save_up] = RH_mean_pr9[0:ncores_save_up]
             else:
                 print(f'No cell matching track # {itracknum}')
 
@@ -828,27 +866,33 @@ def calc_cellstats_singlefile(
 #             'CoreMeanQC_prm': cell_CoreMeanQC_prm,
 #             'CoreMaxQR_up': cell_CoreMaxQR_up,
 #             'CoreMeanQR_up': cell_CoreMeanQR_up,
-            'CoreMeanQV_up': cell_CoreMeanQV_up,
-            'CoreMeanQV_prm': cell_CoreMeanQV_prm,
+#             'CoreMeanQV_up': cell_CoreMeanQV_up,
+#             'CoreMeanQV_prm': cell_CoreMeanQV_prm,
             'CoreMassFlux_up': cell_CoreMassFlux_up,
             'CoreReflMax_up': cell_dBZ_up,
             'CoreThteMax_up': cell_ThteMax_up,
             'CoreThteMean_up': cell_ThteMean_up,
-            'CoreThteMean_prm': cell_ThteMean_prm,
+            # 'CoreThteMean_prm': cell_ThteMean_prm,
+            # 'CoreThteMean_pr3': cell_ThteMean_pr3,
+            'CoreThteMean_pr6': cell_ThteMean_pr6,
+            # 'CoreThteMean_pr9': cell_ThteMean_pr9,
             'CoreThtvMax_up': cell_ThtvMax_up,
             'CoreThtvMean_prm': cell_ThtvMean_prm,
             'CoreBuoyThtv_up': cell_BuoyThtv_up,
             'CoreTrhoMax_up': cell_TrhoMax_up,
             'CoreTrhoMean_prm': cell_TrhoMean_prm,
             'CoreBuoyTrho_up': cell_BuoyTrho_up,
-            'CorePGF_up': cell_PGF_up,
-            'CoreNS_up': cell_NS_up,
-            'CoreWE_up': cell_WE_up,
+#             'CorePGF_up': cell_PGF_up,
+#             'CoreNS_up': cell_NS_up,
+#             'CoreWE_up': cell_WE_up,
             'CoreRHMean_up': cell_rhMean_up,
-            'CoreRHMean_prm': cell_rhMean_prm,
+            # 'CoreRHMean_prm': cell_rhMean_prm,
+            # 'CoreRHMean_pr3': cell_rhMean_pr3,
+            'CoreRHMean_pr6': cell_rhMean_pr6,
+            # 'CoreRHMean_pr9': cell_rhMean_pr9,
             'Entr_up': cell_Entr_up,
             'Detr_up': cell_Detr_up,
-            'Vapor_up': cell_Vapr_up,
+#             'Vapor_up': cell_Vapr_up,
         }
         out_dict2d = {
             'nCore_up': cell_nCore_up,
@@ -893,14 +937,14 @@ def calc_cellstats_singlefile(
 #                 'long_name': 'Updraft core mean QR',
 #                 'units': 'kg/kg',
 #             },
-            'CoreMeanQV_up': {
-                'long_name': 'Updraft core mean QV',
-                'units': 'kg/kg',
-            },
-            'CoreMeanQV_prm': {
-                'long_name': 'Updraft perim mean QV',
-                'units': 'kg/kg',
-            },
+#             'CoreMeanQV_up': {
+#                 'long_name': 'Updraft core mean QV',
+#                 'units': 'kg/kg',
+#             },
+#             'CoreMeanQV_prm': {
+#                 'long_name': 'Updraft perim mean QV',
+#                 'units': 'kg/kg',
+#             },
             'CoreMassFlux_up': {
                 'long_name': 'Updraft core mass flux',
                 'units': 'kg s^-1',
@@ -917,10 +961,22 @@ def calc_cellstats_singlefile(
                 'long_name': 'Updraft core mean Theta e',
                 'units': 'K',
             },
-            'CoreThteMean_prm': {
+            # 'CoreThteMean_prm': {
+            #     'long_name': 'Updraft perim mean Theta e',
+            #     'units': 'K',
+            # },
+            # 'CoreThteMean_pr3': {
+            #     'long_name': 'Updraft perim mean Theta e',
+            #     'units': 'K',
+            # },
+            'CoreThteMean_pr6': {
                 'long_name': 'Updraft perim mean Theta e',
                 'units': 'K',
             },
+            # 'CoreThteMean_pr9': {
+            #     'long_name': 'Updraft perim mean Theta e',
+            #     'units': 'K',
+            # },
             'CoreThtvMax_up': {
                 'long_name': 'Updraft core max Theta v',
                 'units': 'K',
@@ -945,26 +1001,38 @@ def calc_cellstats_singlefile(
                 'long_name': 'Updraft core Buoyancy based on Density T',
                 'units': 'm s^-2',
             },
-            'CorePGF_up': {
-                'long_name': 'Pressure Gradient Force opposing Buoyancy',
-                'units': 'm s^-2',
-            },
-            'CoreNS_up': {
-                'long_name': 'North-South Location of Updraft Centroid',
-                'units': 'Grid points',
-            },
-            'CoreWE_up': {
-                'long_name': 'West-East Location of Updraft Centroid',
-                'units': 'Grid points',
-            },
+#             'CorePGF_up': {
+#                 'long_name': 'Pressure Gradient Force opposing Buoyancy',
+#                 'units': 'm s^-2',
+#             },
+#             'CoreNS_up': {
+#                 'long_name': 'North-South Location of Updraft Centroid',
+#                 'units': 'Grid points',
+#             },
+#             'CoreWE_up': {
+#                 'long_name': 'West-East Location of Updraft Centroid',
+#                 'units': 'Grid points',
+#             },
             'CoreRHMean_up': {
                 'long_name': 'Mean RH within updraft core',
                 'units': '%',
             },
-            'CoreRHMean_prm': {
+            # 'CoreRHMean_prm': {
+            #     'long_name': 'Mean RH within updraft perimeter',
+            #     'units': '%',
+            # },
+            # 'CoreRHMean_pr3': {
+            #     'long_name': 'Mean RH within updraft perimeter',
+            #     'units': '%',
+            # },
+            'CoreRHMean_pr6': {
                 'long_name': 'Mean RH within updraft perimeter',
                 'units': '%',
             },
+            # 'CoreRHMean_pr9': {
+            #     'long_name': 'Mean RH within updraft perimeter',
+            #     'units': '%',
+            # },
             'MassFlux_up': {
                 'long_name': 'Total updraft mass flux',
                 'units': 'kg s^-1',
@@ -981,10 +1049,10 @@ def calc_cellstats_singlefile(
                 'long_name': 'Total detrainment',
                 'units': 'kg s^-1',
             },
-            'Vapor_up': {
-                'long_name': 'Total flux of water vapor into core',
-                'units': 'kg s^-1',
-            },
+#             'Vapor_up': {
+#                 'long_name': 'Total flux of water vapor into core',
+#                 'units': 'kg s^-1',
+#             },
         }
         # import pdb; pdb.set_trace()
     return out_dict3d, out_dict2d, out_dict_attrs
@@ -1134,7 +1202,7 @@ if __name__ == '__main__':
     # Loop over each pixel-file and call function to calculate
     # EJ change back to range(nfiles) for 15s.
     for ifile in range(nfiles):
-#     for ifile in range(200,300):
+    # for ifile in range(200,202):
         # print(ifile)
         # Find all matching time indices from track stats file to the current pixel file
         matchindices = np.array(
