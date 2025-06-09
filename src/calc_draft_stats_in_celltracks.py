@@ -28,8 +28,17 @@ def log_memory_usage(stage_name):
 def cleanup_memory():
     """Force garbage collection and clear cache"""
     gc.collect()
-    if hasattr(dask.array.core, 'clear_cache'):
-        dask.array.core.clear_cache()
+    # Try to clear Dask cache if available
+    try:
+        import dask.array as da
+        da.core.clear_cache()
+    except (ImportError, AttributeError):
+        # For newer versions of Dask, try this approach
+        try:
+            from dask.base import clear_cache
+            clear_cache()
+        except ImportError:
+            pass  # No cache clearing available, just continue
 
 #-----------------------------------------------------------------------
 def calc_basetime(filelist, filebase):
@@ -870,6 +879,11 @@ def calc_cellstats_singlefile(
             #     'units': 'kg s^-1',
             # },
         }
+    # Clean up local variables to free memory
+    del dsm, dsc, ds
+    if 'PRESSURE' in locals(): del PRESSURE, TEMPERATURE, QVAPOR, THETA, WA
+    if 'QCLOUD' in locals(): del QCLOUD, QRAIN, QICE, QSNOW, QGRAUP
+    
     return out_dict3d, out_dict2d, out_dict_attrs
 
 
@@ -1024,6 +1038,10 @@ if __name__ == '__main__':
                 )
             final_results.append(iresult)
     
+        # Light cleanup every 20 files to prevent gradual memory accumulation
+        if (ifile + 1) % 20 == 0:
+            cleanup_memory()
+
     if run_parallel == 1:
         # Trigger Dask computation
         print("Computing statistics ...")
@@ -1133,3 +1151,15 @@ if __name__ == '__main__':
     dsout.to_netcdf(path=output_filename, mode="w",
                     format="NETCDF4", unlimited_dims=tracks_dimname, encoding=encoding)
     print(f'Output saved: {output_filename}')
+
+    # Clean up Dask cluster if it was used
+    if run_parallel == 1:
+        print('Closing Dask cluster...')
+        client.close()
+        cluster.close()
+        print('Dask cluster closed.')
+
+    # Final cleanup
+    cleanup_memory()
+    log_memory_usage("Final cleanup")
+    print('Processing completed successfully.')
