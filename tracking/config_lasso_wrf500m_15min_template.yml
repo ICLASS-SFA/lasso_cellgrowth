@@ -1,6 +1,8 @@
 ---
 # LASSO WRF simulated radar cell tracking configuration file
 
+# Regrid input reflectivity
+run_regridreflectivity: False
 # Identify features to track
 run_idfeature: True
 # Tracking steps to run
@@ -13,6 +15,8 @@ run_gettracks: True
 run_trackstats: True
 # Map tracking to pixel files
 run_mapfeature: True
+# Regrid pixel files to original grid
+run_regridmask: False
 
 # Parallel processing set up
 # run_parallel: 1 (local cluster), 2 (Dask MPI)
@@ -35,9 +39,15 @@ domain: 'd3'
 time_format: 'yyyymodd.hhmmss'
 databasename: 'corlasso_cldhamsl_STARTDATE00ENSMEMBERd3_CONFIG_M1.m1.'
 
+# These are only used to calculate rain rate and Tb, not needed for tracking
+wrfout_path: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/out_d3/'
+wrfout_basename: 'wrfout_d01_'
+wrfout_time_format: 'yyyy-mo-dd_hh_mm_ss'
+tbrainrate_path: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
+
 # Input files directory
-# clouddata_path: '/gpfs/wolf2/arm/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
-clouddata_path: '/gpfs/wolf2/arm/cli120/world-shared/d3m088/cacti/staged_runs_2/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
+clouddata_path: '/gpfs/wolf2/arm/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
+# clouddata_path: '/gpfs/wolf2/arm/cli120/world-shared/d3m088/cacti/staged_runs_2/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
 # Working directory for the tracking data
 root_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3_15min/'
 # Working sub-directory names
@@ -61,7 +71,7 @@ advection_buffer: 30  # number of grid points around the edge of domain to buffe
 advection_size_threshold: 10  # number of min valid points to calculate advection
 advection_tiles: [1,1]   # number of tiles to calculate advection [y,x]
 advection_filename: 'advection_'
-# Subset boundary [lon_min, lat_min, lon_max, lat_max]
+# Subset boundary [lat_min, lon_min, lat_max, lon_max]
 geolimits: [-33.3, -65.9, -30.8, -63.4]
 
 # Cell identification parameters

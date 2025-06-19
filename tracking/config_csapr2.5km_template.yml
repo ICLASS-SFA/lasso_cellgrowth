@@ -2,7 +2,7 @@
 # Example CACTI CSAPR-2 radar cell tracking configuration file (2.5km resolution)
 
 # Regrid input reflectivity
-run_regridreflectivity: True
+run_regridreflectivity: False
 # Identify features to track
 run_idfeature: True
 # Tracking steps to run
@@ -36,6 +36,10 @@ enddate: 'ENDDATE.0000'
 time_format: 'yyyymodd.hhmmss'
 rawdatabasename: 'taranis_corcsapr2cfrppiqcM1.c1.'
 databasename: 'taranis_corcsapr2cfrppiqc2500mM1.c1.'
+
+# These are rain rate and Tb data, not needed for tracking
+tb_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/csapr/corvisstpx2drectg16v4minnisX1.parallaxcorrected_regrid2csapr2gridded2500m.c1/'
+tb_basename: 'corvisstpx2drectg16v4minnisX1.regrid2csapr2gridded.c1.'
 
 # Raw input files directory
 rawdata_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/csapr/taranis_corcsapr2cfrppiqcM1_gridded.c1/'
@@ -146,6 +150,8 @@ remove_shorttracks: 1
 # Set this flag to 1 to write a dense (2D) trackstats netCDF file
 # Note that for datasets with lots of tracks, the memory consumption could be very large
 trackstats_dense_netcdf: 1
+# Minimum time difference threshold to match track stats with cloudid files
+match_pixel_dt_thresh: 60.0  # seconds
 
 # Define tracked feature variable names
 feature_varname: 'feature_number'

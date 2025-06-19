@@ -3,7 +3,8 @@
 #SBATCH -J STARTDATEENSMEMBER
 #SBATCH --time=01:00:00
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=64
+#SBATCH --ntasks-per-node=16
+#SBATCH --cpus-per-task=1
 #SBATCH -p batch_all
 #SBATCH --exclusive
 #SBATCH --output=log_CONFIG_NAME.log

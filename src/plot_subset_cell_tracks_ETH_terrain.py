@@ -1,5 +1,5 @@
 """
-Demonstrates ploting cell tracks on radar reflectivity snapshots for a single radar domain.
+Plot cell tracks on radar reflectivity or echo-top height snapshots for a single radar domain, with CACTI SDC terrain shaded in background.
 
 >python plot_subset_cell_tracks_demo.py -s STARTDATE -e ENDDATE -c CONFIG.yml --radar_lat LAT --radar_lon LON
 Optional arguments:
@@ -21,12 +21,15 @@ import pandas as pd
 import math
 from scipy.ndimage import binary_erosion, generate_binary_structure
 import datetime
+import copy
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import cartopy.crs as ccrs
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+from matplotlib.patches import Polygon
+from cartopy.mpl.patch import geos_to_path
 # For non-gui matplotlib back end
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 mpl.use('agg')
@@ -246,6 +249,9 @@ def plot_map(pixel_dict, plot_info, map_info, track_dict):
     lon_tn = pixel_dict['lon_tn']
     lat_tn = pixel_dict['lat_tn']
     tracknumbers = pixel_dict['tracknumber_unique']
+    XLONG = pixel_dict['XLONG']
+    XLAT = pixel_dict['XLAT']
+    HGT = pixel_dict['HGT']
     # Get track data from dictionary
     ntracks = track_dict['ntracks']
     lifetime = track_dict['lifetime']
@@ -289,28 +295,49 @@ def plot_map(pixel_dict, plot_info, map_info, track_dict):
     
     # Set up map projection
     proj = ccrs.PlateCarree()
+    # data_proj = ccrs.PlateCarree(central_longitude=0)
 
     # Set up figure
     mpl.rcParams['font.size'] = fontsize
     mpl.rcParams['font.family'] = 'Helvetica'
     fig = plt.figure(figsize=figsize, dpi=300, facecolor='w')
     gs = gridspec.GridSpec(1,2, height_ratios=[1], width_ratios=[1,0.03])
-    gs.update(wspace=0.05, hspace=0.05, left=0.1, right=0.9, top=0.92, bottom=0.08)
+    # gs.update(wspace=0.05, hspace=0.05, left=0.1, right=0.9, top=0.92, bottom=0.08)
+    gs.update(wspace=0.05, hspace=0.05, left=0.05, right=0.9, top=0.95, bottom=0.05)
     ax1 = plt.subplot(gs[0], projection=proj)
     cax1 = plt.subplot(gs[1])
 
+    # Set up terrain height
+    cmap0 = copy.copy(mpl.cm.get_cmap('Greys'))
+    HGT_lev = np.arange(500, 3001, 500)
+    norm0 = mpl.colors.BoundaryNorm(boundaries=HGT_lev, ncolors=cmap0.N)
+    # Compute the four corners of the rectangle
+    box_coords = [
+        (lon_box[0], lat_box[0]),  # Bottom-left
+        (lon_box[1], lat_box[0]),  # Bottom-right
+        (lon_box[1], lat_box[1]),  # Top-right
+        (lon_box[0], lat_box[1]),  # Top-left
+        (lon_box[0], lat_box[0])   # Close the box
+    ]
+    # Transform coordinates into the map projection
+    poly = Polygon(box_coords, closed=True, edgecolor='red', facecolor='none', linewidth=2, transform=proj, zorder=3)
+
     ax1.set_extent(map_extent, crs=proj)
     ax1.set_aspect('auto', adjustable=None)
-    gl = ax1.gridlines(crs=proj, draw_labels=True, linestyle='--', linewidth=0.)
-    gl.right_labels = False
-    gl.top_labels = False
-    if (lonv is not None) & (latv is not None):
-        gl.xlocator = mpl.ticker.FixedLocator(lonv)
-        gl.ylocator = mpl.ticker.FixedLocator(latv)
-    lon_formatter = LongitudeFormatter(zero_direction_label=True)
-    lat_formatter = LatitudeFormatter()        
-    ax1.xaxis.set_major_formatter(lon_formatter)
-    ax1.yaxis.set_major_formatter(lat_formatter)
+    # Add the box to the axis
+    # ax1.add_patch(poly)
+    # Plot a line
+    ax1.plot([lon_box[0], lon_box[0]], lat_box, color='red', linewidth=2,  transform=proj, zorder=3)
+    # gl = ax1.gridlines(crs=proj, draw_labels=False, linestyle='--', linewidth=0.)
+    # gl.right_labels = False
+    # gl.top_labels = False
+    # if (lonv is not None) & (latv is not None):
+    #     gl.xlocator = mpl.ticker.FixedLocator(lonv)
+    #     gl.ylocator = mpl.ticker.FixedLocator(latv)
+    # lon_formatter = LongitudeFormatter(zero_direction_label=True)
+    # lat_formatter = LatitudeFormatter()        
+    # ax1.xaxis.set_major_formatter(lon_formatter)
+    # ax1.yaxis.set_major_formatter(lat_formatter)
 
     # Plot reflectivity
     cmap = plt.get_cmap(cmaps)
@@ -318,6 +345,7 @@ def plot_map(pixel_dict, plot_info, map_info, track_dict):
     # Scale the variable
     var_fill = var_fill * var_scale
     var_fill = np.ma.masked_where(var_fill < min(levels), var_fill)
+    pcm0 = ax1.pcolormesh(XLONG, XLAT, HGT, shading='nearest', norm=norm0, cmap=cmap0, transform=proj, zorder=0)
     cf1 = ax1.pcolormesh(xx, yy, var_fill, norm=norm_ref, cmap=cmap, transform=proj, zorder=2)
     # Overplot cell tracknumber perimeters
     Tn = np.ma.masked_where(tn_perim == 0, tn_perim)
@@ -383,10 +411,10 @@ def plot_map(pixel_dict, plot_info, map_info, track_dict):
     # Plot range circles around radar
     for ii in range(0, len(radii)):
         rr = ax1.tissot(rad_km=radii[ii], lons=radar_lon, lats=radar_lat, n_samples=100, facecolor='None', edgecolor='k', lw=0.4, zorder=3)
-    # Plot azimuth lines
-    for ii in range(0, len(azimuths)):
-        lon2, lat2 = calc_latlon(radar_lon, radar_lat, 200, azimuths[ii])
-        ax1.plot([radar_lon,lon2], [radar_lat,lat2], color='k', lw=0.4, transform=ccrs.Geodetic(), zorder=5)
+    # # Plot azimuth lines
+    # for ii in range(0, len(azimuths)):
+    #     lon2, lat2 = calc_latlon(radar_lon, radar_lat, 200, azimuths[ii])
+    #     ax1.plot([radar_lon,lon2], [radar_lat,lat2], color='k', lw=0.4, transform=ccrs.Geodetic(), zorder=5)
     # Reflectivity colorbar
     cb1 = plt.colorbar(cf1, cax=cax1, label=cblabels, ticks=cbticks, extend='both')
     ax1.set_title(timestr)
@@ -421,6 +449,12 @@ def work_for_time_loop(datafile, track_dict, map_info, plot_info):
     figdir = plot_info.get('figdir')
     figbasename = plot_info.get('figbasename')
     varname_fill = plot_info.get('varname_fill')
+
+    # Read terrain data
+    ds_ter = xr.open_dataset(terrain_file)
+    XLONG = ds_ter.XLONG.squeeze().data
+    XLAT = ds_ter.XLAT.squeeze().data
+    HGT = ds_ter.HGT.squeeze().data
 
     # Read pixel-level data
     ds = xr.open_dataset(datafile)
@@ -496,6 +530,9 @@ def work_for_time_loop(datafile, track_dict, map_info, plot_info):
             'lon_tn': lon_tn, 
             'lat_tn': lat_tn, 
             'tracknumber_unique': tnconv_unique,
+            'XLONG': XLONG,
+            'XLAT': XLAT,
+            'HGT': HGT,
         }
         plot_info['timestr'] = timestr
         plot_info['figname'] = figname
@@ -526,25 +563,33 @@ if __name__ == "__main__":
     figsize = args_dict.get('figsize')
     out_dir = args_dict.get('out_dir')
 
+    # Terrain file
+    terrain_file = '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/map_data/corlasso_sub_static.M1.m1.gefs18_2018120400_f120000_d3.nc'
+    # Analysis domain
+    # lon_box = [-65., -63.3]
+    # lat_box = [-33., -30.8]
+    lon_box = [-65., -63.6]
+    lat_box = [-40., -20.]
+
     # Specify plotting info
-    # varname_fill = 'dbz_comp'
-    varname_fill = 'echotop10'
-    # var_scale = 1     # scale factor for the variable
-    var_scale = 1e-3    # scale factor for the variable
+    varname_fill = 'dbz_comp'
+    # varname_fill = 'echotop10'
+    var_scale = 1     # scale factor for the variable
+    # var_scale = 1e-3    # scale factor for the variable
     # Colorfill levels
-    # levels = np.arange(-10, 60.1, 5)
-    levels = [1,1.5,2,2.5,3,3.5,4,4.5,5,6,7,8,9,10,12,14,16,18,20]
+    levels = np.arange(-10, 70.1, 5)
+    # levels = [1,1.5,2,2.5,3,3.5,4,4.5,5,6,7,8,9,10,12,14,16,18,20]
     lev_lifetime = np.arange(0.5, 4.01, 0.5)
     # Colorbar ticks & labels
-    cbticks = levels
-    # cbticks = np.arange(-10, 60.1, 5)
-    # cblabels = 'Composite Reflectivity (dBZ)'
-    cblabels = '10 dBZ ETH (km)'
+    # cbticks = levels
+    cbticks = np.arange(-10, 70.1, 10)
+    cblabels = 'Composite Reflectivity (dBZ)'
+    # cblabels = '10 dBZ ETH (km)'
     cblabel_tracks = 'Lifetime (hour)'
     cbticks_tracks = [1,2,3,4]
     # Colormaps
-    # cmaps = 'gist_ncar'     # Reflectivity
-    cmaps = 'nipy_spectral'     # Echo-top Height
+    cmaps = 'gist_ncar'     # Reflectivity
+    # cmaps = 'nipy_spectral'     # Echo-top Height
     cmap_tracks = 'Spectral_r'  # Lifetime
     show_tracks = False
     
@@ -558,13 +603,14 @@ if __name__ == "__main__":
         'cbticks_tracks': cbticks_tracks,
         'cblabels': cblabels,
         'cblabel_tracks': cblabel_tracks,
-        'fontsize': 13,
+        'fontsize': 15,
         'cmaps': cmaps,
         'cmap_tracks': cmap_tracks,
         'show_tracks': show_tracks,
         'marker_size': [30,30,30],    # track centroid marker size (short, medium, long lived)
         'lw_centroid': [3,3,3],         # track path line width
-        'radii': np.arange(20,101,20),  # radii for the radar range rings [km]
+        # 'radii': np.arange(20,101,20),  # radii for the radar range rings [km]
+        'radii': np.array([100]),   # radii for the radar range rings [km]
         'azimuths': np.arange(0,361,90),   # azimuth angles for HSRHI scans [degree]
         'figbasename': figbasename,
         'figsize': figsize,
@@ -652,9 +698,10 @@ if __name__ == "__main__":
 
         # Trigger dask computation
         final_result = dask.compute(*results)
-    
+
+        cluster.close()
+        client.close()
+
     else:
         sys.exit('Valid parallelization flag not provided')
 
-    cluster.close()
-    client.close()

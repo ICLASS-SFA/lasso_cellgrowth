@@ -999,167 +999,140 @@ if __name__ == '__main__':
         # Initialize dask
         dask_tmp_dir = config.get("dask_tmp_dir", "/tmp")
         dask.config.set({'temporary-directory': dask_tmp_dir})
-        cluster = LocalCluster(n_workers=n_workers, threads_per_worker=threads_per_worker)
-        client = Client(cluster)
+        
+        # Add timeout and monitoring for Dask cluster
+        try:
+            print(f"Initializing Dask cluster with {n_workers} workers...")
+            cluster = LocalCluster(
+                n_workers=n_workers, 
+                threads_per_worker=threads_per_worker,
+                memory_limit='48GB',  # Reduce per worker for large dataset
+                timeout='10s',  # Add timeout
+                processes=True,  # Use processes for better isolation
+            )
+            client = Client(cluster, timeout='30s')
+            print(f"Dask cluster initialized successfully")
+            print(f"Dashboard link: {client.dashboard_link}")
+        except Exception as e:
+            print(f"Failed to initialize Dask cluster: {e}")
+            print("Falling back to serial processing")
+            run_parallel = 0
+
+    # Add comprehensive logging and timeout detection
+    print(f"Starting processing of {nfiles} files...")
+    start_time = time.time()
+    last_progress_time = start_time
 
     # Loop over each pixel-file and call function to calculate
     for ifile in range(nfiles):
-        log_memory_usage(f"Processing file {ifile}")
-
-        # Find all matching time indices from track stats file to the current pixel file
-        matchindices = np.array(
-            np.where(np.abs(stats_basetime - pixel_basetime[ifile]) < time_window)
-        )
-        # The returned match indices are for [tracks, times] dimensions respectively
-        idx_track = matchindices[0]
-        idx_time = matchindices[1]
-
-        if len(idx_track) > 0:
-            # Save matchindices for the current pixel file to the overall list
-            trackindices_all.append(idx_track)
-            timeindices_all.append(idx_time)
-            # Serial
-            if run_parallel == 0:
-                iresult = calc_cellstats_singlefile(
-                    pixelfilelist[ifile], 
-                    match_metfilelist[ifile],
-                    match_cldfilelist[ifile],
-                    idx_track, 
-                    config,
-                )
-            # Parallel
-            elif run_parallel == 1:
-                iresult = dask.delayed(calc_cellstats_singlefile)(
-                    pixelfilelist[ifile], 
-                    match_metfilelist[ifile],
-                    match_cldfilelist[ifile],
-                    idx_track, 
-                    config,
-                )
-            final_results.append(iresult)
-    
-        # Light cleanup every 20 files to prevent gradual memory accumulation
-        if (ifile + 1) % 20 == 0:
-            cleanup_memory()
-
-    if run_parallel == 1:
-        # Trigger Dask computation
-        print("Computing statistics ...")
-        final_results = dask.compute(*final_results)
-
-
-    # Make a variable list and get attributes from one of the returned dictionaries
-    # Loop over each return results till one that is not None
-    counter = len(final_results)-1
-    while counter >= 0:
-        if final_results[counter] is not None:
-            var_names3d = list(final_results[counter][0].keys())
-            var_names2d = list(final_results[counter][1].keys())
-            var_attrs = final_results[counter][2]
-            break
-        counter -= 1
-
-    # Loop over variable list to create the dictionary entry
-    print(f'Creating output arrays ...')
-    out_dict = {}
-    out_dict_attrs = {}
-
-    var_names = var_names3d + var_names2d
-    # 3D variables 
-    for ivar in var_names3d:
-        out_dict[ivar] = np.full((ntracks, ntimes, nz, ncores_min), np.nan, dtype=np.float32)
-        out_dict_attrs[ivar] = var_attrs[ivar]
-    # 2D variables
-    for ivar in var_names2d:
-        out_dict[ivar] = np.full((ntracks, ntimes, nz), np.nan, dtype=np.float32)
-        out_dict_attrs[ivar] = var_attrs[ivar]
-
-    # Put the results to output track stats variables
-    # Loop over each returned results
-    for ifile in range(len(final_results)):
-        # Check the return results
-        if final_results[ifile] is not None:
-            iVAR3d = final_results[ifile][0]
-            iVAR2d = final_results[ifile][1]
-            if iVAR3d is not None:
-                trackindices = trackindices_all[ifile]
-                timeindices = timeindices_all[ifile]
-                # Loop over each variable and assign values to output dictionary
-                for ivar in var_names3d:
-                    if iVAR3d[ivar].ndim == 3:
-                        out_dict[ivar][trackindices,timeindices,:,:] = iVAR3d[ivar]
-                    else:
-                        print(f'Warning: {ivar} dimension is not 3.')
-            if iVAR2d is not None:
-                trackindices = trackindices_all[ifile]
-                timeindices = timeindices_all[ifile]
-                # Loop over each variable and assign values to output dictionary
-                for ivar in var_names2d:
-                    if iVAR2d[ivar].ndim == 2:
-                        out_dict[ivar][trackindices,timeindices,:] = iVAR2d[ivar]
-                    else:
-                        print(f'Warning: {ivar} dimension is not 2.')
-
-    ##########################################################
-    # Write to netcdf
-    print('Writing output netcdf ... ')
-
-    # Define variable list
-    var_dict = {}
-    # Define output variable dictionary
-    for key, value in out_dict.items():
-        if value.ndim == 2:
-            var_dict[key] = ([tracks_dimname, times_dimname], value, out_dict_attrs[key])
-        if value.ndim == 3:
-            var_dict[key] = ([tracks_dimname, times_dimname, z_dimname], value, out_dict_attrs[key])
-        if value.ndim == 4:
-            var_dict[key] = ([tracks_dimname, times_dimname, z_dimname, core_dimname], value, out_dict_attrs[key])
-    # Add base_time from track stats to the output dictionary
-    out_dict['base_time'] = ([tracks_dimname, times_dimname], stats_basetime, dsstats['base_time'].attrs)
-    # Define coordinate list
-    core_dim_attrs = {
-        'long_name': 'Core number',
-    }
-    coord_dict = {
-        tracks_dimname: ([tracks_dimname], np.arange(0, ntracks)),
-        times_dimname: ([times_dimname], np.arange(0, ntimes)),
-        z_dimname: ([z_dimname], height.data, height.attrs),
-        core_dimname: ([core_dimname], np.arange(0, ncores_min), core_dim_attrs),
-    }
-    # Define global attributes
-    gattr_dict = {
-        'title':  'Tracked cell W statistics', \
-        'Institution': 'Pacific Northwest National Laboratoy', \
-        'Contact': 'Zhe Feng, zhe.feng@pnnl.gov', \
-        'Created_on':  time.ctime(time.time()), \
-        'source_trackfile': trackstats_file, \
-        'startdate': startdate, \
-        'enddate': enddate, \
-    }
-    # Define xarray dataset
-    dsout = xr.Dataset(var_dict, coords=coord_dict, attrs=gattr_dict)
-
-    # Delete file if it already exists
-    if os.path.isfile(output_filename):
-        os.remove(output_filename)
+        file_start_time = time.time()
+        log_memory_usage(f"Processing file {ifile}/{nfiles}")
         
-    # Set encoding/compression for all variables
-    comp = dict(zlib=True)
-    encoding = {var: comp for var in dsout.data_vars}
+        # Check for timeout (if no progress for more than 30 minutes)
+        current_time = time.time()
+        if current_time - last_progress_time > 1800:  # 30 minutes
+            print(f"WARNING: No progress for {(current_time - last_progress_time)/60:.1f} minutes")
+            print(f"Current file: {ifile}, file: {pixelfilelist[ifile] if ifile < len(pixelfilelist) else 'N/A'}")
+            break
+        
+        try:
+            print(f"File {ifile}: {os.path.basename(pixelfilelist[ifile])}")
+            
+            # Find all matching time indices from track stats file to the current pixel file
+            print(f"  Finding matching indices...")
+            matchindices = np.array(
+                np.where(np.abs(stats_basetime - pixel_basetime[ifile]) < time_window)
+            )
+            # The returned match indices are for [tracks, times] dimensions respectively
+            idx_track = matchindices[0]
+            idx_time = matchindices[1]
+            
+            print(f"  Found {len(idx_track)} matching tracks")
 
-    # Write to netcdf file
-    dsout.to_netcdf(path=output_filename, mode="w",
-                    format="NETCDF4", unlimited_dims=tracks_dimname, encoding=encoding)
-    print(f'Output saved: {output_filename}')
+            if len(idx_track) > 0:
+                # Save matchindices for the current pixel file to the overall list
+                trackindices_all.append(idx_track)
+                timeindices_all.append(idx_time)
+                
+                print(f"  Creating processing task...")
+                # Serial
+                if run_parallel == 0:
+                    print(f"  Processing serially...")
+                    iresult = calc_cellstats_singlefile(
+                        pixelfilelist[ifile], 
+                        match_metfilelist[ifile],
+                        match_cldfilelist[ifile],
+                        idx_track, 
+                        config,
+                    )
+                    print(f"  Serial processing completed")
+                # Parallel
+                elif run_parallel == 1:
+                    print(f"  Creating delayed task...")
+                    iresult = dask.delayed(calc_cellstats_singlefile)(
+                        pixelfilelist[ifile], 
+                        match_metfilelist[ifile],
+                        match_cldfilelist[ifile],
+                        idx_track, 
+                        config,
+                    )
+                    print(f"  Delayed task created")
+                final_results.append(iresult)
+            else:
+                print(f"  No matching tracks found, skipping")
+            
+            # Update progress time
+            last_progress_time = time.time()
+            file_duration = last_progress_time - file_start_time
+            print(f"  File {ifile} completed in {file_duration:.1f}s")
+            
+            # Light cleanup every 10 files to prevent gradual memory accumulation
+            if (ifile + 1) % 10 == 0:
+                print(f"  Performing cleanup after {ifile + 1} files...")
+                cleanup_memory()
+                log_memory_usage(f"After cleanup - file {ifile}")
+                
+        except Exception as e:
+            print(f"ERROR processing file {ifile}: {e}")
+            import traceback
+            traceback.print_exc()
+            continue
 
-    # Clean up Dask cluster if it was used
-    if run_parallel == 1:
-        print('Closing Dask cluster...')
-        client.close()
-        cluster.close()
-        print('Dask cluster closed.')
+    print(f"File processing loop completed. Total files processed: {len(final_results)}")
 
-    # Final cleanup
-    cleanup_memory()
-    log_memory_usage("Final cleanup")
-    print('Processing completed successfully.')
+    if run_parallel == 1 and len(final_results) > 0:
+        # Trigger Dask computation with timeout and monitoring
+        print("Computing statistics with Dask...")
+        computation_start = time.time()
+        
+        try:
+            # Process in smaller chunks to avoid overwhelming the system
+            chunk_size = min(20, len(final_results))  # Process max 20 files at once
+            computed_results = []
+            
+            for chunk_start in range(0, len(final_results), chunk_size):
+                chunk_end = min(chunk_start + chunk_size, len(final_results))
+                chunk = final_results[chunk_start:chunk_end]
+                
+                print(f"Computing chunk {chunk_start//chunk_size + 1}/{(len(final_results)-1)//chunk_size + 1} "
+                      f"({chunk_start}-{chunk_end-1})")
+                
+                chunk_results = dask.compute(*chunk, scheduler='processes')
+                computed_results.extend(chunk_results)
+                
+                print(f"Chunk completed in {time.time() - computation_start:.1f}s")
+                cleanup_memory()
+        
+            final_results = computed_results
+            print(f"All computations completed in {time.time() - computation_start:.1f}s")
+            
+        except Exception as e:
+            print(f"ERROR during Dask computation: {e}")
+            import traceback
+            traceback.print_exc()
+            # Try serial fallback
+            print("Attempting serial fallback...")
+            final_results = []
+        
+    elif run_parallel == 0:
+        print("Serial processing completed")

@@ -19,17 +19,23 @@ pyflex_dir="/ccsopen/home/zhe1feng1/program/PyFLEXTRKR-dev/runscripts"
 # D4 (100m) 15min tracking
 # config_template=${config_dir}"config_lasso_wrf100m_15min_template.yml"
 # slurm_template=${slurm_dir}"slurm_lasso_wrf100m_template.sh"
+# D4 (100m) 15min regrid to 2.5km tracking
+# config_template=${config_dir}"config_lasso_wrf100m_15min_regrid2.5km_template.yml"
+# slurm_template=${slurm_dir}"slurm_lasso_wrf100m_template.sh"
 
 # D3 (500m) 5min tracking
 # config_template=${config_dir}"config_lasso_wrf500m_template.yml"
 # # D3 (500m) 15min tracking
 # config_template=${config_dir}"config_lasso_wrf500m_15min_template.yml"
 # slurm_template=${slurm_dir}"slurm_lasso_wrf500m_template.sh"
+# D3 (500m) 15min regrid to 2.5km tracking
+# config_template=${config_dir}"config_lasso_wrf500m_15min_regrid2.5km_template.yml"
+# slurm_template=${slurm_dir}"slurm_lasso_wrf500m_template.sh"
 
-# D2 (2.5km) 5min tracking
-config_template=${config_dir}"config_lasso_wrf2.5km_template.yml"
-# D2 (2.5km) 15min tracking
-# config_template=${config_dir}"config_lasso_wrf2.5km_15min_template.yml"
+# # D2 (2.5km) 5min tracking
+# config_template=${config_dir}"config_lasso_wrf2.5km_template.yml"
+# # D2 (2.5km) 15min tracking
+config_template=${config_dir}"config_lasso_wrf2.5km_15min_template.yml"
 slurm_template=${slurm_dir}"slurm_lasso_wrf2.5km_template.sh"
 
 # config_basename="config_lasso_"

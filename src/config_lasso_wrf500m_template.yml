@@ -55,7 +55,7 @@ core_expand_dist: 1
 # Buffer radius to expand the cell mask to get the core shell / perimeter
 core_shell_buffer_radius: 10  # [km]
 # Number of cores to save per cell
-ncores_min: 10
+ncores_min: 2
 # Number of hours prior to initiation to extract 1D environment
 nhours: 1
 # Minutes prior to initiation to extract 3D environment before CI

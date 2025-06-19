@@ -32,6 +32,10 @@ enddate: 'ENDDATE.0000'
 time_format: 'yyyymodd.hhmmss'
 databasename: taranis_corcsapr2cfrppiqcM1.c1.
 
+# These are rain rate and Tb data, not needed for tracking
+tb_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/csapr/corvisstpx2drectg16v4minnisX1.parallaxcorrected_regrid2csapr2gridded.c1/'
+tb_basename: 'corvisstpx2drectg16v4minnisX1.regrid2csapr2gridded.c1.'
+
 # Input files directory
 clouddata_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/csapr/taranis_corcsapr2cfrppiqcM1_gridded.c1/'
 # Working directory for the tracking data

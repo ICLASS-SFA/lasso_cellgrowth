@@ -53,11 +53,11 @@ Q_down_thresh: 0.00005 # 0.05/1000  # [kg/kg]
 # Minimum pixel count for a core
 min_core_npix: 9
 # Number of pixel to expand a core to get perimeter
-core_expand_dist: 3
+core_expand_dist: 6
 # Buffer radius to expand the cell mask to get the core shell / perimeter
 core_shell_buffer_radius: 10  # [km]
 # Number of cores to save per cell
-ncores_min: 10
+ncores_min: 2
 # Number of hours prior to initiation to extract 1D environment
 nhours: 1
 # Minutes prior to initiation to extract 3D environment before CI

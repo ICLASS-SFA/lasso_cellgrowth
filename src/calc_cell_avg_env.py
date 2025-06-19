@@ -28,8 +28,24 @@ def calc_thetas(temp, pres, qv):
     return (Theta, ThetaE)
 
 def theta_e_bolton(TEMPERATURE, QVAPOR, PRESSURE):
-    # theta-e following Bolton (1980); error of < 0.3 K between -35 and 35C; from Thompson scheme
-    # more accurate formula from Emanuel could be implemented; ice effects also excluded
+    """
+    Calculate pseudoadiabatic equivalent potential temperature following the Bolton (1980) formula
+    
+    Error of < 0.3 K between -35 and 35C; from Thompson scheme
+
+    Args:
+        TEMPERATURE: array-like
+            Dry air temp [K]
+        PRESSURE: array-like
+            Air pressure [Pa]
+        QVAPOR: array-like
+            Water vapor mixing ratio [kg/kg]
+
+    Returns:
+        THETAE_Bolton: array-like
+            Equivalent potential temperature.
+    """
+
     es = PRESSURE*QVAPOR/(0.622*QVAPOR)
     TDEW = (35.86*np.log(es) - 4947.2325)/(np.log(es) - 23.6837)
     TLCL = 1/(1/(TDEW - 56) + np.log(TEMPERATURE/TDEW)/800) + 56
@@ -37,6 +53,40 @@ def theta_e_bolton(TEMPERATURE, QVAPOR, PRESSURE):
     p2 = 1e3*QVAPOR*(1 + 0.81*QVAPOR)
     THETAE_Bolton = (TEMPERATURE*(100000./PRESSURE)**(0.2854*(1 - 0.28*QVAPOR)))*np.exp(p1*p2) #K
     return THETAE_Bolton
+
+#-----------------------------------------------------------------------
+def calc_theta_e(TEMPERATURE, PRESSURE, QVAPOR, Qliq, RH):
+    """
+    Calculate equivalent potential temperature following the Emanuel formula
+
+    Args:
+        TEMPERATURE: array-like
+            Dry air temp [K]
+        PRESSURE: array-like
+            Air pressure [Pa]
+        QVAPOR: array-like
+            Water vapor mixing ratio [kg/kg]
+        Qliq: array-like
+            Total liquid condensate mixing ratio [kg/kg]
+        RH: array-like
+            Relative humidity [%]
+    
+    Returns:
+        THETAE: array-like
+            Equivalent potential temperature.
+    """
+    # constants:
+    cpd = 1006 # J/kg K
+    lv0 = 2501000
+    Rv = 461.5
+    Rd = 287.04
+    cl = 4200
+
+    teA = TEMPERATURE * (100000. / PRESSURE)**(Rd / (cpd + cl * Qliq))
+    teB = np.exp((lv0 * QVAPOR) / ((cpd + Qliq * cl) * TEMPERATURE))
+    teC = (RH/100)**((-QVAPOR * Rv) / (cpd + cl * Qliq))
+    THETAE = teA * teB * teC
+    return THETAE
 
 def calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config):
 
@@ -75,6 +125,10 @@ def calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config):
 
     # Compute Theta & ThetaE
     Theta, ThetaE = calc_thetas(tk, pressure, qv)
+
+    # Compute Emanuel ThetaE
+    iThte = calc_theta_e(tk, pressure, qv, iQliq, rh)
+    import pdb; pdb.set_trace()
 
     # Interpolate to fixed height
     _tk = interplevel(tk, height, z_lev_interp)

@@ -374,6 +374,9 @@ def extract_env_prof(
         LWP = dsc['LWP'].squeeze()
         IWP = dsc['IWP'].squeeze()
         PWV = dsc['PRECIPWATER'].squeeze()
+        # Total liquid condensates (for calculating Emanuel's ThetaE)
+        Qliq = (qv + dsc['QCLOUD'] + dsc['QRAIN']).squeeze()
+        # import pdb; pdb.set_trace()
 
         # Remove attributes ('projection' in particular conflicts with Xarray)
         attrs_to_remove = ['FieldType', 'projection', 'MemoryOrder', 'stagger', 'coordinates', 'missing_value']
@@ -381,15 +384,21 @@ def extract_env_prof(
             LWP.attrs.pop(key, None)
             IWP.attrs.pop(key, None)
             PWV.attrs.pop(key, None)
+            Qliq.attrs.pop(key, None)
 
         # Save variable attributes
         LWP_attrs = LWP.attrs
         IWP_attrs = IWP.attrs
         PWV_attrs = PWV.attrs
+        Qliq_attrs = {
+            'description': 'Total liquid mixing ratio (QVAPOR + QCLOUD + QRAIN)', 
+            'units': 'kg kg-1',
+        }
         cld_attrs = {
             'LWP': LWP_attrs,
             'IWP': IWP_attrs,
             'PWV': PWV_attrs,
+            'Qliq': Qliq_attrs,
         }
 
     else:
@@ -398,6 +407,7 @@ def extract_env_prof(
             'LWP': '',
             'IWP': '',
             'PWV': '',
+            'Qliq': '',
         }
     # import pdb; pdb.set_trace()
 
@@ -438,6 +448,7 @@ def extract_env_prof(
     out_U = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
     out_V = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
     out_W = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_Qliq = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
 
     # 2D variables
     # out_LCL = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
@@ -556,6 +567,7 @@ def extract_env_prof(
                 _u = pad_array(umet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _v = pad_array(vmet.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _w = pad_array(wa.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
+                _Qliq = pad_array(Qliq.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 # Extract and pad 2D variables
                 # _PWV = pad_array(pwv.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
                 _T2 = pad_array(T2.data, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y, sub_x)
@@ -578,6 +590,7 @@ def extract_env_prof(
                     out_U[itrack, :, :, :] = _u
                     out_V[itrack, :, :, :] = _v
                     out_W[itrack, :, :, :] = _w
+                    out_Qliq[itrack, :, :, :] = _Qliq
                     # 2D
                     # out_PWV[itrack, :, :] = _pwv
                     out_T2[itrack, :, :] = _T2
@@ -599,6 +612,7 @@ def extract_env_prof(
             'u': out_U,
             'v': out_V,
             'w': out_W,
+            'Qliq': out_Qliq,
         }
         out_dict2d = {
             # 'LCL': out_LCL,
@@ -635,6 +649,7 @@ def extract_env_prof(
             'u': u_attrs,
             'v': v_attrs,
             'w': w_attrs,
+            'Qliq': Qliq_attrs,
             # 'PWV': PWV_attrs,
             'T2': T2_attrs,
             'Q2': Q2_attrs,
@@ -651,6 +666,7 @@ def extract_env_prof(
         # new_attrs = {**pixel_attrs, **met_attrs}
         new_attrs = {**pixel_attrs, **cld_attrs}
         out_dict_attrs = {**out_dict_attrs, **new_attrs}
+        # import pdb; pdb.set_trace()
 
     return out_dict3d, out_dict2d, out_dict_attrs, out_coords
 

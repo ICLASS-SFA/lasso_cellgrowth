@@ -1,9 +1,10 @@
 #!/bin/bash
 #SBATCH -A atm123
 #SBATCH -J STARTDATEENSMEMBER
-#SBATCH --time=00:15:00
+#SBATCH --time=00:30:00
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=64
+#SBATCH --ntasks-per-node=24
+#SBATCH --cpus-per-task=1
 #SBATCH -p batch_all
 #SBATCH --exclusive
 #SBATCH --output=log_CONFIG_NAME.log
@@ -17,6 +18,6 @@
 date
 
 # Run Python
-python FLEXTRKR_DIR/run_celltracking.py CONFIG_FILE
+python FLEXTRKR_DIR/run_celltracking_lasso.py CONFIG_FILE
 
 date

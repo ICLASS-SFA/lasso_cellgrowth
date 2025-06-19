@@ -1,10 +1,10 @@
 #!/bin/bash
 # Create CSAPR cell tracking config and slurm scripts
 
-submit_job="no"
+submit_job="yes"
 # Specify resolution: '500m' or '2.5km'
-# resolution="2.5km"
-resolution="500m"
+resolution="2.5km"
+# resolution="500m"
 
 # Directory for the config template
 config_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/tracking/"

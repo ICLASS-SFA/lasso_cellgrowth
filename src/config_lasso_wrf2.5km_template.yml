@@ -55,7 +55,7 @@ Q_down_thresh: 0.00005 # 0.05/1000  # [kg/kg]
 # Minimum pixel count for a core
 min_core_npix: 1
 # Number of cores to save per cell
-ncores_min: 10
+ncores_min: 2
 # Number of pixel to expand a core to get perimeter
 core_expand_dist: 1
 # Buffer radius to expand the cell mask to get the core shell / perimeter
