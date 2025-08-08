@@ -26,19 +26,31 @@ def log_memory_usage(stage_name):
     print(f"{stage_name}: Memory usage: {memory_info.rss / 1024**3:.2f} GB")
 
 def cleanup_memory():
-    """Force garbage collection and clear cache"""
+    """Enhanced memory cleanup function"""
     gc.collect()
-    # Try to clear Dask cache if available
+    # Clear Dask cache more aggressively
     try:
+        import dask
         import dask.array as da
+        # Clear all caches
         da.core.clear_cache()
+        # Force garbage collection in Dask
+        from dask.base import clear_cache
+        clear_cache()
+        # Clear any remaining delayed objects
+        dask.base.clear_cache()
     except (ImportError, AttributeError):
-        # For newer versions of Dask, try this approach
-        try:
-            from dask.base import clear_cache
-            clear_cache()
-        except ImportError:
-            pass  # No cache clearing available, just continue
+        pass
+
+def monitor_memory_and_cleanup(threshold_gb=40):
+    """Monitor memory usage and cleanup if threshold exceeded"""
+    process = psutil.Process()
+    memory_gb = process.memory_info().rss / 1024**3
+    if memory_gb > threshold_gb:
+        print(f"Memory usage ({memory_gb:.2f} GB) exceeds threshold, cleaning up...")
+        cleanup_memory()
+        return True
+    return False
 
 #-----------------------------------------------------------------------
 def calc_basetime(filelist, filebase):
@@ -974,6 +986,8 @@ if __name__ == '__main__':
     dsstats = xr.open_dataset(trackstats_file, decode_times=False)
     ntracks = dsstats.sizes[tracks_dimname]
     ntimes = dsstats.sizes[times_dimname]
+    coord_tracks = dsstats[tracks_dimname]
+    coord_times = dsstats[times_dimname]
     stats_basetime = dsstats['base_time'].data
     stats_basetime_attrs = dsstats['base_time'].attrs
     # cell_area = dsstats['cell_area']
@@ -996,68 +1010,107 @@ if __name__ == '__main__':
     final_results = []
 
     if run_parallel == 1:
-        # Initialize dask
+        # Enhanced Dask configuration for large datasets
         dask_tmp_dir = config.get("dask_tmp_dir", "/tmp")
-        dask.config.set({'temporary-directory': dask_tmp_dir})
+        dask.config.set({
+            'temporary-directory': dask_tmp_dir,
+            'distributed.worker.memory.target': 0.8,  # Target 80% memory usage
+            'distributed.worker.memory.spill': 0.85,  # Spill to disk at 85%
+            'distributed.worker.memory.pause': 0.9,   # Pause at 90%
+            'distributed.worker.memory.terminate': 0.95,  # Terminate at 95%
+            'distributed.comm.timeouts.connect': '60s',
+            'distributed.comm.timeouts.tcp': '60s',
+            'distributed.worker.daemon': False,
+            'distributed.scheduler.idle-timeout': '1h',
+            'distributed.worker.lifetime.duration': '4h',  # Restart workers every 4h
+            'distributed.worker.lifetime.stagger': '1h',   # Stagger restarts
+        })
         
-        # Add timeout and monitoring for Dask cluster
         try:
             print(f"Initializing Dask cluster with {n_workers} workers...")
+            
+            # Reduce memory per worker for this large dataset
+            memory_per_worker = min(48, int(256 / n_workers * 0.8))  # Use 80% of available memory
+            
             cluster = LocalCluster(
                 n_workers=n_workers, 
                 threads_per_worker=threads_per_worker,
-                memory_limit='48GB',  # Reduce per worker for large dataset
-                timeout='10s',  # Add timeout
-                processes=True,  # Use processes for better isolation
+                memory_limit=f'{memory_per_worker}GB',
+                processes=True,
+                silence_logs=False,  # Keep logs for debugging
+                dashboard_address=':8787',
+                # Add worker resource limits
+                worker_class='distributed.nanny.Nanny',  # Use nannies for better process management
+                timeout='120s',
             )
-            client = Client(cluster, timeout='30s')
+            
+            client = Client(cluster, timeout='120s')
             print(f"Dask cluster initialized successfully")
             print(f"Dashboard link: {client.dashboard_link}")
+            print(f"Memory per worker: {memory_per_worker}GB")
+            
         except Exception as e:
             print(f"Failed to initialize Dask cluster: {e}")
             print("Falling back to serial processing")
             run_parallel = 0
 
-    # Add comprehensive logging and timeout detection
+    # Enhanced processing loop with better monitoring
     print(f"Starting processing of {nfiles} files...")
     start_time = time.time()
     last_progress_time = start_time
-
+    
+    # Reduce chunk size for large datasets to prevent memory issues
+    max_concurrent_tasks = min(n_workers * 2, 16)  # Limit concurrent tasks
+    
     # Loop over each pixel-file and call function to calculate
     for ifile in range(nfiles):
         file_start_time = time.time()
-        log_memory_usage(f"Processing file {ifile}/{nfiles}")
         
-        # Check for timeout (if no progress for more than 30 minutes)
+        # Enhanced timeout detection
         current_time = time.time()
         if current_time - last_progress_time > 1800:  # 30 minutes
             print(f"WARNING: No progress for {(current_time - last_progress_time)/60:.1f} minutes")
             print(f"Current file: {ifile}, file: {pixelfilelist[ifile] if ifile < len(pixelfilelist) else 'N/A'}")
-            break
+            # Try to recover by cleaning up memory and continuing
+            cleanup_memory()
+            if run_parallel == 1:
+                try:
+                    client.restart()
+                    print("Dask client restarted")
+                except:
+                    print("Failed to restart client, continuing...")
+            last_progress_time = current_time
+        
+        # Monitor memory every 20 files
+        if ifile % 20 == 0:
+            log_memory_usage(f"Processing file {ifile}/{nfiles}")
+            if run_parallel == 1:
+                try:
+                    # Check cluster health
+                    cluster_info = client.scheduler_info()
+                    print(f"Active workers: {len(cluster_info['workers'])}")
+                except:
+                    print("Warning: Could not get cluster info")
         
         try:
             print(f"File {ifile}: {os.path.basename(pixelfilelist[ifile])}")
             
             # Find all matching time indices from track stats file to the current pixel file
-            print(f"  Finding matching indices...")
             matchindices = np.array(
                 np.where(np.abs(stats_basetime - pixel_basetime[ifile]) < time_window)
             )
-            # The returned match indices are for [tracks, times] dimensions respectively
             idx_track = matchindices[0]
             idx_time = matchindices[1]
             
             print(f"  Found {len(idx_track)} matching tracks")
 
             if len(idx_track) > 0:
-                # Save matchindices for the current pixel file to the overall list
                 trackindices_all.append(idx_track)
                 timeindices_all.append(idx_time)
                 
-                print(f"  Creating processing task...")
-                # Serial
-                if run_parallel == 0:
-                    print(f"  Processing serially...")
+                # Serial processing for large track counts to avoid memory issues
+                if len(idx_track) > 50 or run_parallel == 0:
+                    print(f"  Processing serially (large track count: {len(idx_track)})...")
                     iresult = calc_cellstats_singlefile(
                         pixelfilelist[ifile], 
                         match_metfilelist[ifile],
@@ -1065,8 +1118,8 @@ if __name__ == '__main__':
                         idx_track, 
                         config,
                     )
-                    print(f"  Serial processing completed")
-                # Parallel
+                    final_results.append(iresult)
+                # Parallel processing for smaller track counts
                 elif run_parallel == 1:
                     print(f"  Creating delayed task...")
                     iresult = dask.delayed(calc_cellstats_singlefile)(
@@ -1076,63 +1129,231 @@ if __name__ == '__main__':
                         idx_track, 
                         config,
                     )
-                    print(f"  Delayed task created")
-                final_results.append(iresult)
+                    final_results.append(iresult)
+                    
+                    # Process in smaller batches to prevent memory buildup
+                    if len(final_results) >= max_concurrent_tasks:
+                        print(f"  Processing batch of {len(final_results)} tasks...")
+                        try:
+                            batch_results = dask.compute(*final_results[-max_concurrent_tasks:])
+                            # Replace delayed objects with computed results
+                            final_results[-max_concurrent_tasks:] = batch_results
+                            cleanup_memory()
+                            print(f"  Batch completed successfully")
+                        except Exception as e:
+                            print(f"  Batch processing failed: {e}, falling back to serial")
+                            # Fall back to serial processing for remaining files
+                            run_parallel = 0
             else:
                 print(f"  No matching tracks found, skipping")
             
-            # Update progress time
             last_progress_time = time.time()
             file_duration = last_progress_time - file_start_time
             print(f"  File {ifile} completed in {file_duration:.1f}s")
             
-            # Light cleanup every 10 files to prevent gradual memory accumulation
-            if (ifile + 1) % 10 == 0:
-                print(f"  Performing cleanup after {ifile + 1} files...")
+            # More frequent cleanup for large datasets
+            if (ifile + 1) % 5 == 0:
                 cleanup_memory()
-                log_memory_usage(f"After cleanup - file {ifile}")
                 
         except Exception as e:
             print(f"ERROR processing file {ifile}: {e}")
             import traceback
             traceback.print_exc()
+            # Try to recover
+            cleanup_memory()
             continue
 
     print(f"File processing loop completed. Total files processed: {len(final_results)}")
 
+    # Enhanced final computation with better error handling
     if run_parallel == 1 and len(final_results) > 0:
-        # Trigger Dask computation with timeout and monitoring
-        print("Computing statistics with Dask...")
+        print("Computing remaining statistics with Dask...")
         computation_start = time.time()
         
         try:
-            # Process in smaller chunks to avoid overwhelming the system
-            chunk_size = min(20, len(final_results))  # Process max 20 files at once
-            computed_results = []
+            # Filter out already computed results
+            delayed_results = [r for r in final_results if hasattr(r, 'compute')]
+            computed_results = [r for r in final_results if not hasattr(r, 'compute')]
             
-            for chunk_start in range(0, len(final_results), chunk_size):
-                chunk_end = min(chunk_start + chunk_size, len(final_results))
-                chunk = final_results[chunk_start:chunk_end]
+            if delayed_results:
+                # Process remaining delayed results in very small chunks
+                chunk_size = min(5, len(delayed_results))  # Much smaller chunks
                 
-                print(f"Computing chunk {chunk_start//chunk_size + 1}/{(len(final_results)-1)//chunk_size + 1} "
-                      f"({chunk_start}-{chunk_end-1})")
-                
-                chunk_results = dask.compute(*chunk, scheduler='processes')
-                computed_results.extend(chunk_results)
-                
-                print(f"Chunk completed in {time.time() - computation_start:.1f}s")
-                cleanup_memory()
-        
+                for chunk_start in range(0, len(delayed_results), chunk_size):
+                    chunk_end = min(chunk_start + chunk_size, len(delayed_results))
+                    chunk = delayed_results[chunk_start:chunk_end]
+                    
+                    print(f"Computing final chunk {chunk_start//chunk_size + 1}/{(len(delayed_results)-1)//chunk_size + 1} "
+                          f"({chunk_start}-{chunk_end-1})")
+                    
+                    # Add timeout for each chunk
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(dask.compute, *chunk)
+                        try:
+                            chunk_results = future.result(timeout=3600)  # 1 hour timeout per chunk
+                            computed_results.extend(chunk_results)
+                        except concurrent.futures.TimeoutError:
+                            print(f"Chunk computation timed out, trying serial processing...")
+                            # Fall back to serial for this chunk
+                            for delayed_task in chunk:
+                                try:
+                                    result = delayed_task.compute()
+                                    computed_results.append(result)
+                                except Exception as e:
+                                    print(f"Serial computation failed: {e}")
+                                    computed_results.append((None, None, None))
+                    
+                    cleanup_memory()
+                    print(f"Chunk completed in {time.time() - computation_start:.1f}s")
+            
             final_results = computed_results
             print(f"All computations completed in {time.time() - computation_start:.1f}s")
             
         except Exception as e:
-            print(f"ERROR during Dask computation: {e}")
+            print(f"ERROR during final Dask computation: {e}")
             import traceback
             traceback.print_exc()
-            # Try serial fallback
-            print("Attempting serial fallback...")
-            final_results = []
+            print("Falling back to serial processing for remaining tasks...")
+            
+            # Emergency serial fallback
+            computed_results = []
+            for i, result in enumerate(final_results):
+                if hasattr(result, 'compute'):
+                    try:
+                        computed_results.append(result.compute())
+                    except Exception as e:
+                        print(f"Serial fallback failed for task {i}: {e}")
+                        computed_results.append((None, None, None))
+                else:
+                    computed_results.append(result)
+            final_results = computed_results
         
+        # Close Dask client and cluster
+        try:
+            client.close()
+            cluster.close()
+        except:
+            pass
+            
     elif run_parallel == 0:
         print("Serial processing completed")
+
+    # Make a variable list and get attributes from one of the returned dictionaries
+    # Loop over each return results till one that is not None
+    counter = len(final_results)-1
+    while counter >= 0:
+        if final_results[counter] is not None:
+            var_names3d = list(final_results[counter][0].keys())
+            var_names2d = list(final_results[counter][1].keys())
+            var_attrs = final_results[counter][2]
+            break
+        counter -= 1
+
+    # Loop over variable list to create the dictionary entry
+    print(f'Creating output arrays ...')
+    out_dict = {}
+    out_dict_attrs = {}
+
+    var_names = var_names3d + var_names2d
+    # 3D variables 
+    for ivar in var_names3d:
+        out_dict[ivar] = np.full((ntracks, ntimes, nz, ncores_min), np.nan, dtype=np.float32)
+        out_dict_attrs[ivar] = var_attrs[ivar]
+    # 2D variables
+    for ivar in var_names2d:
+        out_dict[ivar] = np.full((ntracks, ntimes, nz), np.nan, dtype=np.float32)
+        out_dict_attrs[ivar] = var_attrs[ivar]
+
+    # Put the results to output track stats variables
+    # Loop over each returned results
+    for ifile in range(len(final_results)):
+        # Check the return results
+        if final_results[ifile] is not None:
+            iVAR3d = final_results[ifile][0]
+            iVAR2d = final_results[ifile][1]
+            if iVAR3d is not None:
+                trackindices = trackindices_all[ifile]
+                timeindices = timeindices_all[ifile]
+                # Loop over each variable and assign values to output dictionary
+                for ivar in var_names3d:
+                    if iVAR3d[ivar].ndim == 3:
+                        out_dict[ivar][trackindices,timeindices,:,:] = iVAR3d[ivar]
+                    else:
+                        print(f'Warning: {ivar} dimension is not 3.')
+            if iVAR2d is not None:
+                trackindices = trackindices_all[ifile]
+                timeindices = timeindices_all[ifile]
+                # Loop over each variable and assign values to output dictionary
+                for ivar in var_names2d:
+                    if iVAR2d[ivar].ndim == 2:
+                        out_dict[ivar][trackindices,timeindices,:] = iVAR2d[ivar]
+                    else:
+                        print(f'Warning: {ivar} dimension is not 2.')
+
+    ##########################################################
+    # Write to netcdf
+    print('Writing output netcdf ... ')
+
+    # Define variable list
+    var_dict = {}
+    # Define output variable dictionary
+    for key, value in out_dict.items():
+        if value.ndim == 2:
+            var_dict[key] = ([tracks_dimname, times_dimname], value, out_dict_attrs[key])
+        if value.ndim == 3:
+            var_dict[key] = ([tracks_dimname, times_dimname, z_dimname], value, out_dict_attrs[key])
+        if value.ndim == 4:
+            var_dict[key] = ([tracks_dimname, times_dimname, z_dimname, core_dimname], value, out_dict_attrs[key])
+    # Add base_time from track stats to the output dictionary
+    var_dict['base_time'] = ([tracks_dimname, times_dimname], stats_basetime, stats_basetime_attrs)
+    # Define coordinate list
+    core_dim_attrs = {
+        'long_name': 'Core number',
+    }
+    coord_dict = {
+        tracks_dimname: ([tracks_dimname], coord_tracks.data, coord_tracks.attrs),
+        times_dimname: ([times_dimname], coord_times.data, coord_times.attrs),
+        z_dimname: ([z_dimname], height.data, height.attrs),
+        core_dimname: ([core_dimname], np.arange(0, ncores_min), core_dim_attrs),
+    }
+    # Define global attributes
+    gattr_dict = {
+        'title':  'Tracked cell W statistics', \
+        'Institution': 'Pacific Northwest National Laboratoy', \
+        'Contact': 'Zhe Feng, zhe.feng@pnnl.gov', \
+        'Created_on':  time.ctime(time.time()), \
+        'source_trackfile': trackstats_file, \
+        'startdate': startdate, \
+        'enddate': enddate, \
+    }
+    # Define xarray dataset
+    dsout = xr.Dataset(var_dict, coords=coord_dict, attrs=gattr_dict)
+
+    # Delete file if it already exists
+    if os.path.isfile(output_filename):
+        os.remove(output_filename)
+        
+    # Set encoding/compression for all variables
+    comp = dict(zlib=True)
+    encoding = {var: comp for var in dsout.data_vars}
+
+    # Write to netcdf file
+    dsout.to_netcdf(path=output_filename, mode="w",
+                    format="NETCDF4", unlimited_dims=tracks_dimname, encoding=encoding)
+    print(f'Output saved: {output_filename}')
+
+    # Clean up Dask cluster if it was used
+    if run_parallel == 1:
+        print('Closing Dask cluster...')
+        try:
+            client.close()
+            cluster.close()
+        except:
+            pass
+        print('Dask cluster closed.')
+
+    # Final cleanup
+    cleanup_memory()
+    log_memory_usage("Final cleanup")
+    print('Processing completed successfully.')
