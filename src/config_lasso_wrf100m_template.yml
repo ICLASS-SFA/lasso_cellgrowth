@@ -34,6 +34,7 @@ cldfile_path_2: '/gpfs/wolf2/arm/cli120/world-shared/d3m088/cacti/staged_runs_2/
 # Raw WRF output file directory
 # wrfout_path1: '/gpfs/wolf/cli120/proj-shared/sey/cacti/wrf/prod/'
 # wrfout_path2: '/gpfs/wolf/cli120/proj-shared/d3m088/cacti/production/les/'
+draft_path: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/subset_d4/'
 # Output file directory
 output_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4/stats/'
 # env_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/cell_envs/'
@@ -44,6 +45,7 @@ methamsl_filebase: 'corlasso_methamsl_STARTDATE00ENSMEMBERd4_CONFIG_M1.m1.'
 cldhamsl_filebase: 'corlasso_cldhamsl_STARTDATE00ENSMEMBERd4_CONFIG_M1.m1.'
 met_filebase: 'corlasso_met_STARTDATE00ENSMEMBERd4_CONFIG_M1.m1.'
 cld_filebase: 'corlasso_cld_STARTDATE00ENSMEMBERd4_CONFIG_M1.m1.'
+drafthamsl_filebase: 'corlasso_drafthamsl_STARTDATE00ENSMEMBERd4_CONFIG_M1.m1.'
 # W thresholds to define cores
 W_up_thresh: 2.0  # [m/s]
 W_down_thresh: -1.0  # [m/s]
