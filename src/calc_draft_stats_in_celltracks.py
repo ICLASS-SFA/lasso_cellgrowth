@@ -5,6 +5,9 @@ The 3D core statistics are written to netCDF file matching the cell track statis
 import numpy as np
 import os, sys, glob
 import time
+import traceback
+import warnings
+import gc
 from datetime import datetime
 from pytz import utc
 import yaml
@@ -12,11 +15,12 @@ import xarray as xr
 from scipy import ndimage
 from skimage.segmentation import expand_labels
 from scipy.ndimage import generate_binary_structure, binary_dilation, iterate_structure
-import warnings
 import dask
+import dask.array as da
+from dask.base import clear_cache
 from dask.distributed import Client, LocalCluster
 import psutil
-import gc
+import concurrent.futures
 # import matplotlib.pyplot as plt
 
 def log_memory_usage(stage_name):
@@ -30,12 +34,9 @@ def cleanup_memory():
     gc.collect()
     # Clear Dask cache more aggressively
     try:
-        import dask
-        import dask.array as da
         # Clear all caches
         da.core.clear_cache()
         # Force garbage collection in Dask
-        from dask.base import clear_cache
         clear_cache()
         # Clear any remaining delayed objects
         dask.base.clear_cache()
@@ -1157,7 +1158,6 @@ if __name__ == '__main__':
                 
         except Exception as e:
             print(f"ERROR processing file {ifile}: {e}")
-            import traceback
             traceback.print_exc()
             # Try to recover
             cleanup_memory()
@@ -1187,7 +1187,6 @@ if __name__ == '__main__':
                           f"({chunk_start}-{chunk_end-1})")
                     
                     # Add timeout for each chunk
-                    import concurrent.futures
                     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
                         future = executor.submit(dask.compute, *chunk)
                         try:
@@ -1212,7 +1211,6 @@ if __name__ == '__main__':
             
         except Exception as e:
             print(f"ERROR during final Dask computation: {e}")
-            import traceback
             traceback.print_exc()
             print("Falling back to serial processing for remaining tasks...")
             
