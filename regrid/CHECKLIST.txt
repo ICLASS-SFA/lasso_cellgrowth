@@ -1,0 +1,220 @@
+LASSO REGRIDDING - PRE-FLIGHT CHECKLIST
+========================================
+
+Before running production jobs, verify each item:
+
+□ ENVIRONMENT SETUP
+  □ Python environment activated
+  □ Required packages installed:
+    □ numpy
+    □ scipy
+    □ xarray
+    □ dask
+    □ distributed
+  □ Check: python -c "import dask, xarray, scipy; print('OK')"
+
+□ FILE ACCESS
+  □ Input directory accessible
+    Path: /gpfs/wolf2/arm/cli120/world-shared/d3m088/cacti/staged_runs_2/
+  □ Output directory writable
+    Path: /gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/regrid_subsets/
+  □ Can read sample file
+    Test: ls -lh /gpfs/.../subset_d4/*.nc | head -1
+  □ Can write to output directory
+    Test: touch /gpfs/.../regrid_subsets/test.txt && rm /gpfs/.../regrid_subsets/test.txt
+
+□ SCRIPT SETUP
+  □ All scripts present in regrid/ directory
+    □ regrid_func.py
+    □ regrid_lasso_batch.py
+    □ test_regrid_single.py
+    □ slurm_regrid.sh (executable)
+    □ submit_all_cases.sh (executable)
+  □ Scripts are executable
+    Test: ls -l *.sh | grep 'x'
+  □ Log directory exists
+    Test: mkdir -p logs
+
+□ CONFIGURATION
+  □ Reviewed test_regrid_single.py settings
+    □ Input file exists
+    □ regrid_ratio appropriate
+    □ Output directory correct
+  □ Reviewed slurm_regrid.sh settings
+    □ Account name correct (#SBATCH --account=???)
+    □ Memory allocation appropriate
+    □ Time limit sufficient
+    □ Python environment path correct
+  □ Reviewed submit_all_cases.sh
+    □ All case dates listed
+    □ File types correct
+    □ Subsets correct
+
+□ TESTING COMPLETED
+  □ Single file test successful
+    Run: python test_regrid_single.py
+    Result: Output file created, no errors
+  □ Batch processing test successful (1 hour)
+    Run: python regrid_lasso_batch.py --case-date ... --start-hour 0 --end-hour 1 ...
+    Result: ~12 files processed, no errors
+  □ Output file verified
+    Run: ncdump -h <output_file>.nc
+    Check: Variables present, dimensions correct, attributes preserved
+  □ Job array test successful
+    Run: sbatch --export=... slurm_regrid.sh
+    Result: Job completed, all tasks successful
+
+□ RESOURCE AVAILABILITY
+  □ Checked available nodes
+    Run: sinfo
+    Result: Sufficient nodes available or willing to queue
+  □ Checked disk space
+    Run: df -h /gpfs/wolf2/arm/atm131/proj-shared/zfeng/
+    Result: >200 GB available
+  □ Checked quota
+    Run: quota -s
+    Result: Within limits
+
+□ MONITORING SETUP
+  □ Know how to check job status
+    Command: squeue -u $USER
+  □ Know how to check logs
+    Command: tail -f logs/regrid_*.out
+  □ Know how to cancel jobs if needed
+    Command: scancel -u $USER
+  □ Have Dask dashboard access (optional)
+    Setup: ssh -L 8787:compute-node:8787 login-node
+
+□ DOCUMENTATION REVIEWED
+  □ Read QUICK_START.md
+  □ Read README.md
+  □ Reviewed quick_reference.sh
+  □ Understand WORKFLOW_DIAGRAM.txt
+
+□ FINAL CHECKS
+  □ Understand expected processing time (~2 hours with 72 nodes)
+  □ Understand output size (~155 GB total)
+  □ Know how to handle failed files (resubmit specific tasks)
+  □ Have contact info for issues (zhe.feng@pnnl.gov)
+
+========================================
+TESTING SEQUENCE
+========================================
+
+Step 1: Single File (5 minutes)
+--------------------------------
+cd /ccsopen/home/zhe1feng1/program/lasso/cellgrowth/regrid
+python test_regrid_single.py
+
+Expected output:
+  ✓ "Regridding file: ..."
+  ✓ "Successfully wrote regridded data to ..."
+  ✓ "Test completed successfully!"
+
+Verify:
+  ls -lh /gpfs/.../regrid_subsets/*.nc
+  ncdump -h <output_file>.nc
+
+Step 2: Batch Processing (10 minutes)
+--------------------------------------
+python regrid_lasso_batch.py \
+    --case-date 20190123 \
+    --start-hour 0 \
+    --end-hour 1 \
+    --file-type methamsl \
+    --subset d4 \
+    --n-workers 4 \
+    --regrid-ratio 25
+
+Expected output:
+  ✓ "Found X files within time window"
+  ✓ "Dask dashboard: http://..."
+  ✓ "Processing X files with 4 workers"
+  ✓ "Completed: X successful, 0 failed"
+
+Verify:
+  ls -lh /gpfs/.../regrid_subsets/*20190123* | wc -l
+  (Should show ~12 new files)
+
+Step 3: Job Array (2 hours)
+----------------------------
+mkdir -p logs
+sbatch --export=CASE_DATE=20190123,FILE_TYPE=methamsl,SUBSET=d4,REGRID_RATIO=25 slurm_regrid.sh
+
+Monitor:
+  squeue -u $USER
+  tail -f logs/regrid_*.out
+
+Expected result:
+  ✓ Job completes successfully
+  ✓ All 12 tasks finish
+  ✓ No errors in .err files
+  ✓ ~144 output files created
+
+Verify:
+  ls -lh /gpfs/.../regrid_subsets/*methamsl*20190123* | wc -l
+  grep -c "Successfully wrote" logs/regrid_*.out
+  grep -i error logs/*.err
+
+Step 4: Full Submission
+------------------------
+# Edit submit_all_cases.sh first
+bash submit_all_cases.sh
+
+Monitor:
+  squeue -u $USER | wc -l
+  watch -n 10 'squeue -u $USER | wc -l'
+
+Expected result:
+  ✓ 72 job arrays submitted
+  ✓ 864 total tasks
+  ✓ All complete in ~2 hours
+  ✓ 10,368 output files
+
+========================================
+TROUBLESHOOTING CHECKLIST
+========================================
+
+If test_regrid_single.py fails:
+□ Check input file exists
+□ Check output directory writable
+□ Check Python packages installed
+□ Check for error messages in output
+
+If batch processing fails:
+□ Check file timestamp parsing
+□ Check Dask workers start successfully
+□ Reduce n_workers if memory errors
+□ Check individual file with test script
+
+If job submission fails:
+□ Check SLURM account name
+□ Check node availability (sinfo)
+□ Check disk quota (quota -s)
+□ Verify script syntax (bash -n slurm_regrid.sh)
+
+If jobs are pending:
+□ Check queue status (squeue)
+□ Check priority (sprio)
+□ May need to wait for resources
+□ Consider submitting fewer jobs at once
+
+If jobs fail during execution:
+□ Check log files for errors
+□ Verify input files not corrupted
+□ Check memory usage (seff <JOB_ID>)
+□ Resubmit specific failed tasks
+
+========================================
+READY TO RUN?
+========================================
+
+□ All items in checklist completed
+□ All tests passed
+□ Monitoring commands known
+□ Troubleshooting guide reviewed
+
+If all checked, you're ready to run:
+  bash submit_all_cases.sh
+
+Good luck! 🚀
