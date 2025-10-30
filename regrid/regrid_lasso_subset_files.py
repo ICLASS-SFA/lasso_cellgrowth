@@ -6,8 +6,7 @@ import logging
 import yaml
 import numpy as np
 import xarray as xr
-import pandas as pd
-from regrid_func import coarsen_variable_filter, coarsen_reflectivity_filter, create_semi_symmetric_array
+from regrid_func import coarsen_variable_filter, coarsen_reflectivity_filter
 
 #-----------------------------------------------------------------------
 def setup_logging():
@@ -20,7 +19,26 @@ def setup_logging():
 
 #-----------------------------------------------------------------------
 def regrid_file(in_filename, in_basename, out_dir, out_basename, config):
+    """
+    Regrid a LASSO subset file containing reflectivity and other variables.
+    Args:
+        in_filename: string
+            Input file name.
+        in_basename: string
+            Base name of input files to identify time strings.
+        out_dir: string
+            Output directory name.
+        out_basename: string
+            Base name for output files.
+        config: dictionary
+            Dictionary containing config parameters.
+
+    Returns:
+        success: boolean
+    """
     logger = logging.getLogger(__name__)
+
+    # Get configuration parameters
     time_dimname = config.get('time_dimname', 'Time')
     x_coordname = config.get('x_coordname', 'XLONG')
     y_coordname = config.get('y_coordname', 'XLAT')
@@ -28,8 +46,6 @@ def regrid_file(in_filename, in_basename, out_dir, out_basename, config):
     x_dimname = config.get('x_dimname', 'west_east')
     y_dimname = config.get('y_dimname', 'south_north')
     z_dimname = config.get('z_dimname', 'HAMSL')
-    dx = config['dx']
-    dy = config['dy']
     regrid_ratio = config.get('regrid_ratio')
     var_names = config.get('var_names', None)
 
@@ -51,26 +67,66 @@ def regrid_file(in_filename, in_basename, out_dir, out_basename, config):
     if var_names is not None:
         ds = ds[var_names]
 
-    # Loop over each variable to regrid
-    var_reg_dict = {}
-    var_attrs_dict = {}
+    # Define output variable dimensions
+    dim4d = [time_dimname, z_dimname, y_dimname, x_dimname]
+    dim3d = [time_dimname, y_dimname, x_dimname]
+
+    # Process each variable and directly create output dictionary
+    var_dict = {}
+    nz, ny, nx = None, None, None  # Will be set from first 3D variable
+    
     for varname in ds.data_vars:
-        # Store original attributes
-        var_attrs_dict[varname] = ds[varname].attrs.copy()
+        # Get original attributes
+        var_attrs = ds[varname].attrs.copy()
         
-        if 'REFL' in varname:
-            # If variable name contains 'REFL', use reflectivity regridding
-            var_reg_dict[varname] = coarsen_reflectivity_filter(ds[varname].squeeze().values, regrid_ratio)
+        # Check if variable has spatial dimensions (y_dimname and x_dimname)
+        var_dims = ds[varname].dims
+        has_spatial_dims = (y_dimname in var_dims) and (x_dimname in var_dims)
+        
+        if not has_spatial_dims:
+            # Pass through variables without spatial dimensions (e.g., ITIMESTEP)
+            logger.debug(f"Variable {varname} has no spatial dimensions - passing through without regridding")
+            var_attrs['regridded'] = 'Not regridded - no spatial dimensions'
+            vardata = ds[varname].squeeze().values
+            
+            if vardata.ndim == 0:
+                # Scalar variable (e.g., Time-only dimension after squeeze)
+                var_dict[varname] = ([time_dimname], np.expand_dims(vardata, axis=0), var_attrs)
+            elif vardata.ndim == 1:
+                # Already has time dimension
+                var_dict[varname] = ([time_dimname], vardata, var_attrs)
+            else:
+                logger.warning(f'Pass-through variable {varname} has unexpected dimensions: {vardata.ndim}')
+        
         else:
-            var_reg_dict[varname] = coarsen_variable_filter(ds[varname].squeeze().values, regrid_ratio)
-            if var_reg_dict[varname].ndim == 3:
-                # Get regridded z,y,x dimensions
-                nz, ny, nx = var_reg_dict[varname].shape
+            # Regrid variables with spatial dimensions
+            var_attrs['regridded'] = f'Coarsened by factor of {regrid_ratio} using uniform_filter'
+            
+            if 'REFL' in varname:
+                # If variable name contains 'REFL', use reflectivity regridding
+                vardata = coarsen_reflectivity_filter(ds[varname].squeeze().values, regrid_ratio)
+            else:
+                vardata = coarsen_variable_filter(ds[varname].squeeze().values, regrid_ratio)
+            
+            # Store dimensions from first 3D variable for coordinate creation
+            if vardata.ndim == 3 and nz is None:
+                nz, ny, nx = vardata.shape
+            
+            # Add to output dictionary
+            if vardata.ndim == 3:
+                var_dict[varname] = (dim4d, np.expand_dims(vardata, axis=0), var_attrs)
+            elif vardata.ndim == 2:
+                # Store dimensions from 2D variable if no 3D variable processed yet
+                if ny is None:
+                    ny, nx = vardata.shape
+                var_dict[varname] = (dim3d, np.expand_dims(vardata, axis=0), var_attrs)
+            else:
+                logger.warning(f'Variable {varname} has unsupported number of dimensions: {vardata.ndim}')
 
     # Subsample coordinates
     start_idx = int((regrid_ratio-1) / 2)
-    x_coord_reg = x_coord.data[start_idx::regrid_ratio,start_idx::regrid_ratio]
-    y_coord_reg = y_coord.data[start_idx::regrid_ratio,start_idx::regrid_ratio]
+    x_coord_reg = x_coord.data[start_idx::regrid_ratio, start_idx::regrid_ratio]
+    y_coord_reg = y_coord.data[start_idx::regrid_ratio, start_idx::regrid_ratio]
 
     # Make output filename
     nleadingchar = len(f'{in_basename}')
@@ -78,11 +134,6 @@ def regrid_file(in_filename, in_basename, out_dir, out_basename, config):
     ftimestr = fname[nleadingchar:]
     out_filename = f'{out_dir}{out_basename}{ftimestr}'
 
-    # Make output coordinates
-    # Create a coordinate to mimic subsampling ratio of the full coordinate
-    x_coord_1d = create_semi_symmetric_array(nx) * DX_reg
-    y_coord_1d = create_semi_symmetric_array(ny) * DY_reg
-    
     # Create attributes for coordinates
     x_coord_attrs = {
         'long_name': 'Longitude',
@@ -94,29 +145,6 @@ def regrid_file(in_filename, in_basename, out_dir, out_basename, config):
         'units': 'degrees_north',
         'description': f'Coarsened by factor of {regrid_ratio}',
     }
-
-    # Define output variables
-    # Array dimensions
-    dim4d = [time_dimname, z_dimname, y_dimname, x_dimname]
-    dim3d = [time_dimname, y_dimname, x_dimname]
-    dim2d = [y_dimname, x_dimname]
-    # var_dict = {
-    #     x_coordname: (dim2d, x_coord_reg, x_coord_attrs),
-    #     y_coordname: (dim2d, y_coord_reg, y_coord_attrs),
-    # }
-    # Loop over var_reg_dict to add to output var_dict
-    var_dict = {}
-    for varname, vardata in var_reg_dict.items():
-        # Get original attributes and add processing info
-        var_attrs = var_attrs_dict[varname].copy()
-        var_attrs['regridded'] = f'Coarsened by factor of {regrid_ratio} using uniform_filter'
-        
-        if vardata.ndim == 3:
-            var_dict[varname] = (dim4d, np.expand_dims(vardata, axis=0), var_attrs)
-        elif vardata.ndim == 2:
-            var_dict[varname] = (dim3d, np.expand_dims(vardata, axis=0), var_attrs)
-        else:
-            logger.warning(f'Variable {varname} has unsupported number of dimensions: {vardata.ndim}')
 
     # Output coordinates
     coord_dict = {
@@ -142,7 +170,6 @@ def regrid_file(in_filename, in_basename, out_dir, out_basename, config):
     }
 
     # Define xarray dataset
-    # import pdb; pdb.set_trace()
     ds_out = xr.Dataset(var_dict, coords=coord_dict, attrs=gattr_dict)
 
     # Set encoding/compression for all variables
@@ -182,13 +209,14 @@ def main():
         'x_dimname': 'west_east',
         'y_dimname': 'south_north',
         'z_dimname': 'HAMSL',
-        'dx': 2500,
-        'dy': 2500,
+        # 'dx': 2500,
+        # 'dy': 2500,
         'regrid_ratio': 5,
-        'var_names': ['WA', 'HGT', 'UA', 'VA'],
+        # 'var_names': ['WA', 'HGT', 'UA', 'VA', 'ITIMESTEP'],
     }
 
-    regrid_file(methamsl_filename, methamsl_filebase, out_dir, methamsl_filebase, config)
+    # regrid_file(methamsl_filename, methamsl_filebase, out_dir, methamsl_filebase, config)
+    regrid_file(cldhamsl_filename, cldhamsl_filebase, out_dir, cldhamsl_filebase, config)
     # import pdb; pdb.set_trace()
 
 

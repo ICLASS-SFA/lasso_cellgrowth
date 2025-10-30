@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 from scipy.ndimage import uniform_filter
 
 #-----------------------------------------------------------------------
@@ -93,7 +94,11 @@ def coarsen_reflectivity_filter(in_reflectivity, ratio):
     # Convert back to dBZ
     out_reflectivity = np.full_like(linear_coarse, np.nan, dtype=np.float32)
     valid_mask = count_coarse > 0
-    out_reflectivity[valid_mask] = 10.0 * np.log10(linear_coarse[valid_mask] / count_coarse[valid_mask])
+    
+    # Suppress expected warnings for log10 of very small values
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=RuntimeWarning)
+        out_reflectivity[valid_mask] = 10.0 * np.log10(linear_coarse[valid_mask] / count_coarse[valid_mask])
     
     return out_reflectivity
 
