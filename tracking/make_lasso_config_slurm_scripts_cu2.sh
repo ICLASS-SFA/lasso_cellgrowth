@@ -1,42 +1,52 @@
 #!/bin/bash
 # Create LASSO cell tracking config and slurm scripts
 
-submit_job="no"
+submit_job="yes"
 # Specify resolution: 'LES' or 'MESO'
 # resolution="MESO"
 # Specify configuration: 'base' or 'morr'
 configuration="base"
 
-# Directory for the config template
-config_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/tracking/"
-# Directory for the slurm template
-slurm_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/tracking/"
+# Directory for templates (config and slurm)
+template_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/tracking/"
+# Output directory for generated config and slurm scripts
+output_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/tracking/slurm/"
+# Log directory for slurm output
+log_dir="${output_dir}log/"
 # PyFLEXTRKR code directory
 pyflex_dir="/ccsopen/home/zhe1feng1/program/PyFLEXTRKR-dev/runscripts"
 
+# Create output directories if they don't exist
+mkdir -p "${output_dir}"
+mkdir -p "${log_dir}"
+
 # D4 (100m) 5min tracking
-# config_template=${config_dir}"config_lasso_wrf100m_template.yml"
+# config_template=${template_dir}"config_lasso_wrf100m_template.yml"
+# D4 (100m) 5min regrid to 2.5km tracking
+config_template=${template_dir}"config_lasso_wrf100m_5min_regrid2.5km_template.yml"
 # D4 (100m) 15min tracking
-# config_template=${config_dir}"config_lasso_wrf100m_15min_template.yml"
-# slurm_template=${slurm_dir}"slurm_lasso_wrf100m_template.sh"
+# config_template=${template_dir}"config_lasso_wrf100m_15min_template.yml"
+# slurm_template=${template_dir}"slurm_lasso_wrf100m_template.sh"
 # D4 (100m) 15min regrid to 2.5km tracking
-# config_template=${config_dir}"config_lasso_wrf100m_15min_regrid2.5km_template.yml"
-# slurm_template=${slurm_dir}"slurm_lasso_wrf100m_template.sh"
+# config_template=${template_dir}"config_lasso_wrf100m_15min_regrid2.5km_template.yml"
+slurm_template=${template_dir}"slurm_lasso_wrf100m_template.sh"
 
 # D3 (500m) 5min tracking
-# config_template=${config_dir}"config_lasso_wrf500m_template.yml"
+# config_template=${template_dir}"config_lasso_wrf500m_template.yml"
+# D3 (500m) 5min regrid to 2.5km tracking
+# config_template=${template_dir}"config_lasso_wrf500m_5min_regrid2.5km_template.yml"
 # # D3 (500m) 15min tracking
-# config_template=${config_dir}"config_lasso_wrf500m_15min_template.yml"
-# slurm_template=${slurm_dir}"slurm_lasso_wrf500m_template.sh"
+# config_template=${template_dir}"config_lasso_wrf500m_15min_template.yml"
+# slurm_template=${template_dir}"slurm_lasso_wrf500m_template.sh"
 # D3 (500m) 15min regrid to 2.5km tracking
-# config_template=${config_dir}"config_lasso_wrf500m_15min_regrid2.5km_template.yml"
-# slurm_template=${slurm_dir}"slurm_lasso_wrf500m_template.sh"
+# config_template=${template_dir}"config_lasso_wrf500m_15min_regrid2.5km_template.yml"
+# slurm_template=${template_dir}"slurm_lasso_wrf500m_template.sh"
 
 # # D2 (2.5km) 5min tracking
-# config_template=${config_dir}"config_lasso_wrf2.5km_template.yml"
+# config_template=${template_dir}"config_lasso_wrf2.5km_template.yml"
 # # D2 (2.5km) 15min tracking
-config_template=${config_dir}"config_lasso_wrf2.5km_15min_template.yml"
-slurm_template=${slurm_dir}"slurm_lasso_wrf2.5km_template.sh"
+# config_template=${template_dir}"config_lasso_wrf2.5km_15min_template.yml"
+# slurm_template=${template_dir}"slurm_lasso_wrf2.5km_template.sh"
 
 # config_basename="config_lasso_"
 # slurm_basename="slurm_lasso_"
@@ -133,11 +143,12 @@ for ((i = 0; i < ${#start_dates[@]}; ++i)); do
     ensmember=${ens_members[$i]}
 
     config_name=${config_basename}${sdate}_${ensmember}_${configuration}
-    config_file=${config_dir}${config_name}.yml
-    slurm_file=${slurm_dir}${slurm_basename}${sdate}_${ensmember}_${configuration}.sh
+    config_file=${output_dir}${config_name}.yml
+    slurm_file=${output_dir}${slurm_basename}${sdate}_${ensmember}_${configuration}.sh
+    log_file=${log_dir}log_${config_name}.log
 
     sed "s|STARTDATE|$sdate|g; s|ENDDATE|$edate|g; s|ENSMEMBER|$ensmember|g; s|CONFIG|$configuration|g" ${config_template} > ${config_file}
-    sed "s|STARTDATE|$sdate|g; s|ENSMEMBER|$ensmember|g; s|CONFIG_NAME|$config_name|g; s|CONFIG_FILE|$config_file|g; s|FLEXTRKR_DIR|$pyflex_dir|g" ${slurm_template} > ${slurm_file}
+    sed "s|STARTDATE|$sdate|g; s|ENSMEMBER|$ensmember|g; s|CONFIG_FILE|$config_file|g; s|FLEXTRKR_DIR|$pyflex_dir|g; s|LOG_FILE|$log_file|g" ${slurm_template} > ${slurm_file}
     echo ${config_file}
     echo ${slurm_file}
     if [[ "${submit_job}" == "yes" ]]; then

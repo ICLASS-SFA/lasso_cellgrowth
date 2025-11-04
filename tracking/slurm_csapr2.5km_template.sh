@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH -A atm123
+#SBATCH -A atm131
 #SBATCH -J STARTDATE
 #SBATCH --time=00:15:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=128
 #SBATCH -p batch_short
 #SBATCH --exclusive
-#SBATCH --output=log_CONFIG_NAME.log
+#SBATCH --output=LOG_FILE
 #SBATCH --mail-type=END
 #SBATCH --mail-user=zhe.feng@pnnl.gov
 

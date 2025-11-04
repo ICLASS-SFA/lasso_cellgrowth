@@ -24,6 +24,9 @@ For **5-min** tracking:
 * `config_lasso_wrf500m_template.yml`
 * `config_lasso_wrf100m_template.yml`
 
+* `config_lasso_wrf500m_5min_regrid2.5km_template.yml`
+* `config_lasso_wrf100m_5min_regrid2.5km_template.yml`
+
 For **15-min** tracking:
 
 * `config_lasso_wrf2.5km_15min_template.yml`
