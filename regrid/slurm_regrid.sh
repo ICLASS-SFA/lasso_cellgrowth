@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=regrid_lasso
-#SBATCH --account=atm123
+#SBATCH --account=atm131
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=128
-#SBATCH --time=02:00:00
+#SBATCH --time=01:00:00
 #SBATCH --output=logs/regrid_%A_%a.out
 #SBATCH --error=logs/regrid_%A_%a.err
 #SBATCH --array=12-23  # 12 hours (12:00-23:59, plus next day 00:00:00 for hour 23)
