@@ -2,8 +2,8 @@
 # Run in parallel
 run_parallel: 1
 # Number of workers for Dask
-n_workers: 24  # For 3D calculations
-# n_workers: 32  # For cell center env
+# n_workers: 24  # For 3D calculations
+n_workers: 64  # For cell center env
 # Threads per worker
 threads_per_worker: 1
 dask_tmp_dir: '/tmp'
