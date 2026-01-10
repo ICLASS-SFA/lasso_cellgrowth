@@ -167,7 +167,7 @@ def regrid_file(in_filename, in_basename, out_dir, out_basename, config):
     time_dimname = config.get('time_dimname', 'Time')
     x_coordname = config.get('x_coordname', 'XLONG')
     y_coordname = config.get('y_coordname', 'XLAT')
-    z_coordname = config.get('z_coordname', 'HAMSL')
+    z_coordname = config.get('z_coordname', None)
     x_dimname = config.get('x_dimname', 'west_east')
     y_dimname = config.get('y_dimname', 'south_north')
     z_dimname = config.get('z_dimname', 'HAMSL')
@@ -183,7 +183,8 @@ def regrid_file(in_filename, in_basename, out_dir, out_basename, config):
     # Get coordinates
     x_coord = ds[x_coordname]
     y_coord = ds[y_coordname]
-    z_coord = ds[z_coordname]
+    if z_coordname is not None:
+        z_coord = ds[z_coordname]
     # Grid spacing after regridding
     DX_reg = ds.attrs['DX'] * regrid_ratio
     DY_reg = ds.attrs['DY'] * regrid_ratio
@@ -274,10 +275,15 @@ def regrid_file(in_filename, in_basename, out_dir, out_basename, config):
     # Output coordinates
     coord_dict = {
         time_dimname: ([time_dimname], in_time.data, in_time.attrs),
-        z_coordname: ([z_dimname], z_coord.data, z_coord.attrs),
+        # z_coordname: ([z_dimname], z_coord.data, z_coord.attrs),
         y_coordname: ([y_dimname, x_dimname], y_coord_reg, y_coord_attrs),
         x_coordname: ([y_dimname, x_dimname], x_coord_reg, x_coord_attrs),
     }
+    # Add z_coordinate for HAMSL (1D) only
+    # if z_dimname == 'HAMSL':
+    if z_coordname is not None:
+        coord_dict[z_coordname] = ([z_dimname], z_coord.data, z_coord.attrs)
+
     # Output global attributes
     gattr_dict = {
         'Title': 'Regridded LASSO subset data',
@@ -288,7 +294,7 @@ def regrid_file(in_filename, in_basename, out_dir, out_basename, config):
         'regrid_ratio': regrid_ratio,
         'original_DX': ds.attrs['DX'],
         'original_DY': ds.attrs['DY'],
-        'processing_script': 'regrid_func.py',
+        'processing_script': os.path.basename(__file__),
         'Contact': 'Zhe Feng, zhe.feng@pnnl.gov',
         'Institution': 'Pacific Northwest National Laboratory',
         'Created_on': time.ctime(time.time()),

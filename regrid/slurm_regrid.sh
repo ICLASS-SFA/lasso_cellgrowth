@@ -33,7 +33,7 @@ source activate /ccsopen/home/zhe1feng1/anaconda3/envs/flextrkr
 
 # Set default values if not provided
 CASE_DATE=${CASE_DATE:-"20190123"}
-FILE_TYPE=${FILE_TYPE:-"methamsl"}
+FILE_TYPE=${FILE_TYPE:-"cld"}
 DOMAIN=${DOMAIN:-"d4"}
 ENSEMBLE=${ENSEMBLE}  # Required - no default
 REGRID_RATIO=${REGRID_RATIO:-""}  # Empty means auto-detect based on domain

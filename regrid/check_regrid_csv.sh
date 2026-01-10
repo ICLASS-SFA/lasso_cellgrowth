@@ -31,7 +31,8 @@ ENSEMBLES=(
 )
 
 DOMAINS=("d3" "d4")
-FILE_TYPES=("methamsl" "cldhamsl")
+# FILE_TYPES=("methamsl" "cldhamsl")
+FILE_TYPES=("met" "cld")
 EXPECTED_COUNT=144  # 12 hours × 12 files/hour
 
 # Print CSV header

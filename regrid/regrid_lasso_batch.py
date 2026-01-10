@@ -204,13 +204,13 @@ def main():
 
     parser = argparse.ArgumentParser(description='Batch regrid LASSO subset files')
     parser.add_argument('--case-date', required=True, help='Case date (YYYYMMDD)')
-    parser.add_argument('--start-hour', type=int, required=True, help='Start hour (0-23)')
-    parser.add_argument('--end-hour', type=int, required=True, help='End hour (0-23)')
-    parser.add_argument('--file-type', required=True, choices=['methamsl', 'cldhamsl'], 
-                       help='File type to process')
-    parser.add_argument('--domain', required=True, choices=['d3', 'd4'], 
-                       help='Domain (d3 or d4)')
     parser.add_argument('--ensemble', required=True, help='Ensemble member (e.g., gefs18, eda05)')
+    parser.add_argument('--domain', required=True, choices=['d3', 'd4'], help='Domain (d3 or d4)')
+    parser.add_argument('--file-type', required=True, help='File type to process')
+    parser.add_argument('--start-hour', type=int, help='Start hour (0-23) - used for hourly batch processing')
+    parser.add_argument('--end-hour', type=int, help='End hour (0-23) - used for hourly batch processing')
+    parser.add_argument('--start-time', help='Specific start time (YYYYMMDD.HHMMSS) - overrides start-hour')
+    parser.add_argument('--end-time', help='Specific end time (YYYYMMDD.HHMMSS) - overrides end-hour')
     parser.add_argument('--regrid-ratio', type=int, default=None, 
                        help='Regridding ratio (default: 5 for d3, 25 for d4 to achieve 2.5km grid spacing)')
     parser.add_argument('--n-workers', type=int, default=1, help='Number of parallel workers (default: 1 for serial mode, >1 for parallel)')
@@ -223,8 +223,18 @@ def main():
     log_dir = 'logs'
     os.makedirs(log_dir, exist_ok=True)
     
-    # Set up logging
-    log_file = f'{log_dir}/regrid_{args.case_date}_{args.file_type}_{args.domain}_{args.start_hour:02d}-{args.end_hour:02d}.log'
+    # Set up logging with appropriate filename
+    if args.start_time and args.end_time:
+        # Use timestamp-based filename for specific time processing
+        time_str = args.start_time.replace('.', '_')
+        log_file = f'{log_dir}/regrid_{args.case_date}_{args.file_type}_{args.domain}_{time_str}.log'
+    elif args.start_hour is not None and args.end_hour is not None:
+        # Use hourly range filename for batch processing
+        log_file = f'{log_dir}/regrid_{args.case_date}_{args.file_type}_{args.domain}_{args.start_hour:02d}-{args.end_hour:02d}.log'
+    else:
+        # Fallback filename
+        log_file = f'{log_dir}/regrid_{args.case_date}_{args.file_type}_{args.domain}.log'
+    
     setup_logging(log_file)
     logger = logging.getLogger(__name__)
     
@@ -240,19 +250,30 @@ def main():
     case_date = args.case_date
     
     # Calculate start and end times
-    # Each case runs from 12:00:00 to 23:59:59
-    # The last hour (23) extends to next day's 00:00:00 to include the final file
-    start_time = datetime.strptime(f"{case_date}{args.start_hour:02d}0000", '%Y%m%d%H%M%S')
-    
-    # If end_hour is 23 (last hour), extend to next day 00:00:00
-    case_date_obj = datetime.strptime(case_date, '%Y%m%d')
-    if args.end_hour == 23:
-        # Extend to next day 00:00:00
-        next_day = case_date_obj + timedelta(days=1)
-        end_time = datetime.strptime(f"{next_day.strftime('%Y%m%d')}000000", '%Y%m%d%H%M%S')
-        logger.info(f"Last hour of case - extending to next day: {end_time}")
+    # Priority: specific start-time/end-time > hourly start-hour/end-hour
+    if args.start_time and args.end_time:
+        # Use specific times if provided
+        start_time = datetime.strptime(args.start_time, '%Y%m%d.%H%M%S')
+        end_time = datetime.strptime(args.end_time, '%Y%m%d.%H%M%S')
+        logger.info(f"Using specific time range: {start_time} to {end_time}")
+    elif args.start_hour is not None and args.end_hour is not None:
+        # Use hourly batch mode
+        # Each case runs from 12:00:00 to 23:59:59
+        # The last hour (23) extends to next day's 00:00:00 to include the final file
+        start_time = datetime.strptime(f"{case_date}{args.start_hour:02d}0000", '%Y%m%d%H%M%S')
+        
+        # If end_hour is 23 (last hour), extend to next day 00:00:00
+        case_date_obj = datetime.strptime(case_date, '%Y%m%d')
+        if args.end_hour == 23:
+            # Extend to next day 00:00:00
+            next_day = case_date_obj + timedelta(days=1)
+            end_time = datetime.strptime(f"{next_day.strftime('%Y%m%d')}000000", '%Y%m%d%H%M%S')
+            logger.info(f"Last hour of case - extending to next day: {end_time}")
+        else:
+            end_time = datetime.strptime(f"{case_date}{args.end_hour:02d}5959", '%Y%m%d%H%M%S')
     else:
-        end_time = datetime.strptime(f"{case_date}{args.end_hour:02d}5959", '%Y%m%d%H%M%S')
+        logger.error("Must specify either --start-time/--end-time or --start-hour/--end-hour")
+        sys.exit(1)
     
     # Determine input directory
     if args.input_dir:
@@ -277,10 +298,11 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     
     # File base name
-    if args.file_type == 'methamsl':
-        filebase = f"corlasso_methamsl_{case_date}00{args.ensemble}{args.domain}_base_M1.m1."
-    else:
-        filebase = f"corlasso_cldhamsl_{case_date}00{args.ensemble}{args.domain}_base_M1.m1."
+    # if args.file_type == 'methamsl':
+    #     filebase = f"corlasso_methamsl_{case_date}00{args.ensemble}{args.domain}_base_M1.m1."
+    # else:
+    #     filebase = f"corlasso_cldhamsl_{case_date}00{args.ensemble}{args.domain}_base_M1.m1."
+    filebase = f"corlasso_{args.file_type}_{case_date}00{args.ensemble}{args.domain}_base_M1.m1."
     
     logger.info(f"Processing {args.file_type} files for case {case_date}, domain {args.domain}")
     logger.info(f"Input directory: {in_dir}")
@@ -298,18 +320,28 @@ def main():
     # Prepare file list for processing
     file_list = [(f, filebase, out_dir, filebase) for f in files]
     
+    # Handle vertical coordinate names based on file type
+    if 'hamsl' in args.file_type:
+        z_coord = 'HAMSL'
+        z_dimname = 'HAMSL'
+    elif args.file_type == 'met':
+        z_coord = 'HAMSL'
+        z_dimname = 'bottom_top'
+    elif args.file_type == 'cld':
+        z_coord = None
+        z_dimname = 'bottom_top'
     # Config
     config = {
         'time_dimname': 'Time',
         'x_coordname': 'XLONG',
         'y_coordname': 'XLAT',
-        'z_coordname': 'HAMSL',
+        'z_coordname': z_coord,
         'x_dimname': 'west_east',
         'y_dimname': 'south_north',
-        'z_dimname': 'HAMSL',
+        'z_dimname': z_dimname,
         'regrid_ratio': args.regrid_ratio,
     }
-    
+
     # Process batch
     results = process_batch_files(file_list, config, n_workers=args.n_workers)
     

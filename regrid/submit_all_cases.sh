@@ -8,8 +8,7 @@
 # Array of case dates and ensemble members
 # (matching the combinations from make_calc_stats_slurm_scripts_les.sh)
 CASE_DATES=(
-    # "20181129" "20181129" "20181129" "20181129"
-    "20181129" "20181129" "20181129"
+    "20181129" "20181129" "20181129" "20181129"
     "20181204" "20181204" 
     "20181205" 
     "20181219" 
@@ -21,8 +20,7 @@ CASE_DATES=(
 )
 
 ENSEMBLES=(
-    # "gefs00" "gefs03" "gefs09" "gefs18"
-    "gefs03" "gefs09" "gefs18"
+    "gefs00" "gefs03" "gefs09" "gefs18"
     "gefs18" "gefs19" 
     "gefs01" 
     "eda09" 
@@ -34,7 +32,9 @@ ENSEMBLES=(
 )
 
 # File types to process
-FILE_TYPES=("methamsl" "cldhamsl")
+# FILE_TYPES=("methamsl" "cldhamsl")
+# FILE_TYPES=("met" "cld")
+FILE_TYPES=("cld")
 
 # Domains
 DOMAINS=("d3" "d4")
