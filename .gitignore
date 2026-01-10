@@ -1,3 +1,10 @@
+# Config/Slrum files #
+######################
+config_csapr*_20*
+config_lasso_wrf*_20*
+slurm_lasso_wrf*_20*
+slurm_csapr*_20*
+
 # Python #
 ##########
 */__pycache__/*
