@@ -1,7 +1,7 @@
 #!/bin/bash
 # Create LASSO cell tracking config and slurm scripts
 
-submit_job="yes"
+submit_job="no"
 # Specify resolution: 'LES' or 'MESO'
 # resolution="MESO"
 # Specify configuration: 'base' or 'morr'
@@ -23,13 +23,13 @@ mkdir -p "${log_dir}"
 # D4 (100m) 5min tracking
 # config_template=${template_dir}"config_lasso_wrf100m_template.yml"
 # D4 (100m) 5min regrid to 2.5km tracking
-config_template=${template_dir}"config_lasso_wrf100m_5min_regrid2.5km_template.yml"
+# config_template=${template_dir}"config_lasso_wrf100m_5min_regrid2.5km_template.yml"
 # D4 (100m) 15min tracking
-# config_template=${template_dir}"config_lasso_wrf100m_15min_template.yml"
-# slurm_template=${template_dir}"slurm_lasso_wrf100m_template.sh"
+config_template=${template_dir}"config_lasso_wrf100m_15min_template.yml"
+slurm_template=${template_dir}"slurm_lasso_wrf100m_template.sh"
 # D4 (100m) 15min regrid to 2.5km tracking
 # config_template=${template_dir}"config_lasso_wrf100m_15min_regrid2.5km_template.yml"
-slurm_template=${template_dir}"slurm_lasso_wrf100m_template.sh"
+# slurm_template=${template_dir}"slurm_lasso_wrf100m_template.sh"
 
 # D3 (500m) 5min tracking
 # config_template=${template_dir}"config_lasso_wrf500m_template.yml"

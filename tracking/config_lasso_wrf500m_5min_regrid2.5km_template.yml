@@ -25,43 +25,43 @@ run_regridmask: False
 # run_parallel: 1 (local cluster), 2 (Dask MPI)
 run_parallel: 1
 nprocesses: 24  # Number of processors to use if run_parallel=1
-dask_tmp_dir: '/tmp'  # Dask temporary directory if run_parallel=1
+dask_tmp_dir: /tmp  # Dask temporary directory if run_parallel=1
 timeout: 360  # [seconds] Dask timeout limit
 
 # Start/end date and time
 startdate: 'STARTDATE.1200'
 enddate: 'ENDDATE.0000'
 # Ensemble member name
-ensmember: 'ENSMEMBER'
-domain: 'd3'
-# Time frequency of input used for tracking (e.g., '5min', '15min')
-sample_time_freq: '5min'
+ensmember: ENSMEMBER
+domain: d3
+# Time frequency of input used for tracking (e.g., 5min, 15min)
+sample_time_freq: 5min
 
 # Specify tracking input data date/time string format
 # This is only used to identify the files within the tracking period
 # E.g., databasename20181101.011503.nc --> yyyymodd.hhmmss
 # E.g., databasename2018-11-01_01:15:00 --> yyyy-mo-dd_hh:mm:ss
-time_format: 'yyyymodd.hhmmss'
-rawdatabasename: 'corlasso_cldhamsl_STARTDATE00ENSMEMBERd3_CONFIG_M1.m1.'
-databasename: 'reg_refl_'
+time_format: yyyymodd.hhmmss
+rawdatabasename: corlasso_cldhamsl_STARTDATE00ENSMEMBERd3_CONFIG_M1.m1.
+databasename: reg_refl_
 
 # Input files directory
-rawdata_path: '/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/'
+rawdata_path: /gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/
 # Regrid reflectivity files directory
-clouddata_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3_5min_2.5km/run/'
+clouddata_path: /gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3_5min_2.5km/run/
 # Working directory for the tracking data
-root_path: '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3_5min_2.5km/'
+root_path: /gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d3_5min_2.5km/
 # Working sub-directory names
-tracking_path_name: 'tracking'
-stats_path_name: 'stats'
-pixel_path_name: 'celltracking'
+tracking_path_name: tracking
+stats_path_name: stats
+pixel_path_name: celltracking
 
 # Range mask variable (for compatibility purpose with radar data only)
-rangemask_varname: 'mask110'
+rangemask_varname: mask110
 
 # Specify types of feature being tracked
 # This adds additional feature-specific statistics to be computed
-feature_type: 'radar_cells'
+feature_type: radar_cells
 
 # Regrid parameters
 regrid_ratio: 5
@@ -70,11 +70,11 @@ regrid_ratio: 5
 advection_field_threshold: 10    # radar reflectivity threshold [dBZ]
 advection_med_filt_len: 9         # median filter length for advection speed time seires [number of points]
 advection_max_movement_mps: 60    # maximum advection speed allowed [m/s]
-advection_mask_method: 'greater'  # masking method
+advection_mask_method: greater  # masking method
 advection_buffer: 6  # number of grid points around the edge of domain to buffer
 advection_size_threshold: 10  # number of min valid points to calculate advection
 advection_tiles: [1,1]   # number of tiles to calculate advection [y,x]
-advection_filename: 'advection_'
+advection_filename: advection_
 # Subset boundary [lon_min, lat_min, lon_max, lat_max]
 geolimits: [-33.3, -65.9, -30.8, -63.4]
 
@@ -98,7 +98,7 @@ conv_rad_start: 4.5
 # Background reflectivity step-function increment [dB]
 bkg_refl_increment: 5
 # Convolution method to calculate background reflectivity: 'ndimage' (default), 'signal' (FFT)
-convolve_method: 'ndimage'
+convolve_method: ndimage
 # Maximum convective radius dilation [km]
 maxConvRadius: 5
 # Define a set of radii for final step of convective cell expansion [km]
@@ -124,14 +124,17 @@ return_diag: True
 # Radar file data dimensions and reflectivity variable name
 dx: 2500  # meter
 dy: 2500  # meter
-time_dimname: "Time"
-x_dimname: "west_east"
-y_dimname: "south_north"
-z_dimname: "HAMSL"
-x_varname: "XLONG"
-y_varname: "XLAT"
-z_varname: "HAMSL"
-reflectivity_varname: 'REFL_10CM'
+time_dimname: Time
+x_dimname: west_east
+y_dimname: south_north
+z_dimname: HAMSL
+x_coordname: XLONG
+y_coordname: XLAT
+z_coordname: HAMSL
+reflectivity_varname: REFL_10CM
+# The vertical coordinate type: height or pressure
+# If omitted, will auto-detect based on whether coordinate is increasing/decreasing
+z_coord_type: height
 # Input data source: 'radar', 'wrf', 'wrf_regrid'
 input_source: 'wrf_regrid'
 

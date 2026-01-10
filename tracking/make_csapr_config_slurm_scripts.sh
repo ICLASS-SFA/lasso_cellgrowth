@@ -1,15 +1,15 @@
 #!/bin/bash
 # Create CSAPR cell tracking config and slurm scripts
 
-submit_job="yes"
+submit_job="no"
 # Specify resolution: '500m' or '2.5km'
-resolution="2.5km"
-# resolution="500m"
+# resolution="2.5km"
+resolution="500m"
 
 # Directory for templates (config and slurm)
 template_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/tracking/"
 # Output directory for generated config and slurm scripts
-output_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/slurm/"
+output_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/tracking/slurm/"
 # Log directory for slurm output
 log_dir="${output_dir}log/"
 # PyFLEXTRKR code directory
