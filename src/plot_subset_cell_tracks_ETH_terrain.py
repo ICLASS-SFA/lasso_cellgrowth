@@ -56,6 +56,7 @@ def parse_cmd_args():
     parser.add_argument("--subset", help="flag to subset data (0:no, 1:yes)", type=int, default=0)
     parser.add_argument("--figbasename", help="output figure base name", default="")
     parser.add_argument("--figsize", nargs='+', help="figure size (width, height) in inches", type=float, default=[8,7])
+    parser.add_argument("--title_suffix", help="Figure title suffix", default="")
     parser.add_argument("--output", help="ouput directory", default=None)
     args = parser.parse_args()
 
@@ -71,6 +72,7 @@ def parse_cmd_args():
         'subset': args.subset,
         'figbasename': args.figbasename,
         'figsize': args.figsize,
+        'title_suffix': args.title_suffix,
         'out_dir': args.output,
     }
 
@@ -269,6 +271,7 @@ def plot_map(pixel_dict, plot_info, map_info, track_dict):
     cbticks = plot_info['cbticks']
     fontsize = plot_info['fontsize']
     timestr = plot_info['timestr']
+    figtitle = plot_info['figtitle']
     figname = plot_info['figname']
     figsize = plot_info['figsize']
     show_tracks = plot_info.get('show_tracks', True)
@@ -417,7 +420,7 @@ def plot_map(pixel_dict, plot_info, map_info, track_dict):
     #     ax1.plot([radar_lon,lon2], [radar_lat,lat2], color='k', lw=0.4, transform=ccrs.Geodetic(), zorder=5)
     # Reflectivity colorbar
     cb1 = plt.colorbar(cf1, cax=cax1, label=cblabels, ticks=cbticks, extend='both')
-    ax1.set_title(timestr)
+    ax1.set_title(figtitle)
 
     # Thread-safe figure output
     canvas = FigureCanvas(fig)
@@ -449,6 +452,7 @@ def work_for_time_loop(datafile, track_dict, map_info, plot_info):
     figdir = plot_info.get('figdir')
     figbasename = plot_info.get('figbasename')
     varname_fill = plot_info.get('varname_fill')
+    title_suffix = plot_info.get('title_suffix', '')
 
     # Read terrain data
     ds_ter = xr.open_dataset(terrain_file)
@@ -515,6 +519,7 @@ def work_for_time_loop(datafile, track_dict, map_info, plot_info):
 
         # titles = [timestr]
         timestr = ds['time'].squeeze().dt.strftime("%Y-%m-%d %H:%M:%S UTC").data
+        figtitle = f"{timestr} {title_suffix}"
         fignametimestr = ds['time'].squeeze().dt.strftime("%Y%m%d_%H%M%S").data.item()
         figname = f'{figdir}{figbasename}{fignametimestr}.png'
 
@@ -535,6 +540,7 @@ def work_for_time_loop(datafile, track_dict, map_info, plot_info):
             'HGT': HGT,
         }
         plot_info['timestr'] = timestr
+        plot_info['figtitle'] = figtitle
         plot_info['figname'] = figname
 
         # Call plotting function
@@ -561,6 +567,7 @@ if __name__ == "__main__":
     subset = args_dict.get('subset')
     figbasename = args_dict.get('figbasename')
     figsize = args_dict.get('figsize')
+    title_suffix = args_dict.get('title_suffix')
     out_dir = args_dict.get('out_dir')
 
     # Terrain file
@@ -574,8 +581,8 @@ if __name__ == "__main__":
     # Specify plotting info
     varname_fill = 'dbz_comp'
     # varname_fill = 'echotop10'
-    var_scale = 1     # scale factor for the variable
-    # var_scale = 1e-3    # scale factor for the variable
+    var_scale = 1     # scale factor for reflectivity
+    # var_scale = 1e-3    # scale factor for echo-top height (convert from m to km)
     # Colorfill levels
     levels = np.arange(-10, 70.1, 5)
     # levels = [1,1.5,2,2.5,3,3.5,4,4.5,5,6,7,8,9,10,12,14,16,18,20]
@@ -672,6 +679,7 @@ if __name__ == "__main__":
     os.makedirs(figdir, exist_ok=True)
     # Add to plot_info dictionary
     plot_info['figdir'] = figdir
+    plot_info['title_suffix'] = title_suffix
 
     # Get track stats data
     track_dict = get_track_stats(trackstats_file, start_datetime, end_datetime, dt_thres)

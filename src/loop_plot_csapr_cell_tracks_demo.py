@@ -15,10 +15,10 @@ if __name__ == "__main__":
 
     # Full set of runs
     # start_dates = [
-    #     "20181129",
+    #     "20190123",
     # ]
     start_dates = [
-        # "20181129",
+        "20181129",
         "20181204",
         "20181205", 
         "20181219", 
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     # Plotting code name
     code_name = '/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/plot_subset_cell_tracks_ETH_terrain.py'
     # config_filename = f'../config/config_csapr{resolution}_cu2.yml'
-    config_basename = f'/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/tracking/config_csapr{resolution}_'
+    config_basename = f'/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/tracking/slurm/config_csapr{resolution}_'
     out_dir_root = '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/csapr/quicklooks_trackpaths_terrain/'
     # out_dir_root = '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/csapr/quicklooks_trackpaths_ETH/'
     # out_dir_root = '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/csapr/quicklooks_trackpaths_ETH_terrain/'
@@ -50,6 +50,9 @@ if __name__ == "__main__":
     parallel = 1
     framerate = 2  # for 15min
 
+    # Set title suffix based on resolution
+    title_suffix = f'(CSAPR {resolution})'
+
     # Loop over dates
     for ii in range(0, len(start_dates)):
         idate = start_dates[ii]
@@ -61,8 +64,8 @@ if __name__ == "__main__":
         config = f'{config_basename}{idate}.yml'
         out_dir = f'{out_dir_root}/{idate}/'
         # Make quicklook plots
-        cmd = f'python {code_name} -s {sdate} -e {edate} -c {config} -p {parallel} --radar_lat {radar_lat} --radar_lon {radar_lon} ' + \
-              f'--output {out_dir} --figbasename {figbasename} --figsize {figsize[0]} {figsize[1]} --extent {extent[0]} {extent[1]} {extent[2]} {extent[3]}'
+        cmd = f"python {code_name} -s {sdate} -e {edate} -c {config} -p {parallel} --radar_lat {radar_lat} --radar_lon {radar_lon} --title_suffix '{title_suffix}' " + \
+              f"--output {out_dir} --figbasename {figbasename} --figsize {figsize[0]} {figsize[1]} --extent {extent[0]} {extent[1]} {extent[2]} {extent[3]}"
         if make_plots == True:
             print(cmd)
             subprocess.run(cmd, shell=True)

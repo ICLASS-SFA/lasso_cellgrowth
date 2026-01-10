@@ -12,17 +12,17 @@ import os
 if __name__ == "__main__":
 
     # Specify resolution: 'les' or 'meso'
-    resolution = 'meso'
-    # resolution = 'les'
+    # resolution = 'meso'
+    resolution = 'les'
     # Specify configuration: 'base' or 'morr'
     configuration = 'base'
     # Specify domain
     # domain = 'd2'
     # domain = 'd3'
-    # domain = 'd4'
-    domain = 'd2_15min'
+    # domain = 'd4_5min'
+    # domain = 'd2_15min'
     # domain = 'd3_15min'
-    # domain = 'd4_15min'
+    domain = 'd4_15min'
 
     # Flag to call Python codes to make plots
     make_plots = True
@@ -32,8 +32,8 @@ if __name__ == "__main__":
     if configuration == 'base':
         # start_dates = ["20190123", "20181129"]
         # ens_members = ["gefs18", "gefs09"]
-        # start_dates = ["20181129"]
-        # ens_members = ["gefs09"]
+        # start_dates = ["20190123"]
+        # ens_members = ["gefs18"]
         start_dates = [
             "20181129", "20181129", "20181129", "20181129",
             "20181204", "20181204", 
@@ -85,8 +85,9 @@ if __name__ == "__main__":
     # Plotting code name
     code_name = '/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/plot_subset_cell_tracks_ETH_terrain.py'
     # Tracking config base name
-    config_basename = '/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/tracking/config_lasso_'
+    config_basename = '/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/tracking/slurm/config_lasso_'
     # Plotting output directory
+    # out_dir_root = f'/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/{resolution}/quicklooks_trackpaths_terrain_5min/'
     out_dir_root = f'/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/{resolution}/quicklooks_trackpaths_terrain/'
     # out_dir_root = f'/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/{resolution}/quicklooks_trackpaths_ETH/'
     # out_dir_root = f'/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/{resolution}/quicklooks_trackpaths_ETH_terrain/'
@@ -104,7 +105,7 @@ if __name__ == "__main__":
     parallel = 1
 
     # Determine framerate based on domain
-    if (domain == 'd4') | (domain == 'd3') | (domain == 'd2'):
+    if (domain == 'd4') | (domain == 'd3') | (domain == 'd2') | (domain == 'd4_5min') | (domain == 'd3_5min') | (domain == 'd2_5min'):
         framerate = 6  # for 5min
     elif (domain == 'd4_15min') | (domain == 'd3_15min') | (domain == 'd2_15min'):
         framerate = 2  # for 15min
@@ -113,6 +114,16 @@ if __name__ == "__main__":
     if ('d2' in domain): gridspacing = 'wrf2.5km'
     if ('d3' in domain): gridspacing = 'wrf500m'
     if ('d4' in domain): gridspacing = 'wrf100m'
+
+    # Set title suffix based on domain
+    if 'd2' in domain:
+        title_suffix = '(LASSO 2.5 km)'
+    elif 'd3' in domain:
+        title_suffix = '(LASSO 500 m)'
+    elif 'd4' in domain:
+        title_suffix = '(LASSO 100 m)'
+    else:
+        title_suffix = ''
 
     # Loop over each case date
     for ii in range(0, len(start_dates)):
@@ -126,8 +137,8 @@ if __name__ == "__main__":
         config = f'{config_basename}{gridspacing}_{idate}_{imember}_{configuration}.yml'
         out_dir = f'{out_dir_root}/{idate}/{imember}/{configuration}/{domain}/'
         # Make quicklook plots
-        cmd = f'python {code_name} -s {sdate} -e {edate} -c {config} -p {parallel} --radar_lat {radar_lat} --radar_lon {radar_lon} ' + \
-              f'--output {out_dir} --figbasename {figbasename} --figsize {figsize[0]} {figsize[1]} --extent {extent[0]} {extent[1]} {extent[2]} {extent[3]}'
+        cmd = f"python {code_name} -s {sdate} -e {edate} -c {config} -p {parallel} --radar_lat {radar_lat} --radar_lon {radar_lon} --title_suffix '{title_suffix}' " + \
+              f"--output {out_dir} --figbasename {figbasename} --figsize {figsize[0]} {figsize[1]} --extent {extent[0]} {extent[1]} {extent[2]} {extent[3]}"
         # import pdb; pdb.set_trace()
         if make_plots == True:
             print(cmd)

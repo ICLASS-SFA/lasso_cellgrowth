@@ -64,7 +64,7 @@ if __name__ == "__main__":
         sys.exit('Unknown resolution!')
 
     # Input figures root directory
-    in_dir_root = f'/gpfs/wolf/atm131/proj-shared/zfeng/cacti/{resolution}/quicklooks_trackpaths/'
+    in_dir_root = f'/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/{resolution}/quicklooks_trackpaths/'
     # Output animation directory
     out_dir = f'{in_dir_root}animation/'
     os.makedirs(out_dir, exist_ok=True)
