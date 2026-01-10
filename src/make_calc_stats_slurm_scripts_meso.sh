@@ -7,7 +7,7 @@ submit_job="yes"
 configuration="base"
 
 config_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
-slurm_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
+slurm_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/job_scripts/"
 # D2 (2.5km) 5min tracking
 config_template=${config_dir}"config_lasso_wrf2.5km_template.yml"
 # D2 (2.5km) 15min trcking

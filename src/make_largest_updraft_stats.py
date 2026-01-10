@@ -332,11 +332,19 @@ if __name__ == "__main__":
     stats_path = config['stats_path']
     startdate = config['startdate']
     enddate = config['enddate']
+    resolution = config['resolution']
 
     # Input files
     in_basename = 'trackstats_'
-    in_basename_w = 'stats_3d_w_'
-    in_basename_env = 'stats_1d_env_2location_'
+    # in_basename_w = 'stats_3d_w_'
+    in_basename_w = 'stats_3d_w_fixshell_'
+    # Environment file basename based on resolution
+    if resolution == 'les':
+        # in_basename_env = 'stats_1d_env_2location_'
+        # in_basename_env = 'stats_avg1d_env21x21_'
+        in_basename_env = 'stats_avg1d_env9x9_'
+    elif resolution == 'meso':
+        in_basename_env = 'stats_avg1d_env9x9_'
     tfiles = f'{stats_path}{in_basename}{startdate}_{enddate}.nc'
     wfiles = f'{stats_path}{in_basename_w}{startdate}_{enddate}.nc'
     envfiles = f'{stats_path}{in_basename_env}{startdate}_{enddate}.nc'
@@ -348,7 +356,8 @@ if __name__ == "__main__":
     # Buffer height above which to filter updraft variables [km]
     ETH_buffer = 1.0
     # Time for representative CI environment
-    time_env = -3
+    # time_env = -3     # for avg1d_env_2location
+    time_env = -1       # for avg1d_env21x21
     # Define a time window to sample updraft
     time_start = 0  # [min]
     time_end = 60  # [min]
@@ -371,10 +380,12 @@ if __name__ == "__main__":
     print(f'Number of tracks: {ntracks}')
 
     # Read W data
-    dsw = xr.open_dataset(wfiles).isel(core=0)
+    drop_vars = ['base_time']
+    dsw = xr.open_dataset(wfiles, drop_variables=drop_vars).isel(core=0)
 
     # Read ENV data (select CI location and representative time before CI, drop 'height' dimension)
-    dse = xr.open_dataset(envfiles).sel(location=1).drop_dims(['height']).sel(times=time_env)
+    # dse = xr.open_dataset(envfiles).sel(location=1).drop_dims(['height']).sel(times=time_env)
+    dse = xr.open_dataset(envfiles).drop_dims(['height']).sel(times=time_env)
 
     # Combine datasets by coordinates
     ds = xr.combine_by_coords([dst, dsw, dse], combine_attrs='drop_conflicts')

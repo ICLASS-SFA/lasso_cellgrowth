@@ -199,6 +199,17 @@ def extract_env_prof(
     pixel_exist = os.path.isfile(fname_pixel)
     # import pdb; pdb.set_trace()
 
+    # Skip processing if any required file does not exist
+    if not (pixel_exist and met_exist and cld_exist):
+        print(f'WARNING: Skipping track - missing required file(s):')
+        if not pixel_exist:
+            print(f'  Missing pixel file: {fname_pixel}')
+        if not met_exist:
+            print(f'  Missing met file: {fname_met}')
+        if not cld_exist:
+            print(f'  Missing cld file: {fname_cld}')
+        return None, None, None, None
+
     if pixel_exist:
         dsp = xr.open_dataset(fname_pixel)
         nx_p = dsp.sizes['lon']

@@ -17,7 +17,6 @@ from skimage.segmentation import expand_labels
 from scipy.ndimage import generate_binary_structure, binary_dilation, iterate_structure
 import dask
 import dask.array as da
-from dask.base import clear_cache
 from dask.distributed import Client, LocalCluster
 import psutil
 import concurrent.futures
@@ -32,16 +31,9 @@ def log_memory_usage(stage_name):
 def cleanup_memory():
     """Enhanced memory cleanup function"""
     gc.collect()
-    # Clear Dask cache more aggressively
-    try:
-        # Clear all caches
-        da.core.clear_cache()
-        # Force garbage collection in Dask
-        clear_cache()
-        # Clear any remaining delayed objects
-        dask.base.clear_cache()
-    except (ImportError, AttributeError):
-        pass
+    # Force garbage collection multiple times
+    gc.collect()
+    gc.collect()
 
 def monitor_memory_and_cleanup(threshold_gb=40):
     """Monitor memory usage and cleanup if threshold exceeded"""
@@ -956,8 +948,10 @@ if __name__ == '__main__':
     metfilelist = sorted(glob.glob(f'{metfile_path}{methamsl_filebase}*.nc'))
     cldfilelist = sorted(glob.glob(f'{metfile_path}{cldhamsl_filebase}*.nc'))
     nmetfiles = len(metfilelist)
+    ncldfiles = len(cldfilelist)
     print(f'Number of MET files: {nmetfiles}')
-    
+    print(f'Number of CLD files: {ncldfiles}')
+
     # Get basetime from pixel files
     pixel_basetime, pixelfile_dict = calc_basetime(pixelfilelist, pixel_filebase)
     # Get basetime from met & cld files
@@ -1276,7 +1270,16 @@ if __name__ == '__main__':
                 # Loop over each variable and assign values to output dictionary
                 for ivar in var_names3d:
                     if iVAR3d[ivar].ndim == 3:
-                        out_dict[ivar][trackindices,timeindices,:,:] = iVAR3d[ivar]
+                        # Check shape compatibility before assignment
+                        expected_shape = out_dict[ivar][trackindices,timeindices,:,:].shape
+                        actual_shape = iVAR3d[ivar].shape
+                        if expected_shape == actual_shape:
+                            out_dict[ivar][trackindices,timeindices,:,:] = iVAR3d[ivar]
+                        else:
+                            print(f'WARNING: Shape mismatch for {ivar} in file {ifile}:')
+                            print(f'  Expected shape: {expected_shape}, got: {actual_shape}')
+                            print(f'  Track indices: {len(trackindices)}, Time indices: {len(timeindices)}')
+                            print(f'  Skipping assignment for this file.')
                     else:
                         print(f'Warning: {ivar} dimension is not 3.')
             if iVAR2d is not None:
@@ -1285,7 +1288,16 @@ if __name__ == '__main__':
                 # Loop over each variable and assign values to output dictionary
                 for ivar in var_names2d:
                     if iVAR2d[ivar].ndim == 2:
-                        out_dict[ivar][trackindices,timeindices,:] = iVAR2d[ivar]
+                        # Check shape compatibility before assignment
+                        expected_shape = out_dict[ivar][trackindices,timeindices,:].shape
+                        actual_shape = iVAR2d[ivar].shape
+                        if expected_shape == actual_shape:
+                            out_dict[ivar][trackindices,timeindices,:] = iVAR2d[ivar]
+                        else:
+                            print(f'WARNING: Shape mismatch for {ivar} in file {ifile}:')
+                            print(f'  Expected shape: {expected_shape}, got: {actual_shape}')
+                            print(f'  Track indices: {len(trackindices)}, Time indices: {len(timeindices)}')
+                            print(f'  Skipping assignment for this file.')
                     else:
                         print(f'Warning: {ivar} dimension is not 2.')
 

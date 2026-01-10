@@ -11,12 +11,16 @@ make_slurm="yes"
 # Specify configuration: 'base' or 'morr'
 configuration="base"
 
-config_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
-slurm_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
+config_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/configs/"
+slurm_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/job_scripts/"
 # D4 (100m) 5min tracking
-config_template=${config_dir}"config_lasso_wrf100m_template.yml"
+# config_template=${config_dir}"config_lasso_wrf100m_template.yml"
+# D4 (100m) 5min tracking with 2.5km regridding
+# config_template=${config_dir}"config_lasso_wrf100m_regrid2.5km_template.yml"
 # D3 (500m) 5min tracking
 # config_template=${config_dir}"config_lasso_wrf500m_template.yml"
+# D3 (500m) 5min tracking with 2.5km regridding
+config_template=${config_dir}"config_lasso_wrf500m_regrid2.5km_template.yml"
 # D4 (100m) 15min tracking
 # config_template=${config_dir}"config_lasso_wrf100m_15min_template.yml"
 # D3 (500m) 15min tracking

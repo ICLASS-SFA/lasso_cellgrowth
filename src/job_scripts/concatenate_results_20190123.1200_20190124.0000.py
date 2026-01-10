@@ -9,11 +9,12 @@ import os
 # Configuration
 startdate = '20190123.1200'
 enddate = '20190124.0000'
+input_path = '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/20190123/eda05/base/d4/stats/tmp/'
 output_path = '/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/20190123/eda05/base/d4/stats/'
 output_basename = 'stats_3d_w_fixshell_'
 
 # Find all batch result files
-pattern = f'{output_path}{output_basename}{startdate}_{enddate}_t*.nc'
+pattern = f'{input_path}{output_basename}{startdate}_{enddate}_t*.nc'
 batch_files = sorted(glob.glob(pattern))
 print(f'Found {len(batch_files)} batch files to concatenate')
 
@@ -31,6 +32,14 @@ for f in batch_files:
 
 print('Concatenating along tracks dimension...')
 combined = xr.concat(datasets, dim='tracks')
+
+# Remove duplicate index values along the 'tracks' dimension
+print('Removing duplicate tracks indices ...')
+combined = combined.drop_duplicates(dim='tracks', keep='first')
+
+# Drop unnecessary variables
+drop_vars = ['base_time']
+combined = combined.drop_vars(drop_vars)
 
 # Save combined file
 output_file = f'{output_path}{output_basename}{startdate}_{enddate}.nc'

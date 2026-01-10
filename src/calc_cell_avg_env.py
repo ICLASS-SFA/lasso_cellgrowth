@@ -12,8 +12,6 @@ import copy
 from wrf import interplevel
 from itertools import repeat
 from multiprocessing import Pool
-# import dask
-# from dask.distributed import Client, LocalCluster, wait
 
 def remove_dictionary_entry(dictionary, key):
     # Remove the entry with key and ignore the return value
@@ -93,6 +91,7 @@ def calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config):
     print(f'track: {tracknumber}')
     nx_center = config['nx_center']
     ny_center = config['ny_center']
+    freq_prior = config['freq_prior']
 
     # Specify vertical level to interpolate to (HAMSL)
     z_lev_interp = np.arange(0, 20000.1, 200)
@@ -109,10 +108,35 @@ def calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config):
         y=slice(-ny_center, ny_center), 
         x=slice(-nx_center, nx_center),
     )
-    # ntimes = ds3d.dims['times']
-    # nz = ds3d.dims['z']
-    # ny = ds3d.dims['y']
-    # nx = ds3d.dims['x']
+    ntimes = ds3d.sizes['times']
+    nx = ds3d.sizes['x']
+    ny = ds3d.sizes['y']
+    nz = ds3d.sizes['z']
+    
+    # 2D variables
+    # Compute rain rates
+    RAINNC = ds3d['RAINNC']
+    # Rain rate = dRAINNC / dt (freq_prior is in minutes, divide by 60 min to convert to hour)
+    rainrate_diff = RAINNC.diff(dim='times') / (freq_prior/60.0)
+    # Pad with NaN for the first time step to maintain same dimensions
+    rainrate = xr.concat([rainrate_diff.isel(times=0) * np.nan, rainrate_diff], dim='times')
+    rainrate.attrs = {'long_name':'RAIN RATE', 'units': 'mm/h'}
+    # Domain statistics
+    rainrate_p95 = rainrate.quantile(0.95, dim=('y','x'), keep_attrs=True)
+    rainrate_avg = rainrate.mean(dim=('y','x'), keep_attrs=True)
+
+    # Compute LWP statistics
+    lwp_p95 = ds3d['LWP'].quantile(0.95, dim=('y','x'), keep_attrs=True)
+    lwp_avg = ds3d['LWP'].mean(dim=('y','x'), keep_attrs=True)
+    # Cloudy fraction
+    LWP_thresh = 0.1  # [g/m^2]
+    lwp_valid_count = (~ds3d['LWP'].isnull()).sum(dim=('y','x'))
+    lwp_frac = (ds3d['LWP'] > LWP_thresh).sum(dim=('y','x')) / lwp_valid_count
+    lwp_frac.attrs = {'long_name':'LWP area fraction', 'units': 'unitless', 'LWP_threshold':LWP_thresh}
+    # Convective cell fraction
+    cell_frac = (ds3d['conv_mask'] == 1).sum(dim=('y','x')) / lwp_valid_count
+    cell_frac.attrs = {'long_name':'Convective cell area fraction', 'units': 'unitless'}
+
     # 3D variables
     tk = ds3d['temperature']
     qv = ds3d['qv']
@@ -122,13 +146,8 @@ def calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config):
     u = ds3d['u']
     v = ds3d['v']
     w = ds3d['w']
-
     # Compute Theta & ThetaE
     Theta, ThetaE = calc_thetas(tk, pressure, qv)
-
-    # Compute Emanuel ThetaE
-    iThte = calc_theta_e(tk, pressure, qv, iQliq, rh)
-    import pdb; pdb.set_trace()
 
     # Interpolate to fixed height
     _tk = interplevel(tk, height, z_lev_interp)
@@ -218,26 +237,24 @@ def calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config):
         'rh_min': _rh_min_attrs,
     }
 
-    # # Read 2D environment
-    # ds2d = xr.open_dataset(file_env2d)
-    # xcoord = ds2d['x']
-    # ycoord = ds2d['y']
-    # times_coord = ds2d['times']
-    # tracks_coord = ds2d['tracks']
-    # ds2d = ds2d.sel(
-    #     tracks=tracknumber,
-    #     y=slice(0, 0), 
-    #     x=slice(0, 0),
-    #     # y=slice(-ny_center, ny_center), 
-    #     # x=slice(-nx_center, nx_center),
-    # ).squeeze()
-
     # Add 2D variables to the dictionary
     var2d_dict = {}
     var2d_attrs = {}
-    # for var_name, values in ds2d.items():
-    #     var2d_dict[var_name] = values
-    #     var2d_attrs[var_name] = values.attrs
+
+    # Add computed 2D variables
+    var2d_dict['lwp_p95'] = lwp_p95
+    var2d_dict['lwp_avg'] = lwp_avg
+    var2d_dict['rainrate_avg'] = rainrate_avg
+    var2d_dict['rainrate_p95'] = rainrate_p95
+    var2d_dict['lwp_frac'] = lwp_frac
+    var2d_dict['cell_frac'] = cell_frac
+
+    var2d_attrs['lwp_p95'] = lwp_p95.attrs
+    var2d_attrs['lwp_avg'] = lwp_avg.attrs
+    var2d_attrs['rainrate_avg'] = rainrate_avg.attrs
+    var2d_attrs['rainrate_p95'] = rainrate_p95.attrs
+    var2d_attrs['lwp_frac'] = lwp_frac.attrs
+    var2d_attrs['cell_frac'] = cell_frac.attrs
 
     # Add 2D variables from Jim's environment data to the dictionary
     dsj2d = xr.open_dataset(file_env2d_jim)
@@ -253,6 +270,8 @@ def calc_envs_track(file_env3d, file_env2d_jim, tracknumber, config):
     ).squeeze()
 
     # Average over space
+    # In Jim's environment data, -911 means undefined values, replace them with NaN before averaging
+    dsj2d = dsj2d.where(dsj2d != -911, np.nan)
     dsj2d = dsj2d.mean(dim=('y', 'x'), keep_attrs=True)
 
     # Add 2D variables to the dictionary
@@ -330,8 +349,6 @@ def work_for_tracks(file_env3d, file_env2d_jim, output_filename, config):
             'units': 'm',
     }
 
-    # import pdb; pdb.set_trace()
-
     # # Remove tracknumbers from the list
     # var_names.remove('tracknumber')
     # var_attrs.pop('tracknumber', None)
@@ -367,8 +384,6 @@ def work_for_tracks(file_env3d, file_env2d_jim, output_filename, config):
             for ivar in var2d_names:
                 if iResult2d[ivar].ndim == 1:
                     out_dict[ivar][itrack, :] = iResult2d[ivar]
-                    # import pdb; pdb.set_trace()
-
 
     # Define a dataset containing all variables
     var_dict = {}
@@ -400,8 +415,6 @@ def work_for_tracks(file_env3d, file_env2d_jim, output_filename, config):
     dsout.to_netcdf(path=output_filename, mode='w', format='NETCDF4', 
                     unlimited_dims='tracks', encoding=encoding)
     print(f'Output: {output_filename}')
-
-    # import pdb; pdb.set_trace()
     return
 
 if __name__ == "__main__":
@@ -436,7 +449,6 @@ if __name__ == "__main__":
     print(f'Input: {file_env3d}')
     # print(f'Input: {file_env2d}')
     print(f'Env file: {file_env2d_jim}')
-    # import pdb; pdb.set_trace()
 
     # Output filename
     output_filename = f'{output_path}stats_avg1d_env{nx_grid}x{ny_grid}_{startdate}_{enddate}.nc'

@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
     # Config file directory (from tracking)
     config_dir = "/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/tracking/"
-    slurm_dir = "/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
+    slurm_dir = "/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/job_scripts/"
     # Config/slurm file basename
     if "csapr" in domain:
         config_basename = f"config_{domain}_"
@@ -92,7 +92,7 @@ if __name__ == "__main__":
             #SBATCH -p batch_all
             ##SBATCH -p batch_high_memory
             #SBATCH --exclusive
-            #SBATCH --output=log_lasso_{domain}_{sdate}_{ensmember}.log
+            #SBATCH --output=logs/log_lasso_{domain}_{sdate}_{ensmember}.log
             #SBATCH --mail-type=END
             #SBATCH --mail-user=zhe.feng@pnnl.gov
 

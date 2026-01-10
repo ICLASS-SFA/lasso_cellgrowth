@@ -417,10 +417,13 @@ def process_domain(domain, rootdir, output_dir, start_dates, time_offset='+2h'):
     in_basename_w = 'stats_3d_w_fixshell_'
     in_basename_wmask = 'stats_2d_wmask_'
     # Environment file basename depends on domain
-    if domain == 'd2':
+    if 'd2' in domain:
         in_basename_env = 'stats_avg1d_env9x9_'
     else:  # d3 or d4
-        in_basename_env = 'stats_avg1d_env21x21_'
+        if '2.5km' in domain:
+            in_basename_env = 'stats_avg1d_env9x9_'
+        else:
+            in_basename_env = 'stats_avg1d_env21x21_'
     
     # Domain 4 boundaries
     lon_range = [-65., -63.3]
@@ -435,7 +438,7 @@ def process_domain(domain, rootdir, output_dir, start_dates, time_offset='+2h'):
     case_hours_dict = get_case_hours_dict(time_offset)
     
     # For D3 and D4, use D3 hour ranges (adjusted for time offset)
-    if domain == 'd3':
+    if 'd3' in domain:
         case_hours_dict_d3 = {
             '20181129-gefs00': (12.0, 21.5),
             '20181129-gefs03': (12.0, 22.0),
@@ -457,7 +460,7 @@ def process_domain(domain, rootdir, output_dir, start_dates, time_offset='+2h'):
             '20190208-eda08': (12.0, 22.0),
         }
         case_hours_dict = case_hours_dict_d3
-    elif domain == 'd4':
+    elif 'd4' in domain:
         # Assume same cold pool development times in D4 as in D3
         case_hours_dict_d3 = {
             '20181129-gefs00': (12.0, 21.5),
@@ -557,7 +560,7 @@ Examples:
         '--domain',
         type=str,
         required=True,
-        choices=['d2', 'd3', 'd4', 'all'],
+        choices=['d2', 'd3', 'd4', 'd3_5min_2.5km', 'd4_5min_2.5km', 'all'],
         help='Domain to process (d2, d3, d4, or all)'
     )
     

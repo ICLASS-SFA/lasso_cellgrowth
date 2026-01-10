@@ -19,7 +19,7 @@ if __name__ == "__main__":
     # Number of jobs allowed to run simultaneously in job array
     # njobs_run = 60
     # Submit slurm job
-    submit_job = True
+    submit_job = False
 
     # Number of tracks to process per part
     ntracks_part = 50
