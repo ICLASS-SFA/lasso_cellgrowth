@@ -3,26 +3,24 @@
 # The dx=100m data is coarsen to dx=500m for tracking
 # Then the cell track masks are regridded back to the native 100m grid
 
-# Regrid input reflectivity
-run_regridreflectivity: True
 # Identify features to track
 run_idfeature: True
 # Tracking steps to run
-run_advection: True
+run_advection: False
 # Track single consecutive feature files
-run_tracksingle: True
+run_tracksingle: False
 # Run tracking for all files
-run_gettracks: True
+run_gettracks: False
 # Calculate feature statistics
-run_trackstats: True
+run_trackstats: False
 # Map tracking to pixel files
-run_mapfeature: True
+run_mapfeature: False
 # Regrid pixel files to original grid
-run_regridmask: True
+run_regridmask: False
 
 # Parallel processing set up
 # run_parallel: 1 (local cluster), 2 (Dask MPI)
-run_parallel: 1
+run_parallel: 0
 nprocesses: 12  # Number of processors to use if run_parallel=1
 # nprocesses: 32  # Number of processors to use if run_parallel=1
 dask_tmp_dir: /tmp  # Dask temporary directory if run_parallel=1
@@ -43,7 +41,7 @@ sample_time_freq: 5min
 # E.g., databasename2018-11-01_01:15:00 --> yyyy-mo-dd_hh:mm:ss
 time_format: yyyymodd.hhmmss
 rawdatabasename: corlasso_cldhamsl_STARTDATE00ENSMEMBERd4_CONFIG_M1.m1.
-databasename: reg_refl_
+databasename: corlasso_cldhamsl_STARTDATE00ENSMEMBERd4_CONFIG_M1.m1.
 
 # These are only used to calculate rain rate and Tb, not needed for tracking
 wrfout_path: /gpfs/wolf2/arm/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/les/out_d4/
@@ -56,9 +54,10 @@ tbrainrate_path: /gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/STARTDATE/EN
 rawdata_path: /gpfs/wolf2/arm/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/les/subset_d4/
 # rawdata_path: /gpfs/wolf2/arm/cli120/world-shared/d3m088/cacti/staged_runs_2/STARTDATE/ENSMEMBER/CONFIG/les/subset_d4/
 # Regrid reflectivity files directory
-clouddata_path: /gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4/run/
+# clouddata_path: /gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4/run/
+clouddata_path: /gpfs/wolf2/arm/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/les/subset_d4/
 # Working directory for the tracking data
-root_path: /gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4/
+root_path: /gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/les/STARTDATE/ENSMEMBER/CONFIG/d4_native/
 # Working sub-directory names
 tracking_path_name: tracking
 stats_path_name: stats
@@ -72,7 +71,7 @@ rangemask_varname: mask110
 feature_type: radar_cells
 
 # Regrid parameters
-regrid_ratio: 5
+# regrid_ratio: 5
 
 # Advection calculation parameters
 advection_field_threshold: 10    # radar reflectivity threshold [dBZ]
@@ -103,8 +102,23 @@ conv_rad_increment: 0.5
 conv_rad_start: 1.0
 # Background reflectivity step-function increment [dB]
 bkg_refl_increment: 5
-# Convolution method to calculate background reflectivity: ndimage (default), signal (FFT)
-convolve_method: ndimage
+# Convolution method for background reflectivity:
+#   ndimage: direct spatial convolution (exact, very slow at dx=100m)
+#   fft:     FFT-based convolution (recommended for high-res data where bkg_rad >> dx)
+convolve_method: fft
+# Convective core dilation method (controls binary expansion of cores based on background Ze):
+#   orig: binary_dilation per radius bin (exact, ~90s/file at dx=100m)
+#   edt:  distance_transform_edt (30x+ faster, ~1s/file; recommended for high-res data)
+dilate_method: edt
+# Convective cell expansion method (final outward expansion of cell footprints for tracking):
+#   orig: binary_dilation per core per radius (exact, ~800s/file at dx=100m -- very slow)
+#   fast: grey_dilation per radius (~8x vs orig, still ~100s/file at dx=100m)
+#   edt:  distance_transform_edt, single pass (~3000x vs orig, ~0.3s/file; recommended)
+expand_method: edt
+# Echo-top height calculation method:
+#   orig: level-by-level pixel scan (default; faster for high thresholds or sparse data)
+#   fast: vectorized scan (faster for low thresholds on dense/high-res data, e.g., thresh=10 on LES)
+echotop_method: fast
 # Maximum convective radius dilation [km]
 maxConvRadius: 5
 # Define a set of radii for final step of convective cell expansion [km]
@@ -128,8 +142,8 @@ radar_sensitivity: 0.0
 # Flag to output additional Steiner variables for diagnostic purpose
 return_diag: True
 # Radar file data dimensions and reflectivity variable name
-dx: 500  # meter
-dy: 500  # meter
+dx: 100  # meter
+dy: 100  # meter
 time_dimname: Time
 x_dimname: west_east
 y_dimname: south_north
@@ -144,7 +158,7 @@ z_coord_type: height
 
 # Specify data structure
 datatimeresolution: 0.08333     # hour
-pixel_radius: 0.5      # km
+pixel_radius: 0.1      # km
 ref_varname: dbz_comp
 
 # Tracking parameters

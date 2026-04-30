@@ -114,7 +114,7 @@ min_corearea: 6.25
 # Number of vertical level gaps allowed in calculating echo-top height
 echotop_gap: 4
 # Minimum height above surface elevation to filter the data
-sfc_dz_min: 500
+sfc_dz_min: 0
 # Maximum height above surface [m] to calculate low-level max reflectivity
 # (similar to lowest-level composite reflectiivty)
 sfc_dz_max: 3000

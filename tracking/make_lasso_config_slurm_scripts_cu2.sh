@@ -20,12 +20,14 @@ pyflex_dir="/ccsopen/home/zhe1feng1/program/PyFLEXTRKR-dev/runscripts"
 mkdir -p "${output_dir}"
 mkdir -p "${log_dir}"
 
+# D4 (100m) native grid tracking
+config_template=${template_dir}"config_lasso_wrf100m_native_template.yml"
 # D4 (100m) 5min tracking
 # config_template=${template_dir}"config_lasso_wrf100m_template.yml"
 # D4 (100m) 5min regrid to 2.5km tracking
 # config_template=${template_dir}"config_lasso_wrf100m_5min_regrid2.5km_template.yml"
 # D4 (100m) 15min tracking
-config_template=${template_dir}"config_lasso_wrf100m_15min_template.yml"
+# config_template=${template_dir}"config_lasso_wrf100m_15min_template.yml"
 slurm_template=${template_dir}"slurm_lasso_wrf100m_template.sh"
 # D4 (100m) 15min regrid to 2.5km tracking
 # config_template=${template_dir}"config_lasso_wrf100m_15min_regrid2.5km_template.yml"
@@ -62,29 +64,31 @@ slurm_basename=slurm_${part2}_${part3}_
 # Base runs
 if [ ${configuration} == "base" ]
 then
-    start_dates=(
-        "20181129" "20181129" "20181129" "20181129"
-        "20181204" "20181204" 
-        "20181205" 
-        "20181219" 
-        "20190122" "20190122"
-        "20190123" "20190123"
-        "20190125" "20190125"
-        "20190129" "20190129"
-        "20190208" "20190208"
-    )
-    # Long ensemble member names (for directory names)
-    ens_members=(
-        "gefs00" "gefs03" "gefs09" "gefs18" 
-        "gefs18" "gefs19" 
-        "gefs01" 
-        "eda09" 
-        "gefs01" "gefs18"
-        "eda05" "gefs18"
-        "eda07" "gefs11"
-        "eda09" "gefs11"
-        "eda03" "eda08"
-    )
+    start_dates=("20181129")
+    ens_members=("gefs09")
+    # start_dates=(
+    #     "20181129" "20181129" "20181129" "20181129"
+    #     "20181204" "20181204" 
+    #     "20181205" 
+    #     "20181219" 
+    #     "20190122" "20190122"
+    #     "20190123" "20190123"
+    #     "20190125" "20190125"
+    #     "20190129" "20190129"
+    #     "20190208" "20190208"
+    # )
+    # # Long ensemble member names (for directory names)
+    # ens_members=(
+    #     "gefs00" "gefs03" "gefs09" "gefs18" 
+    #     "gefs18" "gefs19" 
+    #     "gefs01" 
+    #     "eda09" 
+    #     "gefs01" "gefs18"
+    #     "eda05" "gefs18"
+    #     "eda07" "gefs11"
+    #     "eda09" "gefs11"
+    #     "eda03" "eda08"
+    # )
 fi
 # Morrison runs
 if [ ${configuration} == "morr" ]

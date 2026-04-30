@@ -3,14 +3,18 @@
 
 submit_job="yes"
 
+# Flag to make new config & slurm scripts (typically "yes")
+make_config="yes"
+make_slurm="yes"
+
 # Specify configuration: 'base' or 'morr'
 configuration="base"
 
-config_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/"
+config_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/configs/"
 slurm_dir="/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/src/job_scripts/"
 # D2 (2.5km) 5min tracking
 config_template=${config_dir}"config_lasso_wrf2.5km_template.yml"
-# D2 (2.5km) 15min trcking
+# D2 (2.5km) 15min tracking
 # config_template=${config_dir}"config_lasso_wrf2.5km_15min_template.yml"
 # Slurm template (shared for all configs)
 slurm_template=${slurm_dir}"slurm_lasso_template.sh"
@@ -87,8 +91,12 @@ for ((i = 0; i < ${#start_dates[@]}; ++i)); do
     config_file=${config_dir}${config_name}.yml
     slurm_file=${slurm_dir}${slurm_basename}${sdate}_${ensmember}_${configuration}.sh
 
-    sed "s/STARTDATE/"${sdate}"/g;s/ENDDATE/"${edate}/g";s/ENSMEMBER/"${ensmember}"/g;s/CONFIG/"${configuration}"/g" ${config_template} > ${config_file}
-    sed "s/STARTDATE/"${sdate}"/g;s/ENSMEMBER/"${ensmember}"/g;s/CONFIG_NAME/"${config_name}"/g" ${slurm_template} > ${slurm_file}
+    if [[ "${make_config}" == "yes" ]]; then
+        sed "s/STARTDATE/"${sdate}"/g;s/ENDDATE/"${edate}/g";s/ENSMEMBER/"${ensmember}"/g;s/CONFIG/"${configuration}"/g" ${config_template} > ${config_file}
+    fi
+    if [[ "${make_slurm}" == "yes" ]]; then
+        sed "s/STARTDATE/"${sdate}"/g;s/ENSMEMBER/"${ensmember}"/g;s/CONFIG_NAME/"${config_name}"/g" ${slurm_template} > ${slurm_file}
+    fi
     echo ${config_file}
     echo ${slurm_file}
     if [[ "${submit_job}" == "yes" ]]; then

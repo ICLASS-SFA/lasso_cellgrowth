@@ -50,6 +50,7 @@ def parse_cmd_args():
     parser.add_argument("-e", "--end", help="last time in time series to plot, format=YYYY-mm-ddTHH:MM:SS", required=True)
     parser.add_argument("-c", "--config", help="yaml config file for tracking", required=True)
     parser.add_argument("-p", "--parallel", help="flag to run in parallel (0:serial, 1:parallel)", type=int, default=0)
+    parser.add_argument("--workers", type=int, help="Number of Dask workers for parallel processing", default=4)
     parser.add_argument("--radar_lat", help="radar latitude", type=float, required=True)
     parser.add_argument("--radar_lon", help="radar longitude", type=float, required=True)
     parser.add_argument("--extent", nargs='+', help="map extent (lonmin, lonmax, latmin, latmax)", type=float, default=None)
@@ -65,6 +66,7 @@ def parse_cmd_args():
         'start_datetime': args.start,
         'end_datetime': args.end,
         'run_parallel': args.parallel,
+        'workers': args.workers,
         'config_file': args.config,
         'radar_lat': args.radar_lat,
         'radar_lon': args.radar_lon,
@@ -560,6 +562,7 @@ if __name__ == "__main__":
     start_datetime = args_dict.get('start_datetime')
     end_datetime = args_dict.get('end_datetime')
     run_parallel = args_dict.get('run_parallel')
+    n_workers = args_dict.get('workers')
     config_file = args_dict.get('config_file')
     radar_lat = args_dict.get('radar_lat')
     radar_lon = args_dict.get('radar_lon')
@@ -652,7 +655,9 @@ if __name__ == "__main__":
     startdate = config["startdate"]
     enddate = config["enddate"]
     trackstats_file = f"{stats_path}{trackstats_filebase}{startdate}_{enddate}.nc"
-    n_workers = config["nprocesses"]
+    # Use n_workers from command-line if provided, otherwise use config file
+    if n_workers is None:
+        n_workers = config["nprocesses"]
   
     # Convert datetime string to Epoch time (base time)
     start_basetime = pd.to_datetime(start_datetime).timestamp()

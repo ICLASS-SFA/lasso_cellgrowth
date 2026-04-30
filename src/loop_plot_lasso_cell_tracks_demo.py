@@ -19,10 +19,11 @@ if __name__ == "__main__":
     # Specify domain
     # domain = 'd2'
     # domain = 'd3'
-    # domain = 'd4_5min'
+    # domain = 'd4'
+    domain = 'd4_native'
     # domain = 'd2_15min'
     # domain = 'd3_15min'
-    domain = 'd4_15min'
+    # domain = 'd4_15min'
 
     # Flag to call Python codes to make plots
     make_plots = True
@@ -32,30 +33,30 @@ if __name__ == "__main__":
     if configuration == 'base':
         # start_dates = ["20190123", "20181129"]
         # ens_members = ["gefs18", "gefs09"]
-        # start_dates = ["20190123"]
-        # ens_members = ["gefs18"]
-        start_dates = [
-            "20181129", "20181129", "20181129", "20181129",
-            "20181204", "20181204", 
-            "20181205", 
-            "20181219", 
-            "20190122", "20190122",
-            "20190123", "20190123",
-            "20190125", "20190125",
-            "20190129", "20190129",
-            "20190208", "20190208",
-        ]
-        ens_members = [
-            "gefs00", "gefs03", "gefs09", "gefs18",
-            "gefs18", "gefs19",
-            "gefs01", 
-            "eda09", 
-            "gefs01", "gefs18",
-            "eda05", "gefs18",
-            "eda07", "gefs11",
-            "eda09", "gefs11",
-            "eda03", "eda08",
-        ]
+        start_dates = ["20181129"]
+        ens_members = ["gefs09"]
+        # start_dates = [
+        #     "20181129", "20181129", "20181129", "20181129",
+        #     "20181204", "20181204", 
+        #     "20181205", 
+        #     "20181219", 
+        #     "20190122", "20190122",
+        #     "20190123", "20190123",
+        #     "20190125", "20190125",
+        #     "20190129", "20190129",
+        #     "20190208", "20190208",
+        # ]
+        # ens_members = [
+        #     "gefs00", "gefs03", "gefs09", "gefs18",
+        #     "gefs18", "gefs19",
+        #     "gefs01", 
+        #     "eda09", 
+        #     "gefs01", "gefs18",
+        #     "eda05", "gefs18",
+        #     "eda07", "gefs11",
+        #     "eda09", "gefs11",
+        #     "eda03", "eda08",
+        # ]
 
     # Morrison
     elif configuration == 'morr':
@@ -103,12 +104,17 @@ if __name__ == "__main__":
     radar_lon, radar_lat = -64.7284, -32.1264
     vfscale = '1200:-1'
     parallel = 1
+    workers = 64
 
     # Determine framerate based on domain
-    if (domain == 'd4') | (domain == 'd3') | (domain == 'd2') | (domain == 'd4_5min') | (domain == 'd3_5min') | (domain == 'd2_5min'):
-        framerate = 6  # for 5min
-    elif (domain == 'd4_15min') | (domain == 'd3_15min') | (domain == 'd2_15min'):
+    # if (domain == 'd4') | (domain == 'd3') | (domain == 'd2') | (domain == 'd4_5min') | (domain == 'd3_5min') | (domain == 'd2_5min'):
+    #     framerate = 6  # for 5min
+    # elif (domain == 'd4_15min') | (domain == 'd3_15min') | (domain == 'd2_15min'):
+    #     framerate = 2  # for 15min
+    if '15min' in domain:
         framerate = 2  # for 15min
+    else:
+        framerate = 6  # for 5min
 
     # Gridspacing
     if ('d2' in domain): gridspacing = 'wrf2.5km'
@@ -137,7 +143,7 @@ if __name__ == "__main__":
         config = f'{config_basename}{gridspacing}_{idate}_{imember}_{configuration}.yml'
         out_dir = f'{out_dir_root}/{idate}/{imember}/{configuration}/{domain}/'
         # Make quicklook plots
-        cmd = f"python {code_name} -s {sdate} -e {edate} -c {config} -p {parallel} --radar_lat {radar_lat} --radar_lon {radar_lon} --title_suffix '{title_suffix}' " + \
+        cmd = f"python {code_name} -s {sdate} -e {edate} -c {config} -p {parallel} --workers {workers} --radar_lat {radar_lat} --radar_lon {radar_lon} --title_suffix '{title_suffix}' " + \
               f"--output {out_dir} --figbasename {figbasename} --figsize {figsize[0]} {figsize[1]} --extent {extent[0]} {extent[1]} {extent[2]} {extent[3]}"
         # import pdb; pdb.set_trace()
         if make_plots == True:

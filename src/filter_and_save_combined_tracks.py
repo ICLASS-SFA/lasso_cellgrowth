@@ -311,64 +311,24 @@ def find_merge_split_tracks(ds, time_window, time_res=5.0):
     return out_dict
 
 
-def get_case_hours_dict(time_offset='+2h'):
+def get_case_hours_dict(domain='d2', time_offset=2.0):
     """
-    Get case hour dictionaries for all domains.
+    Get case hour dictionaries for specified domain with time offset applied.
     
     Args:
-        time_offset: str, default='+2h'
-            Time offset to use ('+2h', '+1h', or 'base')
+        domain: str, default='d2'
+            Domain name ('d2', 'd3', 'd4')
+        time_offset: float, default=2.0
+            Time offset in hours to add to the end time of each case.
+            Can be negative.
     
     Returns:
         case_hours_dict: dict
-            Dictionary of hour ranges for each case
+            Dictionary of hour ranges for each case with time offset applied
     """
-    if time_offset == '+2h':
-        # +2 h
-        case_hours_dict = {
-            '20181129-gefs00': (12.0, 21.5),
-            '20181129-gefs03': (12.0, 22.0),
-            '20181129-gefs09': (12.0, 20.5),
-            '20181129-gefs18': (12.0, 20.5),
-            '20181204-gefs18': (12.0, 19.5),
-            '20181204-gefs19': (12.0, 21.0),
-            '20181205-gefs01': (12.0, 20.0),
-            '20181219-eda09': (12.0, 19.0),
-            '20190122-gefs01': (12.0, 23.5),
-            '20190122-gefs18': (12.0, 22.25),
-            '20190123-eda05': (12.0, 18.0),
-            '20190123-gefs18': (12.0, 19.5),
-            '20190125-eda07': (12.0, 20.5),
-            '20190125-gefs11': (12.0, 20.5),
-            '20190129-eda09': (12.0, 20.0),
-            '20190129-gefs11': (12.0, 19.5),
-            '20190208-eda03': (12.0, 21.5),
-            '20190208-eda08': (12.0, 21.75),
-        }
-    elif time_offset == '+1h':
-        # +1 h
-        case_hours_dict = {
-            '20181129-gefs00': (12.0, 20.5),
-            '20181129-gefs03': (12.0, 21.0),
-            '20181129-gefs09': (12.0, 19.5),
-            '20181129-gefs18': (12.0, 19.5),
-            '20181204-gefs18': (12.0, 18.5),
-            '20181204-gefs19': (12.0, 20.0),
-            '20181205-gefs01': (12.0, 19.0),
-            '20181219-eda09': (12.0, 18.0),
-            '20190122-gefs01': (12.0, 22.5),
-            '20190122-gefs18': (12.0, 21.25),
-            '20190123-eda05': (12.0, 17.0),
-            '20190123-gefs18': (12.0, 18.5),
-            '20190125-eda07': (12.0, 19.5),
-            '20190125-gefs11': (12.0, 19.5),
-            '20190129-eda09': (12.0, 19.0),
-            '20190129-gefs11': (12.0, 18.5),
-            '20190208-eda03': (12.0, 20.5),
-            '20190208-eda08': (12.0, 20.75),
-        }
-    else:  # base
-        case_hours_dict = {
+    # Base reference for d2
+    if domain == 'd2':
+        base_dict = {
             '20181129-gefs00': (12.0, 19.5),
             '20181129-gefs03': (12.0, 20.0),
             '20181129-gefs09': (12.0, 18.5),
@@ -388,11 +348,39 @@ def get_case_hours_dict(time_offset='+2h'):
             '20190208-eda03': (12.0, 19.5),
             '20190208-eda08': (12.0, 19.75),
         }
+    else:  # d3 or d4 use the same base
+        base_dict = {
+            '20181129-gefs00': (12.0, 19.5),
+            '20181129-gefs03': (12.0, 20.0),
+            '20181129-gefs09': (12.0, 19.0),
+            '20181129-gefs18': (12.0, 19.0),
+            '20181204-gefs18': (12.0, 17.5),
+            '20181204-gefs19': (12.0, 19.0),
+            '20181205-gefs01': (12.0, 18.0),
+            '20181219-eda09': (12.0, 17.0),
+            '20190122-gefs01': (12.0, 21.5),
+            '20190122-gefs18': (12.0, 20.5),
+            '20190123-eda05': (12.0, 16.0),
+            '20190123-gefs18': (12.0, 17.5),
+            '20190125-eda07': (12.0, 18.5),
+            '20190125-gefs11': (12.0, 18.5),
+            '20190129-eda09': (12.0, 18.5),
+            '20190129-gefs11': (12.0, 18.25),
+            '20190208-eda03': (12.0, 20.0),
+            '20190208-eda08': (12.0, 20.0),
+        }
+    
+    # Apply time offset to end times
+    case_hours_dict = {
+        # Ensure it does not exceed 23.99 hours (just before the next day)
+        case: (start, min(end + time_offset, 23.99))
+        for case, (start, end) in base_dict.items()
+    }
     
     return case_hours_dict
 
 
-def process_domain(domain, rootdir, output_dir, start_dates, time_offset='+2h'):
+def process_domain(domain, rootdir, output_dir, start_dates, time_offset=2.0):
     """
     Process a single domain: read, filter, and save combined datasets.
     
@@ -405,8 +393,8 @@ def process_domain(domain, rootdir, output_dir, start_dates, time_offset='+2h'):
             Output directory for saved files
         start_dates: list
             List of case dates
-        time_offset: str, default='+2h'
-            Time offset to use
+        time_offset: float, default=2.0
+            Time offset in hours to use
     """
     print(f"\n{'='*80}")
     print(f"Processing domain: {domain.upper()}")
@@ -416,14 +404,24 @@ def process_domain(domain, rootdir, output_dir, start_dates, time_offset='+2h'):
     in_basename = 'trackstats_20'
     in_basename_w = 'stats_3d_w_fixshell_'
     in_basename_wmask = 'stats_2d_wmask_'
-    # Environment file basename depends on domain
+    # in_basename_wmask = 'stats_2d_wmask_2h_'
+    # # Environment file basename depends on domain
+    # if 'd2' in domain:
+    #     in_basename_env = 'stats_avg1d_env9x9_'
+    # else:  # d3 or d4
+    #     if '2.5km' in domain:
+    #         in_basename_env = 'stats_avg1d_env9x9_'
+    #     else:
+    #         in_basename_env = 'stats_avg1d_env21x21_'
+
+    # Sensitivity test with 10x10 km environment files
     if 'd2' in domain:
-        in_basename_env = 'stats_avg1d_env9x9_'
+        in_basename_env = 'stats_avg1d_env5x5_'
     else:  # d3 or d4
         if '2.5km' in domain:
-            in_basename_env = 'stats_avg1d_env9x9_'
+            in_basename_env = 'stats_avg1d_env5x5_'
         else:
-            in_basename_env = 'stats_avg1d_env21x21_'
+            in_basename_env = 'stats_avg1d_env11x11_'
     
     # Domain 4 boundaries
     lon_range = [-65., -63.3]
@@ -434,55 +432,8 @@ def process_domain(domain, rootdir, output_dir, start_dates, time_offset='+2h'):
     # Time for representative environment
     time_env = -1  # relative time index with respect to CI time
     
-    # Get case hours dictionary
-    case_hours_dict = get_case_hours_dict(time_offset)
-    
-    # For D3 and D4, use D3 hour ranges (adjusted for time offset)
-    if 'd3' in domain:
-        case_hours_dict_d3 = {
-            '20181129-gefs00': (12.0, 21.5),
-            '20181129-gefs03': (12.0, 22.0),
-            '20181129-gefs09': (12.0, 21.0),
-            '20181129-gefs18': (12.0, 21.0),
-            '20181204-gefs18': (12.0, 19.5),
-            '20181204-gefs19': (12.0, 21.0),
-            '20181205-gefs01': (12.0, 20.0),
-            '20181219-eda09': (12.0, 19.0),
-            '20190122-gefs01': (12.0, 23.5),
-            '20190122-gefs18': (12.0, 22.5),
-            '20190123-eda05': (12.0, 18.0),
-            '20190123-gefs18': (12.0, 19.5),
-            '20190125-eda07': (12.0, 20.5),
-            '20190125-gefs11': (12.0, 20.5),
-            '20190129-eda09': (12.0, 20.5),
-            '20190129-gefs11': (12.0, 20.25),
-            '20190208-eda03': (12.0, 22.0),
-            '20190208-eda08': (12.0, 22.0),
-        }
-        case_hours_dict = case_hours_dict_d3
-    elif 'd4' in domain:
-        # Assume same cold pool development times in D4 as in D3
-        case_hours_dict_d3 = {
-            '20181129-gefs00': (12.0, 21.5),
-            '20181129-gefs03': (12.0, 22.0),
-            '20181129-gefs09': (12.0, 21.0),
-            '20181129-gefs18': (12.0, 21.0),
-            '20181204-gefs18': (12.0, 19.5),
-            '20181204-gefs19': (12.0, 21.0),
-            '20181205-gefs01': (12.0, 20.0),
-            '20181219-eda09': (12.0, 19.0),
-            '20190122-gefs01': (12.0, 23.5),
-            '20190122-gefs18': (12.0, 22.5),
-            '20190123-eda05': (12.0, 18.0),
-            '20190123-gefs18': (12.0, 19.5),
-            '20190125-eda07': (12.0, 20.5),
-            '20190125-gefs11': (12.0, 20.5),
-            '20190129-eda09': (12.0, 20.5),
-            '20190129-gefs11': (12.0, 20.25),
-            '20190208-eda03': (12.0, 22.0),
-            '20190208-eda08': (12.0, 22.0),
-        }
-        case_hours_dict = case_hours_dict_d3
+    # Get case hours dictionary for this domain with time offset applied
+    case_hours_dict = get_case_hours_dict(domain=domain, time_offset=time_offset)
     
     # Find data files
     print("Finding data files...")
@@ -507,7 +458,7 @@ def process_domain(domain, rootdir, output_dir, start_dates, time_offset='+2h'):
     
     # Get time window from dataset attributes
     time_window = (ds.attrs['time_start'], ds.attrs['time_end'])
-    print(f"Time window: {time_window}")
+    print(f"Time window: {time_window} min")
     
     # Find merge/split tracks
     print("\nFinding merge/split tracks...")
@@ -524,6 +475,9 @@ def process_domain(domain, rootdir, output_dir, start_dates, time_offset='+2h'):
     # Get number of filtered tracks
     ntracks_nms = dsnms.sizes['tracks']
     print(f"Non-merge-split tracks: {ntracks_nms} ({100*ntracks_nms/ntracks:.0f}% of all tracks)")
+    
+    # Add attribute for time_offset used
+    dsnms.attrs['coldpool_time_offset'] = time_offset
     
     # Save filtered dataset
     output_file = f'{output_dir}/stats_combined_filtered_{domain}.nc'
@@ -566,10 +520,9 @@ Examples:
     
     parser.add_argument(
         '--time-offset',
-        type=str,
-        default='+2h',
-        choices=['+2h', '+1h', 'base'],
-        help='Time offset for case hour ranges (default: +2h)'
+        type=float,
+        default=2.0,
+        help='Time offset in hours to add to case end times (default: 2.0, can be negative)'
     )
     
     parser.add_argument(

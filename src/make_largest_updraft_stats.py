@@ -17,7 +17,7 @@ from scipy.ndimage import label
 import warnings
 
 #-----------------------------------------------------------------------
-def get_W_properties(W_array, tidx_start, tidx_end, cbase_depth):
+def get_W_properties(W_array, tidx_start, tidx_end, tidx_end_CI, cbase_depth):
     """
     Get W object properties given a W 2D array
     
@@ -28,6 +28,8 @@ def get_W_properties(W_array, tidx_start, tidx_end, cbase_depth):
             Start time index to subset W object.
         tidx_end: int
             End time index to subset W object.
+        tidx_end_CI: int
+            End time index for CI sampling.
         cbase_depth: float
             Depth above cloud base to compute W statistics [km].
             
@@ -57,12 +59,16 @@ def get_W_properties(W_array, tidx_start, tidx_end, cbase_depth):
     max_indices_z = np.full(label_image.shape, -1, dtype=int)
     mask_top = np.full(label_image.shape[0], np.NaN)
     mask_base = np.full(label_image.shape[0], np.NaN)
+    Wbase_timeseries = np.full(label_image.shape[0], np.NaN)
     Wtime_start = np.NaN
     Wtime_end = np.NaN
     Wlifetime = np.NaN
     Wbase_mean = np.NaN
     Wbase_median = np.NaN
     Wbase_max = np.NaN
+    Wbase_max_time = np.NaN
+    Wbase_max_CI = np.NaN
+    Wbase_max_time_CI = np.NaN
 
     # Get the size (pixel count) of the W objects
     if n_obj_W > 0:
@@ -115,13 +121,50 @@ def get_W_properties(W_array, tidx_start, tidx_end, cbase_depth):
         W_array[mask_remove == 1] = np.NaN
         # Check if layer top > base
         if (median_base_z1 > median_base_z0):
-            Wbase_mean = np.nanmean(W_array[:,median_base_z0:median_base_z1+1])
-            Wbase_median = np.nanmedian(W_array[:,median_base_z0:median_base_z1+1])
-            Wbase_max = np.nanmax(W_array[:,median_base_z0:median_base_z1+1])
+            _W_array = W_array[:,median_base_z0:median_base_z1+1]
+            # Get the time & height index of the maximum W value within the layer
+            t_idx_WbaseMax, z_idx_WbaseMax = np.unravel_index(np.nanargmax(_W_array), _W_array.shape)
+            # Get time series of the maximum W value within the layer
+            Wbase_timeseries = np.nanmax(_W_array, axis=1)
         else:
-            Wbase_mean = np.nanmean(W_array[:,median_base_z0])
-            Wbase_median = np.nanmedian(W_array[:,median_base_z0])
-            Wbase_max = np.nanmax(W_array[:,median_base_z0])
+            _W_array = W_array[:,median_base_z0]
+            # Get the time & height index of the maximum W value within the layer
+            t_idx_WbaseMax = np.nanargmax(_W_array)
+            # Get time series of the maximum W value within the layer
+            Wbase_timeseries = _W_array.squeeze()
+        # Get W statistics within the cloud-base layer
+        Wbase_mean = np.nanmean(_W_array)
+        Wbase_median = np.nanmedian(_W_array)
+        Wbase_max = np.nanmax(_W_array)
+        # # Get the time & height index of the maximum W value within the layer
+        # t_idx_WbaseMax, z_idx_WbaseMax = np.unravel_index(np.nanargmax(_W_array), _W_array.shape)
+        # Get the time value corresponding to the max W base value
+        Wbase_max_time = time_coord.values[t_idx_WbaseMax].item()
+
+        # Subset W_array for CI period
+        if _W_array.ndim == 2:
+            _W_array_CI = _W_array[:tidx_end_CI+1,:]
+            Wbase_max_CI = np.nanmax(_W_array_CI)
+
+            # Check if there are valid values in the CI period
+            if np.isnan(_W_array_CI).all():
+                Wbase_max_CI = np.NaN
+                Wbase_max_time_CI = np.NaN
+            else:
+                t_idx_WbaseMax_CI, z_idx_WbaseMax_CI = np.unravel_index(np.nanargmax(_W_array_CI), _W_array_CI.shape)
+                Wbase_max_time_CI = time_coord.values[t_idx_WbaseMax_CI].item()
+        else:
+            _W_array_CI = _W_array[:tidx_end_CI+1]
+            Wbase_max_CI = np.nanmax(_W_array_CI)
+
+            # Check if there are valid values in the CI period
+            if np.isnan(_W_array_CI).all():
+                Wbase_max_CI = np.NaN
+                Wbase_max_time_CI = np.NaN
+            else:
+                t_idx_WbaseMax_CI = np.nanargmax(_W_array_CI)
+                Wbase_max_time_CI = time_coord.values[t_idx_WbaseMax_CI].item()
+        # import pdb; pdb.set_trace()
         #------------------------------------
 
         # Find start/end time indices of the largest object
@@ -145,12 +188,16 @@ def get_W_properties(W_array, tidx_start, tidx_end, cbase_depth):
         'Wbase_mean': Wbase_mean,
         'Wbase_median': Wbase_median,
         'Wbase_max': Wbase_max,
+        'Wbase_max_time': Wbase_max_time,
+        'Wbase_max_CI': Wbase_max_CI,
+        'Wbase_max_time_CI': Wbase_max_time_CI,
+        'Wbase_timeseries': Wbase_timeseries,
     }
         
     return out_dict
 
 #-----------------------------------------------------------------------
-def make_W_mask(da_W, maxETH_10dbz, tidx_start, tidx_end, cbase_depth=0.5):
+def make_W_mask(da_W, maxETH_10dbz, tidx_start, tidx_end, tidx_end_CI, cbase_depth=0.5):
     """
     Make W object masks for all tracks
     
@@ -163,6 +210,8 @@ def make_W_mask(da_W, maxETH_10dbz, tidx_start, tidx_end, cbase_depth=0.5):
             Start time index to subset W object.
         tidx_end: int
             End time index to subset W object.
+        tidx_end_CI: int
+            End time index for CI sampling.
         cbase_depth: float
             Depth above cloud base to compute W statistics [km].
             
@@ -190,8 +239,13 @@ def make_W_mask(da_W, maxETH_10dbz, tidx_start, tidx_end, cbase_depth=0.5):
     Wbase_mean = np.full(_ntracks, np.NaN)
     Wbase_median = np.full(_ntracks, np.NaN)
     Wbase_max = np.full(_ntracks, np.NaN)
+    Wbase_max_time = np.full(_ntracks, np.NaN)
+    Wbase_max_CI = np.full(_ntracks, np.NaN)
+    Wbase_max_time_CI = np.full(_ntracks, np.NaN)
     # maxETH_filter = np.copy(maxETH_10dbz.values)
     maxETH_filter = np.full(maxETH_10dbz.shape, np.NaN)
+    Wbase_timeseries = np.full((_ntracks, _ntimes), np.NaN)
+    # import pdb; pdb.set_trace()
 
     # Loop over each track
     for itrack in range(0, _ntracks):
@@ -204,7 +258,7 @@ def make_W_mask(da_W, maxETH_10dbz, tidx_start, tidx_end, cbase_depth=0.5):
         iW = (da_W.isel(tracks=itrack).squeeze().values).copy()
         iETH = (maxETH_10dbz.isel(tracks=itrack).squeeze().values).copy()
         # Call function to get W object properties
-        iW_object_dict = get_W_properties(iW, tidx_start, tidx_end, cbase_depth)
+        iW_object_dict = get_W_properties(iW, tidx_start, tidx_end, tidx_end_CI, cbase_depth)
         
         # Save values to output arrays
         Wmask[itrack,:,:] = iW_object_dict['mask_large']
@@ -217,6 +271,10 @@ def make_W_mask(da_W, maxETH_10dbz, tidx_start, tidx_end, cbase_depth=0.5):
         Wbase_mean[itrack] = iW_object_dict['Wbase_mean']
         Wbase_median[itrack] = iW_object_dict['Wbase_median']
         Wbase_max[itrack] = iW_object_dict['Wbase_max']
+        Wbase_max_time[itrack] = iW_object_dict['Wbase_max_time']
+        Wbase_max_CI[itrack] = iW_object_dict['Wbase_max_CI']
+        Wbase_max_time_CI[itrack] = iW_object_dict['Wbase_max_time_CI']
+        Wbase_timeseries[itrack,:] = iW_object_dict['Wbase_timeseries']
         # Filter ETH after Wtime_end
         if Wtime_end[itrack] > 0:
             _Wtime_end = int(Wtime_end[itrack])
@@ -237,6 +295,10 @@ def make_W_mask(da_W, maxETH_10dbz, tidx_start, tidx_end, cbase_depth=0.5):
     Wbase_mean = xr.DataArray(Wbase_mean, coords={'tracks':da_W.coords['tracks']}, dims=('tracks'))
     Wbase_median = xr.DataArray(Wbase_median, coords={'tracks':da_W.coords['tracks']}, dims=('tracks'))
     Wbase_max = xr.DataArray(Wbase_max, coords={'tracks':da_W.coords['tracks']}, dims=('tracks'))
+    Wbase_max_time = xr.DataArray(Wbase_max_time, coords={'tracks':da_W.coords['tracks']}, dims=('tracks'))
+    Wbase_max_CI = xr.DataArray(Wbase_max_CI, coords={'tracks':da_W.coords['tracks']}, dims=('tracks'))
+    Wbase_max_time_CI = xr.DataArray(Wbase_max_time_CI, coords={'tracks':da_W.coords['tracks']}, dims=('tracks'))
+    Wbase_timeseries = xr.DataArray(Wbase_timeseries, coords={'tracks':da_W.coords['tracks'], 'times':da_W.coords['times']}, dims=('tracks','times'))
     maxETH_filter = xr.DataArray(maxETH_filter, coords={'tracks':maxETH_10dbz.coords['tracks'], 'times':maxETH_10dbz.coords['times']}, dims=('tracks','times'))
     # Put outputs in a dictionary
     out_dict = {
@@ -250,6 +312,10 @@ def make_W_mask(da_W, maxETH_10dbz, tidx_start, tidx_end, cbase_depth=0.5):
         'Wbase_mean': Wbase_mean,
         'Wbase_median': Wbase_median,
         'Wbase_max': Wbase_max,
+        'Wbase_max_time': Wbase_max_time,
+        'Wbase_max_CI': Wbase_max_CI,
+        'Wbase_max_time_CI': Wbase_max_time_CI,
+        'Wbase_timeseries': Wbase_timeseries,
         'maxETH_10dbz_filter': maxETH_filter,
     }
     return out_dict
@@ -341,8 +407,8 @@ if __name__ == "__main__":
     # Environment file basename based on resolution
     if resolution == 'les':
         # in_basename_env = 'stats_1d_env_2location_'
-        # in_basename_env = 'stats_avg1d_env21x21_'
-        in_basename_env = 'stats_avg1d_env9x9_'
+        in_basename_env = 'stats_avg1d_env21x21_'
+        # in_basename_env = 'stats_avg1d_env9x9_'
     elif resolution == 'meso':
         in_basename_env = 'stats_avg1d_env9x9_'
     tfiles = f'{stats_path}{in_basename}{startdate}_{enddate}.nc'
@@ -350,6 +416,7 @@ if __name__ == "__main__":
     envfiles = f'{stats_path}{in_basename_env}{startdate}_{enddate}.nc'
     # Output file
     out_basename = 'stats_2d_wmask_'
+    # out_basename = 'stats_2d_wmask_2h_'
     output_filename = f'{stats_path}{out_basename}{startdate}_{enddate}.nc'
 
 
@@ -361,6 +428,8 @@ if __name__ == "__main__":
     # Define a time window to sample updraft
     time_start = 0  # [min]
     time_end = 60  # [min]
+    # time_end = 120  # [min]
+    time_end_CI = 30  # [min] End time for CI sampling (for cloud-base updraft width)
     # Minimum number of sample to fit updraft top height
     # min_nsample_fit = 3
     min_nsample_fit = 2
@@ -421,19 +490,29 @@ if __name__ == "__main__":
     # Get start/end time window as indices
     tidx_start = np.where(xtime == time_start)[0].item()
     tidx_end = np.where(xtime == time_end)[0].item()
+    tidx_end_CI = np.where(xtime == time_end_CI)[0].item()
     # print(tidx_start, tidx_end)
+    print(f"Updraft mask time window: {xtime[tidx_start].item()} - {xtime[tidx_end].item()} min")
+    print(f"Updraft CI sampling time window: {xtime[tidx_start].item()} - {xtime[tidx_end_CI].item()} min")
+    CI_time_window = [xtime[tidx_start].item(), xtime[tidx_end_CI].item()]
+    # import pdb; pdb.set_trace()
 
     # Make 2D updraft object masks for each track 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
-        Wmask_dict = make_W_mask(CoreArea_up, maxETH_10dbz, tidx_start, tidx_end, cbase_depth)
-        Wspeed_dict = make_W_mask(CoreMaxW_up, maxETH_10dbz, tidx_start, tidx_end, cbase_depth)
+        Wmask_dict = make_W_mask(CoreArea_up, maxETH_10dbz, tidx_start, tidx_end, tidx_end_CI, cbase_depth)
+        Wspeed_dict = make_W_mask(CoreMaxW_up, maxETH_10dbz, tidx_start, tidx_end, tidx_end_CI, cbase_depth)
 
     # Rename updraft base keys to be more descriptive
     # Updraft area variables
     Wmask_dict['Warea_mean'] = Wmask_dict.pop('Wbase_mean')
     Wmask_dict['Warea_median'] = Wmask_dict.pop('Wbase_median')
     Wmask_dict['Warea_max'] = Wmask_dict.pop('Wbase_max')
+    Wmask_dict['Warea_max_time'] = Wmask_dict.pop('Wbase_max_time')
+    Wmask_dict['Warea_max_CI'] = Wmask_dict.pop('Wbase_max_CI')
+    Wmask_dict['Warea_max_time_CI'] = Wmask_dict.pop('Wbase_max_time_CI')
+    Wmask_dict['Warea_cloudbase'] = Wmask_dict.pop('Wbase_timeseries')
+
     # Updraft speed variables
     Wspeed_dict['Wspeed_mean'] = Wspeed_dict.pop('Wbase_mean')
     Wspeed_dict['Wspeed_median'] = Wspeed_dict.pop('Wbase_median')
@@ -516,6 +595,24 @@ if __name__ == "__main__":
             'long_name': 'Cloud base max updraft core area',
             'units': 'km^2',
         },
+        'Warea_max_time': {
+            'long_name': 'Time of cloud base max updraft core area',
+            'units': 'unitless',
+        },
+        'Warea_max_CI': {
+            'long_name': 'Cloud base max updraft core area within CI period',
+            'units': 'km^2',
+            'CI_time_window': CI_time_window,
+        },
+        'Warea_max_time_CI': {
+            'long_name': 'Time of cloud base max updraft core area within CI period',
+            'units': 'unitless',
+            'CI_time_window': CI_time_window,
+        },
+        'Warea_cloudbase': {
+            'long_name': 'Cloud base updraft area time series',
+            'units': 'km^2',
+        },
         # Cloud-base updraft speed variables
         'Wspeed_mean': {
             'long_name': 'Cloud base mean updraft speed',
@@ -579,11 +676,12 @@ if __name__ == "__main__":
 
     # Define global attributes
     gattr_dict = {
-        'title':  'Tracked cell updraft core masks & statistics', \
-        'Institution': 'Pacific Northwest National Laboratoy', \
-        'Contact': 'Zhe Feng, zhe.feng@pnnl.gov', \
-        'Created_on': time.ctime(time.time()), \
-        'source_trackfile': tfiles, \
+        'title':  'Tracked cell updraft core masks & statistics',
+        'Institution': 'Pacific Northwest National Laboratoy',
+        'Contact': 'Zhe Feng, zhe.feng@pnnl.gov',
+        'Created_by': f'{os.path.abspath(__file__)}',
+        'Created_on': time.ctime(time.time()),
+        'source_trackfile': tfiles,
         'source_W_file': wfiles,
         'source_env_file': envfiles,
         'time_start': time_start,
@@ -591,8 +689,6 @@ if __name__ == "__main__":
         'time_environment': time_env,
         'ETH_buffer': ETH_buffer,
         'cbase_depth': cbase_depth,
-        # 'startdate': startdate, \
-        # 'enddate': enddate, \
     }
 
 
