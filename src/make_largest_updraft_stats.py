@@ -52,23 +52,23 @@ def get_W_properties(W_array, tidx_start, tidx_end, tidx_end_CI, cbase_depth):
 
     # Make output arrays
     mask_time2d = np.zeros(label_image.shape)
-    mask_large = np.full(label_image.shape, np.NaN)
-    mask_remove = np.full(label_image.shape, np.NaN)
+    mask_large = np.full(label_image.shape, np.nan)
+    mask_remove = np.full(label_image.shape, np.nan)
     # mask_large = np.full(label_image.shape, 0, dtype=np.int8)
     # mask_remove = np.full(label_image.shape, 0, dtype=np.int8)
     max_indices_z = np.full(label_image.shape, -1, dtype=int)
-    mask_top = np.full(label_image.shape[0], np.NaN)
-    mask_base = np.full(label_image.shape[0], np.NaN)
-    Wbase_timeseries = np.full(label_image.shape[0], np.NaN)
-    Wtime_start = np.NaN
-    Wtime_end = np.NaN
-    Wlifetime = np.NaN
-    Wbase_mean = np.NaN
-    Wbase_median = np.NaN
-    Wbase_max = np.NaN
-    Wbase_max_time = np.NaN
-    Wbase_max_CI = np.NaN
-    Wbase_max_time_CI = np.NaN
+    mask_top = np.full(label_image.shape[0], np.nan)
+    mask_base = np.full(label_image.shape[0], np.nan)
+    Wbase_timeseries = np.full(label_image.shape[0], np.nan)
+    Wtime_start = np.nan
+    Wtime_end = np.nan
+    Wlifetime = np.nan
+    Wbase_mean = np.nan
+    Wbase_median = np.nan
+    Wbase_max = np.nan
+    Wbase_max_time = np.nan
+    Wbase_max_CI = np.nan
+    Wbase_max_time_CI = np.nan
 
     # Get the size (pixel count) of the W objects
     if n_obj_W > 0:
@@ -95,7 +95,7 @@ def get_W_properties(W_array, tidx_start, tidx_end, tidx_end_CI, cbase_depth):
         # Apply indices to height array using advanced indexing
         mask_top = height.data[max_indices_z]
         # Replace times when indices is invalid with NaN (< 0)
-        mask_top[max_indices_z < 0] = np.NaN
+        mask_top[max_indices_z < 0] = np.nan
         #------------------------------------
         #------------------------------------
         # Get updraft base heights
@@ -106,7 +106,7 @@ def get_W_properties(W_array, tidx_start, tidx_end, tidx_end_CI, cbase_depth):
         # Apply indices to height array using advanced indexing
         mask_base = height.data[min_indices_z]
         # Replace times when indices is invalid with NaN (< 0)
-        mask_base[min_indices_z < 0] = np.NaN
+        mask_base[min_indices_z < 0] = np.nan
         
         # Take median value for updraft base heights
         median_base = np.nanmedian(mask_base)
@@ -118,7 +118,7 @@ def get_W_properties(W_array, tidx_start, tidx_end, tidx_end_CI, cbase_depth):
         # print(median_base, median_base_top)
         # print(median_base_z0, median_base_z1)
         # Mask out small cores
-        W_array[mask_remove == 1] = np.NaN
+        W_array[mask_remove == 1] = np.nan
         # Check if layer top > base
         if (median_base_z1 > median_base_z0):
             _W_array = W_array[:,median_base_z0:median_base_z1+1]
@@ -148,8 +148,8 @@ def get_W_properties(W_array, tidx_start, tidx_end, tidx_end_CI, cbase_depth):
 
             # Check if there are valid values in the CI period
             if np.isnan(_W_array_CI).all():
-                Wbase_max_CI = np.NaN
-                Wbase_max_time_CI = np.NaN
+                Wbase_max_CI = np.nan
+                Wbase_max_time_CI = np.nan
             else:
                 t_idx_WbaseMax_CI, z_idx_WbaseMax_CI = np.unravel_index(np.nanargmax(_W_array_CI), _W_array_CI.shape)
                 Wbase_max_time_CI = time_coord.values[t_idx_WbaseMax_CI].item()
@@ -159,8 +159,8 @@ def get_W_properties(W_array, tidx_start, tidx_end, tidx_end_CI, cbase_depth):
 
             # Check if there are valid values in the CI period
             if np.isnan(_W_array_CI).all():
-                Wbase_max_CI = np.NaN
-                Wbase_max_time_CI = np.NaN
+                Wbase_max_CI = np.nan
+                Wbase_max_time_CI = np.nan
             else:
                 t_idx_WbaseMax_CI = np.nanargmax(_W_array_CI)
                 Wbase_max_time_CI = time_coord.values[t_idx_WbaseMax_CI].item()
@@ -227,24 +227,24 @@ def make_W_mask(da_W, maxETH_10dbz, tidx_start, tidx_end, tidx_end_CI, cbase_dep
     # Make output arrays
     _ntracks = da_W.sizes['tracks']
     _ntimes = da_W.sizes['times']
-    Wmask = np.full(da_W.shape, np.NaN)
-    Wmask_remove = np.full(da_W.shape, np.NaN)
+    Wmask = np.full(da_W.shape, np.nan)
+    Wmask_remove = np.full(da_W.shape, np.nan)
     # Wmask = np.full(da_W.shape, 0, dtype=np.int8)
     # Wmask_remove = np.full(da_W.shape, 0, dtype=np.int8)
-    Wtime_start = np.full(_ntracks, np.NaN)
-    Wtime_end = np.full(_ntracks, np.NaN)
-    Wlifetime = np.full(_ntracks, np.NaN)
-    Wtop = np.full((_ntracks, _ntimes), np.NaN)
-    Wbase = np.full((_ntracks, _ntimes), np.NaN)
-    Wbase_mean = np.full(_ntracks, np.NaN)
-    Wbase_median = np.full(_ntracks, np.NaN)
-    Wbase_max = np.full(_ntracks, np.NaN)
-    Wbase_max_time = np.full(_ntracks, np.NaN)
-    Wbase_max_CI = np.full(_ntracks, np.NaN)
-    Wbase_max_time_CI = np.full(_ntracks, np.NaN)
+    Wtime_start = np.full(_ntracks, np.nan)
+    Wtime_end = np.full(_ntracks, np.nan)
+    Wlifetime = np.full(_ntracks, np.nan)
+    Wtop = np.full((_ntracks, _ntimes), np.nan)
+    Wbase = np.full((_ntracks, _ntimes), np.nan)
+    Wbase_mean = np.full(_ntracks, np.nan)
+    Wbase_median = np.full(_ntracks, np.nan)
+    Wbase_max = np.full(_ntracks, np.nan)
+    Wbase_max_time = np.full(_ntracks, np.nan)
+    Wbase_max_CI = np.full(_ntracks, np.nan)
+    Wbase_max_time_CI = np.full(_ntracks, np.nan)
     # maxETH_filter = np.copy(maxETH_10dbz.values)
-    maxETH_filter = np.full(maxETH_10dbz.shape, np.NaN)
-    Wbase_timeseries = np.full((_ntracks, _ntimes), np.NaN)
+    maxETH_filter = np.full(maxETH_10dbz.shape, np.nan)
+    Wbase_timeseries = np.full((_ntracks, _ntimes), np.nan)
     # import pdb; pdb.set_trace()
 
     # Loop over each track
@@ -280,9 +280,9 @@ def make_W_mask(da_W, maxETH_10dbz, tidx_start, tidx_end, tidx_end_CI, cbase_dep
             _Wtime_end = int(Wtime_end[itrack])
             # Find matching index from the time_coord
             _tidx = np.where(time_coord == _Wtime_end)[0].item()
-            iETH[_tidx+1:] = np.NaN
+            iETH[_tidx+1:] = np.nan
             maxETH_filter[itrack,:] = iETH
-            # maxETH_filter[itrack,Wend_tidx+1:] = np.NaN
+            # maxETH_filter[itrack,Wend_tidx+1:] = np.nan
 
     # Convert to DataArrays
     Wmask = xr.DataArray(Wmask, coords=da_W.coords, dims=('tracks','times','z'))
@@ -340,10 +340,10 @@ def fit_linear(xtime, Wtop, tidx_end, min_nsample=3):
             A dictionary containing W object property variables.    
     """
     # Set default values
-    slope, intercept, r_value, p_value, std_err = np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
+    slope, intercept, r_value, p_value, std_err = np.nan, np.nan, np.nan, np.nan, np.nan
     nt = len(xtime)
-    predicted_x = np.full(nt, np.NaN, dtype=np.float32)
-    predicted_y = np.full(nt, np.NaN, dtype=np.float32)
+    predicted_x = np.full(nt, np.nan, dtype=np.float32)
+    predicted_y = np.full(nt, np.nan, dtype=np.float32)
     
     # Subset Wtop time period
     Wtop_sub = Wtop[0:tidx_end+1]
@@ -415,7 +415,8 @@ if __name__ == "__main__":
     wfiles = f'{stats_path}{in_basename_w}{startdate}_{enddate}.nc'
     envfiles = f'{stats_path}{in_basename_env}{startdate}_{enddate}.nc'
     # Output file
-    out_basename = 'stats_2d_wmask_'
+    # out_basename = 'stats_2d_wmask_'
+    out_basename = 'stats_2d_wmask_ci15min_'
     # out_basename = 'stats_2d_wmask_2h_'
     output_filename = f'{stats_path}{out_basename}{startdate}_{enddate}.nc'
 
@@ -429,7 +430,7 @@ if __name__ == "__main__":
     time_start = 0  # [min]
     time_end = 60  # [min]
     # time_end = 120  # [min]
-    time_end_CI = 30  # [min] End time for CI sampling (for cloud-base updraft width)
+    time_end_CI = 15  # [min] End time for CI sampling (for cloud-base updraft width)
     # Minimum number of sample to fit updraft top height
     # min_nsample_fit = 3
     min_nsample_fit = 2
@@ -521,8 +522,8 @@ if __name__ == "__main__":
 
     # Make arrays to store data (narrow cells)
     ntracks = Wmask_dict['Wtop'].sizes['tracks']
-    Wtop_slope = np.full(ntracks, np.NaN, dtype=np.float32)
-    Wtop_fit = np.full((ntracks, ntimes), np.NaN, dtype=np.float32)
+    Wtop_slope = np.full(ntracks, np.nan, dtype=np.float32)
+    Wtop_fit = np.full((ntracks, ntimes), np.nan, dtype=np.float32)
 
     # Loop over each track (narrow cells)
     for itrack in range(ntracks):

@@ -11,6 +11,7 @@ Usage:
     python filter_and_save_combined_tracks.py --domain d3
     python filter_and_save_combined_tracks.py --domain d4
     python filter_and_save_combined_tracks.py --domain all  # Process all domains
+    python filter_and_save_combined_tracks.py --domain all --output-dir /path/to/output --time-offset +1.0
 
 Author: Generated from plot_narrow_wide_cell_composite_profiles_avg_env.ipynb
 Date: 2025-12-02
@@ -403,25 +404,26 @@ def process_domain(domain, rootdir, output_dir, start_dates, time_offset=2.0):
     # Configuration
     in_basename = 'trackstats_20'
     in_basename_w = 'stats_3d_w_fixshell_'
-    in_basename_wmask = 'stats_2d_wmask_'
+    # in_basename_wmask = 'stats_2d_wmask_'
+    in_basename_wmask = 'stats_2d_wmask_ci15min_'
     # in_basename_wmask = 'stats_2d_wmask_2h_'
     # # Environment file basename depends on domain
-    # if 'd2' in domain:
-    #     in_basename_env = 'stats_avg1d_env9x9_'
-    # else:  # d3 or d4
-    #     if '2.5km' in domain:
-    #         in_basename_env = 'stats_avg1d_env9x9_'
-    #     else:
-    #         in_basename_env = 'stats_avg1d_env21x21_'
-
-    # Sensitivity test with 10x10 km environment files
     if 'd2' in domain:
-        in_basename_env = 'stats_avg1d_env5x5_'
+        in_basename_env = 'stats_avg1d_env9x9_'
     else:  # d3 or d4
         if '2.5km' in domain:
-            in_basename_env = 'stats_avg1d_env5x5_'
+            in_basename_env = 'stats_avg1d_env9x9_'
         else:
-            in_basename_env = 'stats_avg1d_env11x11_'
+            in_basename_env = 'stats_avg1d_env21x21_'
+
+    # # Sensitivity test with 10x10 km environment files
+    # if 'd2' in domain:
+    #     in_basename_env = 'stats_avg1d_env5x5_'
+    # else:  # d3 or d4
+    #     if '2.5km' in domain:
+    #         in_basename_env = 'stats_avg1d_env5x5_'
+    #     else:
+    #         in_basename_env = 'stats_avg1d_env11x11_'
     
     # Domain 4 boundaries
     lon_range = [-65., -63.3]
