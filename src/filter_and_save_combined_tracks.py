@@ -405,9 +405,9 @@ def process_domain(domain, rootdir, output_dir, start_dates, time_offset=2.0):
     in_basename = 'trackstats_20'
     in_basename_w = 'stats_3d_w_fixshell_'
     # in_basename_wmask = 'stats_2d_wmask_'
-    in_basename_wmask = 'stats_2d_wmask_ci15min_'
+    in_basename_wmask = 'stats_2d_wmask_ci30min_'
     # in_basename_wmask = 'stats_2d_wmask_2h_'
-    # # Environment file basename depends on domain
+    # Environment file basename depends on domain
     if 'd2' in domain:
         in_basename_env = 'stats_avg1d_env9x9_'
     else:  # d3 or d4

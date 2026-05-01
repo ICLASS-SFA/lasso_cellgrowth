@@ -416,7 +416,7 @@ if __name__ == "__main__":
     envfiles = f'{stats_path}{in_basename_env}{startdate}_{enddate}.nc'
     # Output file
     # out_basename = 'stats_2d_wmask_'
-    out_basename = 'stats_2d_wmask_ci15min_'
+    out_basename = 'stats_2d_wmask_ci30min_'
     # out_basename = 'stats_2d_wmask_2h_'
     output_filename = f'{stats_path}{out_basename}{startdate}_{enddate}.nc'
 
@@ -430,7 +430,7 @@ if __name__ == "__main__":
     time_start = 0  # [min]
     time_end = 60  # [min]
     # time_end = 120  # [min]
-    time_end_CI = 15  # [min] End time for CI sampling (for cloud-base updraft width)
+    time_end_CI = 30  # [min] End time for CI sampling (for cloud-base updraft width)
     # Minimum number of sample to fit updraft top height
     # min_nsample_fit = 3
     min_nsample_fit = 2
@@ -518,6 +518,7 @@ if __name__ == "__main__":
     Wspeed_dict['Wspeed_mean'] = Wspeed_dict.pop('Wbase_mean')
     Wspeed_dict['Wspeed_median'] = Wspeed_dict.pop('Wbase_median')
     Wspeed_dict['Wspeed_max'] = Wspeed_dict.pop('Wbase_max')
+    Wspeed_dict['Wspeed_max_CI'] = Wspeed_dict.pop('Wbase_max_CI')
     # import pdb; pdb.set_trace()
 
     # Make arrays to store data (narrow cells)
@@ -627,6 +628,11 @@ if __name__ == "__main__":
             'long_name': 'Cloud base max updraft speed',
             'units': 'm/s',
         },
+        'Wspeed_max_CI': {
+            'long_name': 'Cloud base max updraft speed within CI period',
+            'units': 'm/s',
+            'CI_time_window': CI_time_window,
+        },
         # Fits and misc
         'Wtop_fit': {
             'long_name': 'Updraft top height linear fit values',
@@ -666,6 +672,7 @@ if __name__ == "__main__":
     var_dict['Wspeed_mean'] = ([tracks_dimname], Wspeed_dict['Wspeed_mean'].data, out_dict_attrs['Wspeed_mean'])
     var_dict['Wspeed_median'] = ([tracks_dimname], Wspeed_dict['Wspeed_median'].data, out_dict_attrs['Wspeed_median'])
     var_dict['Wspeed_max'] = ([tracks_dimname], Wspeed_dict['Wspeed_max'].data, out_dict_attrs['Wspeed_max'])
+    var_dict['Wspeed_max_CI'] = ([tracks_dimname], Wspeed_dict['Wspeed_max_CI'].data, out_dict_attrs['Wspeed_max_CI'])
     # import pdb; pdb.set_trace()
 
     # Define coordinates
