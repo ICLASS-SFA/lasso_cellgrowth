@@ -20,7 +20,8 @@ if __name__ == "__main__":
     # domain = 'd2'
     # domain = 'd3'
     # domain = 'd4'
-    domain = 'd4_native'
+    domain = 'd4_5min_2.5km'
+    # domain = 'd4_native'
     # domain = 'd2_15min'
     # domain = 'd3_15min'
     # domain = 'd4_15min'
@@ -35,6 +36,7 @@ if __name__ == "__main__":
         # ens_members = ["gefs18", "gefs09"]
         start_dates = ["20181129"]
         ens_members = ["gefs09"]
+        # ens_members = ["gefs09"]
         # start_dates = [
         #     "20181129", "20181129", "20181129", "20181129",
         #     "20181204", "20181204", 
@@ -89,7 +91,8 @@ if __name__ == "__main__":
     config_basename = '/ccsopen/home/zhe1feng1/program/lasso/cellgrowth/tracking/slurm/config_lasso_'
     # Plotting output directory
     # out_dir_root = f'/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/{resolution}/quicklooks_trackpaths_terrain_5min/'
-    out_dir_root = f'/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/{resolution}/quicklooks_trackpaths_terrain/'
+    # out_dir_root = f'/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/{resolution}/quicklooks_trackpaths_terrain/'
+    out_dir_root = f'/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/{resolution}/quicklooks_trackpaths_terrain_regrid2.5km/'
     # out_dir_root = f'/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/{resolution}/quicklooks_trackpaths_ETH/'
     # out_dir_root = f'/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/{resolution}/quicklooks_trackpaths_ETH_terrain/'
 
@@ -103,8 +106,8 @@ if __name__ == "__main__":
     extent = [-65.9, -63.6, -33.1, -31.15]
     radar_lon, radar_lat = -64.7284, -32.1264
     vfscale = '1200:-1'
-    parallel = 1
-    workers = 64
+    parallel = 0
+    workers = 24
 
     # Determine framerate based on domain
     # if (domain == 'd4') | (domain == 'd3') | (domain == 'd2') | (domain == 'd4_5min') | (domain == 'd3_5min') | (domain == 'd2_5min'):

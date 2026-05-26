@@ -13,8 +13,8 @@
 
 source /ccsopen/home/zhe1feng1/.bashrc
 # module load python
-source activate /ccsopen/home/zhe1feng1/anaconda3/envs/py310
-# conda activate /ccsopen/home/zhe1feng1/anaconda3/envs/flextrkr
+# source activate /ccsopen/home/zhe1feng1/anaconda3/envs/py310
+source activate /ccsopen/home/zhe1feng1/anaconda3/envs/py312
 
 date
 export OMP_NUM_THREADS=128

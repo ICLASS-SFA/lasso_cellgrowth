@@ -241,7 +241,7 @@ def read_subset_combine(tfiles, wfiles, wmaskfiles, efiles, case_hours_dict,
         original_tracks = np.concatenate(original_tracks_list)
 
         # Concetenante subsetted DataSets
-        dst = xr.concat(dst_list, dim='tracks')
+        dst = xr.concat(dst_list, dim='tracks', data_vars='all')
         # Renumber tracks to make it continuous
         ntracks = dst.sizes['tracks']
         dst['tracks'] = np.arange(0, ntracks)
@@ -424,7 +424,7 @@ def process_domain(domain, rootdir, output_dir, start_dates, time_offset=2.0):
     #         in_basename_env = 'stats_avg1d_env5x5_'
     #     else:
     #         in_basename_env = 'stats_avg1d_env11x11_'
-    
+
     # Domain 4 boundaries
     lon_range = [-65., -63.3]
     lat_range = [-33., -30.8]

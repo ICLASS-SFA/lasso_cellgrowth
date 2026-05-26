@@ -440,46 +440,46 @@ def calc_cellstats_singlefile(
         # Create arrays for output statistics
         dims2d = (nmatchcell, nz)
         dims3d = (nmatchcell, nz, ncores_min)
-        cell_nCore_up = np.full(dims2d, np.NaN, dtype=np.float32)
-        # cell_ovlap_up = np.full(dims2d, np.NaN, dtype=np.float32)
-        cell_MassFlux_up = np.full(dims2d, np.NaN, dtype=np.float32)
-        cell_CoreMassFlux_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreArea_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMaxW_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_CoreMeanW_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        # cell_CoreMaxQC_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        # cell_CoreMeanQC_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        # cell_CoreMeanQC_prm = np.full(dims3d, np.NaN, dtype=np.float32)
-        # cell_CoreMaxQR_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        # cell_CoreMeanQR_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        # cell_CoreMeanQV_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        # cell_CoreMeanQV_prm = np.full(dims3d, np.NaN, dtype=np.float32)
+        cell_nCore_up = np.full(dims2d, np.nan, dtype=np.float32)
+        # cell_ovlap_up = np.full(dims2d, np.nan, dtype=np.float32)
+        cell_MassFlux_up = np.full(dims2d, np.nan, dtype=np.float32)
+        cell_CoreMassFlux_up = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_CoreArea_up = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_CoreMaxW_up = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_CoreMeanW_up = np.full(dims3d, np.nan, dtype=np.float32)
+        # cell_CoreMaxQC_up = np.full(dims3d, np.nan, dtype=np.float32)
+        # cell_CoreMeanQC_up = np.full(dims3d, np.nan, dtype=np.float32)
+        # cell_CoreMeanQC_prm = np.full(dims3d, np.nan, dtype=np.float32)
+        # cell_CoreMaxQR_up = np.full(dims3d, np.nan, dtype=np.float32)
+        # cell_CoreMeanQR_up = np.full(dims3d, np.nan, dtype=np.float32)
+        # cell_CoreMeanQV_up = np.full(dims3d, np.nan, dtype=np.float32)
+        # cell_CoreMeanQV_prm = np.full(dims3d, np.nan, dtype=np.float32)
 
-        # cell_nCore_down = np.full(dims2d, np.NaN, dtype=np.float32)
-        # cell_MassFlux_down = np.full(dims2d, np.NaN, dtype=np.float32)
-        # cell_CoreMassFlux_down = np.full(dims3d, np.NaN, dtype=np.float32)
-        # cell_CoreArea_down = np.full(dims3d, np.NaN, dtype=np.float32)
-        # cell_CoreMinW_down = np.full(dims3d, np.NaN, dtype=np.float32)
-        # cell_CoreMeanW_down = np.full(dims3d, np.NaN, dtype=np.float32)
-        # cell_CoreMinQ_down = np.full(dims3d, np.NaN, dtype=np.float32)
-        # cell_CoreMeanQ_down = np.full(dims3d, np.NaN, dtype=np.float32)
+        # cell_nCore_down = np.full(dims2d, np.nan, dtype=np.float32)
+        # cell_MassFlux_down = np.full(dims2d, np.nan, dtype=np.float32)
+        # cell_CoreMassFlux_down = np.full(dims3d, np.nan, dtype=np.float32)
+        # cell_CoreArea_down = np.full(dims3d, np.nan, dtype=np.float32)
+        # cell_CoreMinW_down = np.full(dims3d, np.nan, dtype=np.float32)
+        # cell_CoreMeanW_down = np.full(dims3d, np.nan, dtype=np.float32)
+        # cell_CoreMinQ_down = np.full(dims3d, np.nan, dtype=np.float32)
+        # cell_CoreMeanQ_down = np.full(dims3d, np.nan, dtype=np.float32)
        
         # new arrays for other things
-        cell_dBZ_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_ThteMax_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_ThteMean_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_ThteMean_prm = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_ThteMax_Bolton_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_ThteMean_Bolton_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_ThteMean_Bolton_prm = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_ThtvMax_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_ThtvMean_prm = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_BuoyThtv_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_RhMean_prm = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_TrhoMax_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_TrhoMean_prm = np.full(dims3d, np.NaN, dtype=np.float32)
-        cell_BuoyTrho_up = np.full(dims3d, np.NaN, dtype=np.float32)
-        # cell_PGF_up = np.full(dims3d, np.NaN, dtype=np.float32)
+        cell_dBZ_up = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_ThteMax_up = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_ThteMean_up = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_ThteMean_prm = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_ThteMax_Bolton_up = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_ThteMean_Bolton_up = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_ThteMean_Bolton_prm = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_ThtvMax_up = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_ThtvMean_prm = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_BuoyThtv_up = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_RhMean_prm = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_TrhoMax_up = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_TrhoMean_prm = np.full(dims3d, np.nan, dtype=np.float32)
+        cell_BuoyTrho_up = np.full(dims3d, np.nan, dtype=np.float32)
+        # cell_PGF_up = np.full(dims3d, np.nan, dtype=np.float32)
 
         # Make a 2D cloudy updraft mask and combine with the cell mask
         # The combined mask will include any updrafts that overlap with the cell mask, even if they are outside of the mask
@@ -590,26 +590,26 @@ def calc_cellstats_singlefile(
                             cell_nCore_up[icell, z] = ncores_all_up
                                        
                             # Calculate core statistics
-                            MaFlx_core_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
-                            W_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
-                            W_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
+                            MaFlx_core_up = np.full(ncores_save_up, np.nan, dtype=np.float32)
+                            W_max_up = np.full(ncores_save_up, np.nan, dtype=np.float32)
+                            W_mean_up = np.full(ncores_save_up, np.nan, dtype=np.float32)
 
-                            Thte_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
-                            Thte_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
-                            Thte_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32)
-                            Thte_Bolton_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
-                            Thte_Bolton_mean_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
-                            Thte_Bolton_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32)
+                            Thte_max_up = np.full(ncores_save_up, np.nan, dtype=np.float32)
+                            Thte_mean_up = np.full(ncores_save_up, np.nan, dtype=np.float32)
+                            Thte_mean_prm = np.full(ncores_save_up, np.nan, dtype=np.float32)
+                            Thte_Bolton_max_up = np.full(ncores_save_up, np.nan, dtype=np.float32)
+                            Thte_Bolton_mean_up = np.full(ncores_save_up, np.nan, dtype=np.float32)
+                            Thte_Bolton_mean_prm = np.full(ncores_save_up, np.nan, dtype=np.float32)
 
-                            Thtv_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
-                            Thtv_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32)
-                            Buoy_Thtv_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
+                            Thtv_max_up = np.full(ncores_save_up, np.nan, dtype=np.float32)
+                            Thtv_mean_prm = np.full(ncores_save_up, np.nan, dtype=np.float32)
+                            Buoy_Thtv_up = np.full(ncores_save_up, np.nan, dtype=np.float32)
 
-                            Trho_max_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
-                            Trho_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32)
-                            Buoy_Trho_up = np.full(ncores_save_up, np.NaN, dtype=np.float32)
+                            Trho_max_up = np.full(ncores_save_up, np.nan, dtype=np.float32)
+                            Trho_mean_prm = np.full(ncores_save_up, np.nan, dtype=np.float32)
+                            Buoy_Trho_up = np.full(ncores_save_up, np.nan, dtype=np.float32)
                             
-                            Rh_mean_prm = np.full(ncores_save_up, np.NaN, dtype=np.float32)
+                            Rh_mean_prm = np.full(ncores_save_up, np.nan, dtype=np.float32)
 
                             # Dilate cores to get perimeter
                             # This dilates all cores by the same distance, thus is much faster to run
@@ -666,7 +666,7 @@ def calc_cellstats_singlefile(
                             if ncores_all_up > 0:
                                 MaFlx_sum_up = np.nansum(zMassFlux[core_label_up > 0])
                             else:
-                                MaFlx_sum_up = np.NaN
+                                MaFlx_sum_up = np.nan
 
                             # Save data to output arrays
                             cell_MassFlux_up[icell, z] = MaFlx_sum_up * DX * DY
@@ -711,9 +711,9 @@ def calc_cellstats_singlefile(
                         #     # Total number of cores
                         #     cell_nCore_down[icell, z] = ncores_all_down
                             
-                        #     MaFlx_core_down = np.full(ncores_save_down, np.NaN, dtype=np.float32)
-                        #     W_min_down = np.full(ncores_save_down, np.NaN, dtype=np.float32)
-                        #     W_mean_down = np.full(ncores_save_down, np.NaN, dtype=np.float32)
+                        #     MaFlx_core_down = np.full(ncores_save_down, np.nan, dtype=np.float32)
+                        #     W_min_down = np.full(ncores_save_down, np.nan, dtype=np.float32)
+                        #     W_mean_down = np.full(ncores_save_down, np.nan, dtype=np.float32)
                         #     for ii in range(ncores_save_down):
                         #         # Get the masks for core and perimeter
                         #         icoremask = core_label_down == core_numbers_down[ii]
@@ -726,7 +726,7 @@ def calc_cellstats_singlefile(
                         #     if ncores_all_down > 0:
                         #         MaFlx_sum_down = np.nansum(zMassFlux[core_label_down > 0])
                         #     else:
-                        #         MaFlx_sum_down = np.NaN
+                        #         MaFlx_sum_down = np.nan
                             
                         #     # Save data to output arrays
                         #     cell_MassFlux_down[icell, z] = MaFlx_sum_down * DX * DY

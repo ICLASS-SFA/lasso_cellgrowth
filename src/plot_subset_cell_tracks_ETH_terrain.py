@@ -277,6 +277,10 @@ def plot_map(pixel_dict, plot_info, map_info, track_dict):
     figname = plot_info['figname']
     figsize = plot_info['figsize']
     show_tracks = plot_info.get('show_tracks', True)
+    show_paths = plot_info.get('show_paths', True)
+    show_symbols = plot_info.get('show_symbols', True)
+    shade_alpha = plot_info.get('shade_alpha', 1)
+    mask_alpha = plot_info.get('mask_alpha', 1)
 
     marker_size = plot_info['marker_size']
     lw_centroid = plot_info['lw_centroid']
@@ -351,11 +355,11 @@ def plot_map(pixel_dict, plot_info, map_info, track_dict):
     var_fill = var_fill * var_scale
     var_fill = np.ma.masked_where(var_fill < min(levels), var_fill)
     pcm0 = ax1.pcolormesh(XLONG, XLAT, HGT, shading='nearest', norm=norm0, cmap=cmap0, transform=proj, zorder=0)
-    cf1 = ax1.pcolormesh(xx, yy, var_fill, norm=norm_ref, cmap=cmap, transform=proj, zorder=2)
+    cf1 = ax1.pcolormesh(xx, yy, var_fill, norm=norm_ref, cmap=cmap, transform=proj, zorder=2, alpha=shade_alpha)
     # Overplot cell tracknumber perimeters
     Tn = np.ma.masked_where(tn_perim == 0, tn_perim)
     Tn[Tn > 0] = 10
-    tn1 = ax1.pcolormesh(xx, yy, Tn, cmap='gray', transform=proj, zorder=3)
+    tn1 = ax1.pcolormesh(xx, yy, Tn, cmap='gray', transform=proj, zorder=3, alpha=mask_alpha)
 
     # Plot track centroids and paths
     if show_tracks:
@@ -397,14 +401,17 @@ def plot_map(pixel_dict, plot_info, map_info, track_dict):
                         size_c = 0
                     size_vals = np.repeat(size_c, idur_cut)
                     size_vals[0] = size_c * 2   # Make CI symbol size larger
-                    cc = ax1.plot(cell_lon.values[itrack,idx_cut], cell_lat.values[itrack,idx_cut], lw=lw_c, ls='-', color='k', transform=proj, zorder=3)
-                    cl = ax1.scatter(cell_lon.values[itrack,idx_cut], cell_lat.values[itrack,idx_cut], s=size_vals, c=color_vals, 
-                                    norm=norm_lifetime, cmap=cmap_lifetime, transform=proj, zorder=4, **marker_style)
+                    if show_paths:
+                        cc = ax1.plot(cell_lon.values[itrack,idx_cut], cell_lat.values[itrack,idx_cut], lw=lw_c, ls='-', color='k', transform=proj, zorder=3)
+                    if show_symbols:
+                        cl = ax1.scatter(cell_lon.values[itrack,idx_cut], cell_lat.values[itrack,idx_cut], s=size_vals, c=color_vals, 
+                                        norm=norm_lifetime, cmap=cmap_lifetime, transform=proj, zorder=4, **marker_style)
 
         # Plot colorbar for tracks
-        cax = inset_axes(ax1, width="100%", height="100%", bbox_to_anchor=(.04, .97, .3, .03), bbox_transform=ax1.transAxes)
-        cbinset = mpl.colorbar.ColorbarBase(cax, cmap=cmap_lifetime, norm=norm_lifetime, orientation='horizontal', label=cblabel_tracks)
-        cbinset.set_ticks(cbticks_tracks)
+        if show_symbols:
+            cax = inset_axes(ax1, width="100%", height="100%", bbox_to_anchor=(.04, .97, .3, .03), bbox_transform=ax1.transAxes)
+            cbinset = mpl.colorbar.ColorbarBase(cax, cmap=cmap_lifetime, norm=norm_lifetime, orientation='horizontal', label=cblabel_tracks)
+            cbinset.set_ticks(cbticks_tracks)
             
     # Overplot cell tracknumbers at current frame
     for ii in range(0, len(lon_tn)):
@@ -602,6 +609,8 @@ if __name__ == "__main__":
     # cmaps = 'nipy_spectral'     # Echo-top Height
     cmap_tracks = 'Spectral_r'  # Lifetime
     show_tracks = False
+    show_paths = False
+    show_symbols = False
     
     # Put plot specifications in a dictionary
     plot_info = {
@@ -614,9 +623,13 @@ if __name__ == "__main__":
         'cblabels': cblabels,
         'cblabel_tracks': cblabel_tracks,
         'fontsize': 15,
+        'shade_alpha': 0.85,    # transparancy alpha for shading
+        'mask_alpha': 0.6,   # transparancy alpha for cell perimeter mask
         'cmaps': cmaps,
         'cmap_tracks': cmap_tracks,
         'show_tracks': show_tracks,
+        'show_paths': bool(show_paths),
+        'show_symbols': bool(show_symbols),
         'marker_size': [30,30,30],    # track centroid marker size (short, medium, long lived)
         'lw_centroid': [3,3,3],         # track path line width
         # 'radii': np.arange(20,101,20),  # radii for the radar range rings [km]

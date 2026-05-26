@@ -12,7 +12,7 @@
 
 # source /ccsopen/home/zhe1feng1/.bashrc
 # module load python
-source activate /ccsopen/home/zhe1feng1/anaconda3/envs/flextrkr
+source activate /ccsopen/home/zhe1feng1/anaconda3/envs/pyflex26.4
 
 date
 

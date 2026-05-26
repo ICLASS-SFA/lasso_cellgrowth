@@ -75,7 +75,7 @@ def location_to_idx(lat, lon, center):
     return lat_idx, lon_idx
 
 #--------------------------------------------------------------------------
-def pad_array(in_array, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y=1, sub_x=1, fillval=np.NaN):
+def pad_array(in_array, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y=1, sub_x=1, fillval=np.nan):
     """
     Pad 2D or 3D array to ny, nx dimensions center at lat_idx, lon_idx.
     
@@ -98,7 +98,7 @@ def pad_array(in_array, lat_idx, lon_idx, ny, nx, ny_d, nx_d, sub_y=1, sub_x=1, 
             Number of grids to sub-sample in y dimension
         sub_x: int, optional, default=1
             Number of grids to sub-sample in x dimension
-        fillval: optional, default=np.NaN
+        fillval: optional, default=np.nan
             Default fill value to pad the array.
 
     Returns:
@@ -451,40 +451,40 @@ def extract_env_prof(
         'DY': DY_sub,
     }
     # 3D variables
-    out_Z = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_P = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_T = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_QV = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_RH = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_U = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_V = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_W = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
-    out_Qliq = np.full((out_ntracks, nz, out_ny, out_nx), np.NaN, dtype=float)
+    out_Z = np.full((out_ntracks, nz, out_ny, out_nx), np.nan, dtype=float)
+    out_P = np.full((out_ntracks, nz, out_ny, out_nx), np.nan, dtype=float)
+    out_T = np.full((out_ntracks, nz, out_ny, out_nx), np.nan, dtype=float)
+    out_QV = np.full((out_ntracks, nz, out_ny, out_nx), np.nan, dtype=float)
+    out_RH = np.full((out_ntracks, nz, out_ny, out_nx), np.nan, dtype=float)
+    out_U = np.full((out_ntracks, nz, out_ny, out_nx), np.nan, dtype=float)
+    out_V = np.full((out_ntracks, nz, out_ny, out_nx), np.nan, dtype=float)
+    out_W = np.full((out_ntracks, nz, out_ny, out_nx), np.nan, dtype=float)
+    out_Qliq = np.full((out_ntracks, nz, out_ny, out_nx), np.nan, dtype=float)
 
     # 2D variables
-    # out_LCL = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_LFC = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_LPL = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_LNB = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_MUCAPE = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_MUCIN = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_LWP = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_IWP = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_PWV = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_T2 = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_Q2 = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_PSFC = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_U10 = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_V10 = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    # out_PBLH = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_RAINNC = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_HGT = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    # out_LCL = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    # out_LFC = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    # out_LPL = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    # out_LNB = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    # out_MUCAPE = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    # out_MUCIN = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    out_LWP = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    out_IWP = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    out_PWV = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    out_T2 = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    out_Q2 = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    out_PSFC = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    out_U10 = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    out_V10 = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    # out_PBLH = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    out_RAINNC = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    out_HGT = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
     # 2D cell variables
-    out_convcore = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_convmask = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_tnmask = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_refl = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
-    out_eth10 = np.full((out_ntracks, out_ny, out_nx), np.NaN, dtype=float)
+    out_convcore = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    out_convmask = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    out_tnmask = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    out_refl = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
+    out_eth10 = np.full((out_ntracks, out_ny, out_nx), np.nan, dtype=float)
 
     out_dict3d = None
     out_dict2d = None
@@ -792,9 +792,9 @@ if __name__ == '__main__':
     ntimes_full = np.round(ntimes_prior + 1).astype(int)
     # 
     full_times = np.ndarray((ntracks, ntimes_full), dtype='datetime64[ns]')
-    full_basetimes = np.full((ntracks, ntimes_full), np.NaN, dtype=float)
-    full_lons = np.full((ntracks, ntimes_full), np.NaN, dtype=np.float32)
-    full_lats = np.full((ntracks, ntimes_full), np.NaN, dtype=np.float32)
+    full_basetimes = np.full((ntracks, ntimes_full), np.nan, dtype=float)
+    full_lons = np.full((ntracks, ntimes_full), np.nan, dtype=np.float32)
+    full_lats = np.full((ntracks, ntimes_full), np.nan, dtype=np.float32)
 
     # Get track data numpy arrays for better performance
     stats_min0 = time0.data

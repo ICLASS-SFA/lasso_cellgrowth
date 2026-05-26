@@ -119,17 +119,20 @@ def get_W_properties(W_array, tidx_start, tidx_end, tidx_end_CI, cbase_depth):
         # print(median_base_z0, median_base_z1)
         # Mask out small cores
         W_array[mask_remove == 1] = np.nan
+        t_idx_WbaseMax = None
         # Check if layer top > base
         if (median_base_z1 > median_base_z0):
             _W_array = W_array[:,median_base_z0:median_base_z1+1]
             # Get the time & height index of the maximum W value within the layer
-            t_idx_WbaseMax, z_idx_WbaseMax = np.unravel_index(np.nanargmax(_W_array), _W_array.shape)
+            if not np.isnan(_W_array).all():
+                t_idx_WbaseMax, z_idx_WbaseMax = np.unravel_index(np.nanargmax(_W_array), _W_array.shape)
             # Get time series of the maximum W value within the layer
             Wbase_timeseries = np.nanmax(_W_array, axis=1)
         else:
             _W_array = W_array[:,median_base_z0]
             # Get the time & height index of the maximum W value within the layer
-            t_idx_WbaseMax = np.nanargmax(_W_array)
+            if not np.isnan(_W_array).all():
+                t_idx_WbaseMax = np.nanargmax(_W_array)
             # Get time series of the maximum W value within the layer
             Wbase_timeseries = _W_array.squeeze()
         # Get W statistics within the cloud-base layer
@@ -139,7 +142,8 @@ def get_W_properties(W_array, tidx_start, tidx_end, tidx_end_CI, cbase_depth):
         # # Get the time & height index of the maximum W value within the layer
         # t_idx_WbaseMax, z_idx_WbaseMax = np.unravel_index(np.nanargmax(_W_array), _W_array.shape)
         # Get the time value corresponding to the max W base value
-        Wbase_max_time = time_coord.values[t_idx_WbaseMax].item()
+        if t_idx_WbaseMax is not None:
+            Wbase_max_time = time_coord.values[t_idx_WbaseMax].item()
 
         # Subset W_array for CI period
         if _W_array.ndim == 2:
@@ -350,7 +354,7 @@ def fit_linear(xtime, Wtop, tidx_end, min_nsample=3):
     # Make sure there are valid samples
     if np.count_nonzero(~np.isnan(Wtop_sub)) > 0:
         # Find time index for max Wtop within the subet time period
-        _Wtop_max_tidx = Wtop_sub.argmax().item()
+        _Wtop_max_tidx = Wtop_sub.argmax(dim='times').item()
 
         # Subset times to Wtop max
         _xtime = xtime.data[0:_Wtop_max_tidx+1]
@@ -407,8 +411,10 @@ if __name__ == "__main__":
     # Environment file basename based on resolution
     if resolution == 'les':
         # in_basename_env = 'stats_1d_env_2location_'
-        in_basename_env = 'stats_avg1d_env21x21_'
-        # in_basename_env = 'stats_avg1d_env9x9_'
+        # Native resolution
+        # in_basename_env = 'stats_avg1d_env21x21_'
+        # Coarsened resolution (to 2.5 km)
+        in_basename_env = 'stats_avg1d_env9x9_'
     elif resolution == 'meso':
         in_basename_env = 'stats_avg1d_env9x9_'
     tfiles = f'{stats_path}{in_basename}{startdate}_{enddate}.nc'
@@ -458,21 +464,21 @@ if __name__ == "__main__":
     dse = xr.open_dataset(envfiles).drop_dims(['height']).sel(times=time_env)
 
     # Combine datasets by coordinates
-    ds = xr.combine_by_coords([dst, dsw, dse], combine_attrs='drop_conflicts')
+    ds = xr.combine_by_coords([dst, dsw, dse], combine_attrs='drop_conflicts', join='outer')
 
     # Get some constents common for all Datasets
     ntimes = ds.sizes['times']
     nz = ds.sizes['z']
     # ncores = ds.sizes['core']
 
-    # time_res = 5.0  # [min]
     # Convert time resolution to [minute]
-    time_res = np.round(dst.attrs['time_resolution_hour']*60)
+    # time_res = np.round(dst.attrs['time_resolution_hour']*60)
+    time_res = 5.0  # [min]
     time_coord = ds.times
     z_coord = ds.z
     xtime = ds.times * time_res
     height = z_coord / 1000.
-
+    # import pdb; pdb.set_trace()
 
     # Filter largest updrafts above 10dBZ ETH + buffer
     maxETH_10dbz = ds['maxETH_10dbz'].load()
