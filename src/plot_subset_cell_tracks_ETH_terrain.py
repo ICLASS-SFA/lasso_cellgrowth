@@ -30,6 +30,7 @@ import cartopy.crs as ccrs
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from matplotlib.patches import Polygon
 from cartopy.mpl.patch import geos_to_path
+from cartopy.geodesic import Geodesic
 # For non-gui matplotlib back end
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 mpl.use('agg')
@@ -420,9 +421,25 @@ def plot_map(pixel_dict, plot_info, map_info, track_dict):
             ax1.text(lon_tn[ii]+0.02, lat_tn[ii]+0.02, f'{tracknumbers[ii]:.0f}', color='k', size=fontsize*0.8, 
                     weight='bold', ha='left', va='center', transform=proj, zorder=4)
 
-    # Plot range circles around radar
+    # Plot range circles around radar using cartopy's WGS84 geodesic engine.
+    # NOTE: ax.tissot() was replaced because it internally hardcodes ccrs.Geodetic() when
+    # registering the ShapelyFeature, which triggers a Geodetic->PlateCarree CRS transform
+    # in PROJ that produces a northward position shift in PROJ >= 9.8.x.
+    # The fix: compute circle points with Geodesic.circle() (same WGS84 math as tissot uses
+    # internally), then plot with transform=proj (PlateCarree).  Since PlateCarree coordinates
+    # ARE lon/lat degrees on WGS84, no CRS conversion step is needed, bypassing the PROJ bug.
+    geod = Geodesic()
     for ii in range(0, len(radii)):
-        rr = ax1.tissot(rad_km=radii[ii], lons=radar_lon, lats=radar_lat, n_samples=100, facecolor='None', edgecolor='k', lw=0.4, zorder=3)
+        # Returns array of shape (n_samples, 2): columns are [lon, lat] in WGS84 degrees
+        circle = geod.circle(radar_lon, radar_lat, radii[ii] * 1e3, n_samples=100, endpoint=True)
+        # Use transform=proj (PlateCarree) to avoid the Geodetic->PlateCarree PROJ CRS
+        # transform that is broken in PROJ 9.8.x
+        ax1.plot(circle[:, 0], circle[:, 1], color='k', lw=0.4, transform=proj, zorder=3)
+        # circle is shape (100, 2): columns are [lon, lat]
+        if ii == 0:
+            print(f"[DEBUG] Radar: lon={radar_lon:.4f}, lat={radar_lat:.4f}")
+            print(f"[DEBUG] Circle lat midpoint: {0.5*(circle[:,1].min()+circle[:,1].max()):.4f}  (should equal radar_lat)")
+
     # # Plot azimuth lines
     # for ii in range(0, len(azimuths)):
     #     lon2, lat2 = calc_latlon(radar_lon, radar_lat, 200, azimuths[ii])
