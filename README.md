@@ -64,14 +64,14 @@ conda env export -p /Users/feng045/opt/miniconda3/envs/py312-26.4 > environment_
 
 ## Input Data
 
-All LASSO files are "subsets" produced by the LASSO team.  
+All LASSO files are "subsets" produced by the LASSO team or processed with the LASSO subset tool.  
 LASSO subset code: https://code.arm.gov/lasso/lasso-cacti/subsetwrf  
 LASSO data DOI: https://doi.org/10.2172/1905845  
 CSAPR-2 DOI: https://doi.org/10.5439/2440152  
 
 | Dataset | Resolution | Location (ORNL Cumulus) |
 |---|---|---|
-| LASSO D4 | 100 m | `/pscratch/sd/f/feng045/lasso/staged_runs/STARTDATE/ENSMEMBER/CONFIG/les/subset_d4/` |
+| LASSO D4 | 100 m | `/gpfs/wolf2/arm/cli120/world-shared/d3m088/cacti/staged_runs/STARTDATE/ENSMEMBER/CONFIG/les/subset_d4/` |
 | LASSO D3 | 500 m | `/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/les/subset_d3/` |
 | LASSO D2 | 2.5 km | `/gpfs/wolf2/arm/atm131/proj-shared/money/STARTDATE/ENSMEMBER/CONFIG/meso/subset_d2/` |
 | CSAPR-2 | 500 m | `/gpfs/wolf2/arm/atm131/proj-shared/zfeng/cacti/csapr/taranis_corcsapr2cfrppiqcM1_gridded.c1/` |
