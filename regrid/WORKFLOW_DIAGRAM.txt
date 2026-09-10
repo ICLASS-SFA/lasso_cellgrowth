@@ -1,0 +1,210 @@
+                    LASSO REGRIDDING WORKFLOW
+                    =========================
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                        ARCHITECTURE LAYERS                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Layer 1: CORE FUNCTIONS (regrid_func.py)                           │
+│  ┌───────────────────────────────────────────────────────────┐      │
+│  │  • coarsen_variable_filter()        ← Generic averaging   │      │
+│  │  • coarsen_reflectivity_filter()    ← Reflectivity dBZ    │      │
+│  │  • regrid_file()                    ← Main processing     │      │
+│  └───────────────────────────────────────────────────────────┘      │
+│                              ▲                                      │
+│                              │                                      │
+│  Layer 2: BATCH PROCESSING (regrid_lasso_batch.py)                  │
+│  ┌───────────────────────────────────────────────────────────┐      │
+│  │  • get_files_in_timewindow()       ← File discovery       │      │
+│  │  • process_single_file()           ← Error handling       │      │
+│  │  • process_batch_with_dask()       ← Dask parallelization │      │
+│  └───────────────────────────────────────────────────────────┘      │
+│                              ▲                                      │
+│                              │                                      │
+│  Layer 3: HPC JOB MANAGEMENT (slurm_regrid.sh)                      │
+│  ┌───────────────────────────────────────────────────────────┐      │
+│  │  • SLURM job array (12 tasks/case)                        │      │
+│  │  • Environment variables                                  │      │
+│  │  • Log file management                                    │      │
+│  └───────────────────────────────────────────────────────────┘      │
+│                              ▲                                      │
+│                              │                                      │
+│  Layer 4: MASTER CONTROL (submit_all_cases.sh)                      │
+│  ┌───────────────────────────────────────────────────────────┐      │
+│  │  • Submit all cases (18 × 2 × 2 = 72 job arrays)          │      │
+│  │  • Job status tracking                                    │      │
+│  └───────────────────────────────────────────────────────────┘      │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+
+                    DATA FLOW DIAGRAM
+                    =================
+
+┌──────────────┐
+│ Input Files  │ (10,368 files × 9.5 GB = ~98 TB)
+│ *.nc         │
+└──────┬───────┘
+       │
+       │ ┌─────────────────────────────────────────┐
+       │ │ Time Window Filter                      │
+       └→│ get_files_in_timewindow()               │
+         │ • Parse timestamps from filenames       │
+         │ • Select files in hour window           │
+         └──────────┬──────────────────────────────┘
+                    │
+                    │ (12 files per hour)
+                    │
+         ┌──────────▼──────────────────────────────┐
+         │ Dask LocalCluster                       │
+         │ • Launch 6 workers (40 GB each)         │
+         │ • Create delayed tasks                  │
+         │ • Execute in parallel                   │
+         └──────────┬──────────────────────────────┘
+                    │
+      ┌─────────────┼─────────────┐
+      │             │             │
+┌─────▼─────┐ ┌────▼─────┐ ┌────▼─────┐
+│ Worker 1  │ │ Worker 2 │ │ Worker N │  (N=6)
+│ File A    │ │ File B   │ │ File N   │
+└─────┬─────┘ └────┬─────┘ └────┬─────┘
+      │            │            │
+      │  ┌─────────▼────────────┐
+      │  │ regrid_file()        │
+      └─→│ 1. Read netCDF       │
+         │ 2. Check dimensions  │
+         │ 3. Regrid or pass    │
+         │ 4. Write output      │
+         └─────────┬────────────┘
+                   │
+         ┌─────────▼────────────┐
+         │ Output Files         │
+         │ (15 MB per file)     │
+         │ Total: ~155 GB       │
+         └──────────────────────┘
+
+
+                RESOURCE ALLOCATION
+                ===================
+
+┌─────────────────────────────────────────────────────────────┐
+│                    COMPUTE NODE (256 GB)                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐     │
+│  │ Worker 1 │  │ Worker 2 │  │ Worker 3 │  │ Worker 4 │     │
+│  │  40 GB   │  │  40 GB   │  │  40 GB   │  │  40 GB   │     │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘     │
+│                                                             │
+│  ┌──────────┐  ┌──────────┐                                 │
+│  │ Worker 5 │  │ Worker 6 │  [16 GB Reserved for OS/Dask]   │
+│  │  40 GB   │  │  40 GB   │                                 │
+│  └──────────┘  └──────────┘                                 │
+│                                                             │
+│  Total Used: 240 GB / 256 GB (94% utilization)              │
+└─────────────────────────────────────────────────────────────┘
+
+
+              JOB ARRAY STRUCTURE
+              ===================
+
+Case: 20190123, FileType: methamsl, Subset: d4
+┌─────────────────────────────────────────────────────────────┐
+│ Job Array ID: 12345                                         │
+├──────────┬──────────────────────────────────────────────────┤
+│ Task 0   │ Hour  0- 1 → 12 files → Worker Pool (6 workers)  │
+│ Task 1   │ Hour  1- 2 → 12 files → Worker Pool (6 workers)  │
+│ Task 2   │ Hour  2- 3 → 12 files → Worker Pool (6 workers)  │
+│ Task 3   │ Hour  3- 4 → 12 files → Worker Pool (6 workers)  │
+│ Task 4   │ Hour  4- 5 → 12 files → Worker Pool (6 workers)  │
+│ Task 5   │ Hour  5- 6 → 12 files → Worker Pool (6 workers)  │
+│ Task 6   │ Hour  6- 7 → 12 files → Worker Pool (6 workers)  │
+│ Task 7   │ Hour  7- 8 → 12 files → Worker Pool (6 workers)  │
+│ Task 8   │ Hour  8- 9 → 12 files → Worker Pool (6 workers)  │
+│ Task 9   │ Hour  9-10 → 12 files → Worker Pool (6 workers)  │
+│ Task 10  │ Hour 10-11 → 12 files → Worker Pool (6 workers)  │
+│ Task 11  │ Hour 11-12 → 12 files → Worker Pool (6 workers)  │
+└──────────┴──────────────────────────────────────────────────┘
+
+All 18 Cases:
+  72 Job Arrays (18 cases × 2 file types × 2 subsets)
+  864 Total Tasks (72 arrays × 12 tasks each)
+  10,368 Total Files (864 tasks × 12 files each)
+
+
+            PROCESSING TIMELINE
+            ===================
+
+Sequential (1 worker):
+─────────────────────────────────────────────────────────────────
+10,368 files × 5 min = 51,840 min = 864 hours = 36 days
+─────────────────────────────────────────────────────────────────
+
+Parallel (6 workers per node):
+─────────────────────────────────────────────────────────────────
+10,368 files ÷ 6 workers = 1,728 files per worker
+1,728 × 5 min = 8,640 min = 144 hours = 6 days
+─────────────────────────────────────────────────────────────────
+
+Parallel (72 nodes simultaneously):
+─────────────────────────────────────────────────────────────────
+72 nodes × 6 workers = 432 parallel files
+10,368 files ÷ 432 ≈ 24 batches
+24 batches × 5 min = 120 min = 2 hours ⭐
+─────────────────────────────────────────────────────────────────
+
+
+          FILE ORGANIZATION
+          =================
+
+Input Structure:
+/gpfs/wolf2/.../subset_d4/
+├── corlasso_methamsl_2019012300gefs18d4_base_M1.m1.20190123.000000.nc
+├── corlasso_methamsl_2019012300gefs18d4_base_M1.m1.20190123.000500.nc
+├── corlasso_methamsl_2019012300gefs18d4_base_M1.m1.20190123.001000.nc
+│   ...
+└── corlasso_methamsl_2019012300gefs18d4_base_M1.m1.20190123.115500.nc
+
+Output Structure:
+/gpfs/wolf2/.../regrid_subsets/
+├── corlasso_methamsl_2019012300gefs18d4_base_M1.m1.20190123.000000.nc
+├── corlasso_methamsl_2019012300gefs18d4_base_M1.m1.20190123.000500.nc
+│   ...
+└── (Same naming, different directory)
+
+Log Structure:
+logs/
+├── regrid_12345_0.out     (Job 12345, Task 0)
+├── regrid_12345_0.err
+├── regrid_12345_1.out     (Job 12345, Task 1)
+├── regrid_12345_1.err
+│   ...
+└── regrid_12345_11.out    (Job 12345, Task 11)
+
+
+        OPTIMIZATION FEATURES
+        =====================
+
+Memory Optimization:
+✓ Single-pass processing (no intermediate arrays)
+✓ Immediate garbage collection
+✓ float32 when possible (halves memory)
+✓ NaN handling without extra arrays
+
+Speed Optimization:
+✓ uniform_filter (2-5x faster than convolve)
+✓ Parallel processing with Dask
+✓ Batch file I/O
+✓ Efficient coordinate subsampling
+
+Code Optimization:
+✓ Eliminated nested loops
+✓ Single loop for all variables
+✓ Clear separation of concerns
+✓ Proper error handling
+
+HPC Optimization:
+✓ Job arrays (reduces scheduler overhead)
+✓ 1-hour chunks (good failure granularity)
+✓ Automatic retry capability
+✓ Independent tasks (no dependencies)

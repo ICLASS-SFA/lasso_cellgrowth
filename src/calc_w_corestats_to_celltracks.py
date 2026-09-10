@@ -38,13 +38,16 @@ def calc_basetime(filelist, filebase):
     file_dict = {}
     for ifile in range(nfiles):
         fname = os.path.basename(filelist[ifile])
-        # File name format: basename_yyyymmdd.hhmm
+        # File name format: basename_yyyymmdd.hhmmss
         TEMP_filetime = datetime(
             int(fname[prelength:(prelength+4)]), 
             int(fname[prelength+4:(prelength+6)]), 
             int(fname[prelength+6:(prelength+8)]),
-            int(fname[prelength+9:(prelength+11)]), 
-            int(fname[prelength+11:(prelength+13)]), 0, tzinfo=utc
+            int(fname[prelength+9:(prelength+11)]),
+            int(fname[prelength+11:(prelength+13)]),
+            int(fname[prelength+13:(prelength+15)]),
+            tzinfo=utc,
+            # int(fname[prelength+11:(prelength+13)]), 0, tzinfo=utc
         )
         # file_basetime[ifile] = calendar.timegm(TEMP_filetime.timetuple())
         file_basetime[ifile] = TEMP_filetime.timestamp()
@@ -443,12 +446,24 @@ if __name__ == '__main__':
     time_window = config['time_window']
     stats_path = config['stats_path']
     pixelfile_path = config['pixelfile_path']
-    # regfile_path = config['regfile_path']
-    metfile_path = config['metfile_path']
+    # metfile_path = config['metfile_path']
+    metfile_path1 = config['metfile_path1']
+    metfile_path2 = config['metfile_path2']
     output_path = config['output_path']
     reg_filebase = config['reg_filebase']
     pixel_filebase = config['pixel_filebase']
     ncores_min = config['ncores_min']
+
+    # Check which directory exists
+    if os.path.isdir(metfile_path1):
+        metfile_path = metfile_path1
+    elif os.path.isdir(metfile_path2):
+        metfile_path = metfile_path2
+    else:
+        print(f'WRF path does not exist: {metfile_path1}')
+        print(f'WRF path does not exist: {metfile_path2}')
+        print(f'Code will exit now.')
+        sys.exit()
 
     # Add start/end date to pixel file path
     pixelfile_path = f'{pixelfile_path}{startdate}_{enddate}/'
@@ -487,7 +502,7 @@ if __name__ == '__main__':
     for ifile in range(nfiles):
         # Find MET time closest to the pixel file time and get the index
         # Save the filename if time difference is < time_window
-        idx = np.argmin(np.abs(met_basetime - pixel_basetime[ifile]))        
+        idx = np.argmin(np.abs(met_basetime - pixel_basetime[ifile]))
         if np.abs(met_basetime[idx] - pixel_basetime[ifile]) < time_window:
             match_regfilelist[ifile] = regfile_dict[met_basetime[idx]]
         else:

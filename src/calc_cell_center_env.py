@@ -14,7 +14,12 @@ from multiprocessing import Pool
 # import dask
 # from dask.distributed import Client, LocalCluster, wait
 
-def calc_envs_track(file_env3d, file_env2d, tracknumber, config):
+def remove_dictionary_entry(dictionary, key):
+    # Remove the entry with key and ignore the return value
+    dictionary.pop(key, None)  # None is default if key does not exist
+    return dictionary
+
+def calc_envs_track(file_env3d, file_env2d, file_env2d_jim, tracknumber, config):
 
     print(f'track: {tracknumber}')
     nx_center = config['nx_center']
@@ -60,6 +65,17 @@ def calc_envs_track(file_env3d, file_env2d, tracknumber, config):
     _u = _u.sel(y=0, x=0)
     _v = _v.sel(y=0, x=0)
     _w = _w.sel(y=0, x=0)
+    # Get the center point & lowest level height to approximate surface elevation
+    # This approximate may be off from actual terrain height by 10s of meters
+    _z_sfc = height.sel(y=0, x=0, z=0)
+    # Remove 'vert_units' in the variable attribute dictionary
+    _tk_attrs = remove_dictionary_entry(_tk.attrs, 'vert_units')
+    _qv_attrs = remove_dictionary_entry(_qv.attrs, 'vert_units')
+    _rh_attrs = remove_dictionary_entry(_rh.attrs, 'vert_units')
+    _p_attrs = remove_dictionary_entry(_p.attrs, 'vert_units')
+    _u_attrs = remove_dictionary_entry(_u.attrs, 'vert_units')
+    _v_attrs = remove_dictionary_entry(_v.attrs, 'vert_units')
+    _w_attrs = remove_dictionary_entry(_w.attrs, 'vert_units')
 
     # Put 3D variables to dictionary
     var3d_dict = {
@@ -73,17 +89,22 @@ def calc_envs_track(file_env3d, file_env2d, tracknumber, config):
         'w': _w,
     }
     var3d_attrs = {
-        'temperature': _tk.attrs,
-        'qv': _qv.attrs,
-        'rh': _rh.attrs,
-        'pressure': _p.attrs, 
-        'u': _u.attrs,
-        'v': _v.attrs,
-        'w': _w.attrs,
+        'temperature': _tk_attrs,
+        'qv': _qv_attrs,
+        'rh': _rh_attrs,
+        'pressure': _p_attrs, 
+        'u': _u_attrs,
+        'v': _v_attrs,
+        'w': _w_attrs,
     }
 
     # Read 2D environment
-    ds2d = xr.open_dataset(file_env2d).sel(
+    ds2d = xr.open_dataset(file_env2d)
+    xcoord = ds2d['x']
+    ycoord = ds2d['y']
+    times_coord = ds2d['times']
+    tracks_coord = ds2d['tracks']
+    ds2d = ds2d.sel(
         tracks=tracknumber,
         y=slice(0, 0), 
         x=slice(0, 0),
@@ -98,10 +119,35 @@ def calc_envs_track(file_env3d, file_env2d, tracknumber, config):
         var2d_dict[var_name] = values
         var2d_attrs[var_name] = values.attrs
 
+    # Add 2D variables from Jim's environment data to the dictionary
+    dsj2d = xr.open_dataset(file_env2d_jim)
+    # Rename dimensions to match the original dimensions
+    dsj2d = dsj2d.rename({'cell':'tracks','t':'times'})
+    # Assign coordinates
+    dsj2d = dsj2d.assign_coords({'tracks':tracks_coord, 'times':times_coord, 'y':ycoord, 'x':xcoord})
+    # Subset track & space
+    dsj2d = dsj2d.sel(
+        tracks=tracknumber,
+        y=slice(0, 0), 
+        x=slice(0, 0),
+    ).squeeze()
+    # import pdb; pdb.set_trace()
+    # Add 2D variables to the dictionary
+    for var_name, values in dsj2d.items():
+        var2d_dict[var_name] = values
+        var2d_attrs[var_name] = values.attrs
+
+    # Add surface elevation 
+    var2d_dict['Z_surface'] = _z_sfc
+    var2d_attrs['Z_surface'] = {
+        'long_name': 'Surface elevation AMSL',
+        'units': 'm',
+    }
+
     # import pdb; pdb.set_trace()
     return var3d_dict, var2d_dict, var3d_attrs, var2d_attrs, z_lev_interp
 
-def work_for_tracks(file_env3d, file_env2d, output_filename, config):
+def work_for_tracks(file_env3d, file_env2d, file_env2d_jim, output_filename, config):
 
     # Read config parameters
     run_parallel = config['run_parallel']
@@ -121,13 +167,13 @@ def work_for_tracks(file_env3d, file_env2d, output_filename, config):
         for itrack in range(0, ntracks):
         # for itrack in range(0, 5):
             tracknumber = tracks.data[itrack]
-            result = calc_envs_track(file_env3d, file_env2d, tracknumber, config)
+            result = calc_envs_track(file_env3d, file_env2d, file_env2d_jim, tracknumber, config)
             final_result.append(result)
     # Parallel
     elif run_parallel >= 1:
         pool = Pool(n_workers)
         final_result = pool.starmap(
-            calc_envs_track, zip(repeat(file_env3d), repeat(file_env2d), tracks.data, repeat(config))
+            calc_envs_track, zip(repeat(file_env3d), repeat(file_env2d), repeat(file_env2d_jim), tracks.data, repeat(config))
             )
         pool.close()
 
@@ -207,7 +253,8 @@ def work_for_tracks(file_env3d, file_env2d, output_filename, config):
     # Define output variable dictionary
     for key, value in out_dict.items():
         if value.ndim == 3:
-            var_dict[key] = (['tracks', 'times', 'z'], value, out_dict_attrs[key])
+            # var_dict[key] = (['tracks', 'times', 'z'], value, out_dict_attrs[key])
+            var_dict[key] = (['tracks', 'times', 'height'], value, out_dict_attrs[key])
         if value.ndim == 2:
             var_dict[key] = (['tracks', 'times'], value, out_dict_attrs[key])
     coord_dict = {
@@ -248,13 +295,23 @@ if __name__ == "__main__":
     # stats_path = config['stats_path']
     input_path = config['output_path']
     output_path = config['output_path']
+    env_path = config['env_path']
 
     # 3D environment filename
     file_env3d = f'{input_path}stats_3d_env_{startdate}_{enddate}.nc'
     # 2D environment filename
     file_env2d = f'{input_path}stats_2d_env_{startdate}_{enddate}.nc'
+    # Jim's 2D environment filename
+    sdate = startdate[:8]
+    ensmember = config['ensmember']
+    # Get domain name from the stats direcotory (e.g., /.../base/d3/stats/)
+    run_config = input_path.split(os.path.sep)[-4]
+    domain = input_path.split(os.path.sep)[-3]
+    file_env2d_jim = f'{env_path}EnvMetrics_{sdate}_{ensmember}_{run_config}_{domain}.nc'
     print(f'Input: {file_env3d}')
     print(f'Input: {file_env2d}')
+    print(f'Env file: {file_env2d_jim}')
+    # import pdb; pdb.set_trace()
 
     # Output filename
     output_filename = f'{output_path}stats_1d_env_{startdate}_{enddate}.nc'
@@ -265,7 +322,7 @@ if __name__ == "__main__":
     fc_2d = os.path.isfile(file_env2d)
     if (fc_3d == True) & (fc_2d == True):
         # Call function to calculate
-        result = work_for_tracks(file_env3d, file_env2d, output_filename, config)
+        result = work_for_tracks(file_env3d, file_env2d, file_env2d_jim, output_filename, config)
     else:
         print(f'No input file: {file_env3d}')
 
